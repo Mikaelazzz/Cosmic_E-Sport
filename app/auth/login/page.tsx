@@ -16,6 +16,7 @@ const LoginPage = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleClose = () => {
     router.push("/");
@@ -70,6 +71,27 @@ const LoginPage = () => {
     }
   };
 
+  // Eye icon component
+  const EyeIcon = () => (
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="text-gray-400 hover:text-gray-200 transition-colors p-1"
+      tabIndex={-1}
+    >
+      {showPassword ? (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  );
+
   return (
     <section className="flex min-h-screen relative">
       {/* Close Button */}
@@ -90,7 +112,7 @@ const LoginPage = () => {
       <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-black px-6 md:px-0">
         <div className="w-full max-w-md flex flex-col items-center px-4 md:px-0">
           <h2
-            className="text-[#FFD700] text-3xl md:text-4xl font-normal font-['Orbitron',sans-serif] mb-8 md:mb-12 tracking-wider"
+            className="text-[#FFD700] text-3xl md:text-4xl font-semibold font-['Orbitron',sans-serif] mb-8 md:mb-12 tracking-wider"
             style={{ letterSpacing: "1px" }}
           >
             LOGIN
@@ -108,17 +130,20 @@ const LoginPage = () => {
               type="text"
               value={formData.nim}
               onChange={(e) => handleInputChange("nim", e.target.value)}
-              className="w-full mb-4 md:mb-5 bg-[#393B4A] text-gray-200 placeholder:text-gray-400 border-0 rounded-md font-sans"
+              className="w-full mb-4 md:mb-5 rounded-md font-sans"
+              color="warning"
               disabled={isLoading}
             />
 
             <Input
               label="Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              className="w-full mb-4 md:mb-5 bg-[#393B4A] text-gray-200 placeholder:text-gray-400 border-0 rounded-md font-sans"
+              className="w-full mb-4 md:mb-5 rounded-md font-sans"
+              color="warning"
               disabled={isLoading}
+              endContent={<EyeIcon />}
             />
 
             <a

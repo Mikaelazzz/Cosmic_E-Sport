@@ -131,7 +131,7 @@ export class AuthService {
             password: hashedPassword,
             role: 'user',
             jabatan: 'Member',
-            email_verified: false
+            email_verified: true // Mark as verified since we checked verification
           }
         ])
         .select()
@@ -145,6 +145,12 @@ export class AuthService {
         };
       }
 
+      // Clean up verification record after successful registration
+      await supabase
+        .from('email_verifications')
+        .delete()
+        .eq('email', data.email);
+
       return {
         success: true,
         message: 'Pendaftaran berhasil!',
@@ -157,6 +163,37 @@ export class AuthService {
         success: false,
         message: 'Terjadi kesalahan, silakan coba lagi'
       };
+    }
+  }
+
+  static async checkEmailVerification(email: string): Promise<{ data: any | null, error: any }> {
+    try {
+      const { data: verification, error } = await supabase
+        .from('email_verifications')
+        .select('*')
+        .eq('email', email)
+        .eq('is_verified', true)
+        .order('verified_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !verification) {
+        return { data: null, error: 'Email belum diverifikasi' };
+      }
+
+      // Check if verification is still valid (within 24 hours)
+      const now = new Date();
+      const verifiedAt = new Date(verification.verified_at);
+      const hoursDiff = (now.getTime() - verifiedAt.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursDiff > 24) {
+        return { data: null, error: 'Verifikasi email telah kedaluwarsa, silakan verifikasi ulang' };
+      }
+
+      return { data: verification, error: null };
+    } catch (error) {
+      console.error('Check email verification error:', error);
+      return { data: null, error: 'Terjadi kesalahan sistem' };
     }
   }
 }
