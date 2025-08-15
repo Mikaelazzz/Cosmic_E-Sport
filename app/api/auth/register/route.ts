@@ -31,6 +31,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if email is verified
+    const { data: emailVerification, error: verifyError } = await AuthService.checkEmailVerification(body.email);
+    if (verifyError || !emailVerification) {
+      return NextResponse.json(
+        { success: false, message: 'Email belum diverifikasi atau kode verifikasi tidak valid' },
+        { status: 400 }
+      );
+    }
+
     // Validate password length
     if (body.password.length < 6) {
       return NextResponse.json(

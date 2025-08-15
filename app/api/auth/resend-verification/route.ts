@@ -18,14 +18,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Debug email configuration
-console.log('Email config:', {
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || '587',
-  user: process.env.EMAIL_USER ? '***configured***' : 'NOT SET',
-  pass: process.env.EMAIL_PASS ? '***configured***' : 'NOT SET'
-});
-
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
@@ -37,12 +29,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Check if there's a recent request (less than 1 minute ago)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const { data: recentRequest } = await supabase
+      .from('email_verifications')
+      .select('created_at')
+      .eq('email', email)
+      .gte('created_at', oneMinuteAgo.toISOString())
+      .limit(1);
+
+    if (recentRequest && recentRequest.length > 0) {
       return NextResponse.json(
-        { success: false, message: 'Format email tidak valid' },
-        { status: 400 }
+        { success: false, message: 'Mohon tunggu 1 menit sebelum mengirim ulang kode' },
+        { status: 429 }
       );
     }
 
@@ -77,10 +76,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate verification code
+    // Generate new verification code
     const verificationCode = generateVerificationCode();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes from now
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Delete any existing verification for this email
     await supabase
@@ -89,22 +87,19 @@ export async function POST(request: Request) {
       .eq('email', email);
 
     // Insert new verification record
-    const insertData = {
-      email: email,
-      verification_code: verificationCode,
-      expires_at: expiresAt.toISOString(),
-      is_verified: false
-    };
-
-    console.log('Inserting verification data:', insertData);
-
     const { error: insertError } = await supabase
       .from('email_verifications')
-      .insert([insertData]);
+      .insert([
+        {
+          email: email,
+          verification_code: verificationCode,
+          expires_at: expiresAt.toISOString(),
+          is_verified: false
+        }
+      ]);
 
     if (insertError) {
       console.error('Insert verification error:', insertError);
-      console.error('Data being inserted:', insertData);
       return NextResponse.json(
         { success: false, message: 'Gagal menyimpan kode verifikasi' },
         { status: 500 }
@@ -116,17 +111,17 @@ export async function POST(request: Request) {
       await transporter.sendMail({
         from: `${process.env.EMAIL_FROM_NAME || 'Cosmic E-Sport'} <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Kode Verifikasi Email - Cosmic E-Sport',
+        subject: 'Kode Verifikasi Email Baru - Cosmic E-Sport',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333; text-align: center;">Verifikasi Email Anda</h2>
+            <h2 style="color: #333; text-align: center;">Kode Verifikasi Email Baru</h2>
             <p>Halo,</p>
-            <p>Terima kasih telah mendaftar di Cosmic E-Sport. Gunakan kode verifikasi berikut untuk melengkapi pendaftaran Anda:</p>
+            <p>Anda telah meminta kode verifikasi baru. Gunakan kode berikut:</p>
             <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
               <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
             </div>
             <p><strong>Kode ini akan kedaluwarsa dalam 15 menit.</strong></p>
-            <p>Jika Anda tidak melakukan pendaftaran ini, abaikan email ini.</p>
+            <p>Jika Anda tidak melakukan permintaan ini, abaikan email ini.</p>
             <hr style="margin: 30px 0;">
             <p style="color: #666; font-size: 14px;">
               Email ini dikirim otomatis, mohon jangan balas email ini.
@@ -137,7 +132,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: 'Kode verifikasi telah dikirim ke email Anda'
+        message: 'Kode verifikasi baru telah dikirim ke email Anda'
       });
 
     } catch (emailError) {
@@ -156,7 +151,7 @@ export async function POST(request: Request) {
     }
 
   } catch (error) {
-    console.error('Send verification error:', error);
+    console.error('Resend verification error:', error);
     return NextResponse.json(
       { success: false, message: 'Terjadi kesalahan server' },
       { status: 500 }
