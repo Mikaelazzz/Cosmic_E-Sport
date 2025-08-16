@@ -506,3 +506,97 @@ export const IconSearch = ({
     />
   </svg>
 );
+
+export const IconTrophy = ({
+  fill = "none",
+  size = 24,
+  height,
+  width,
+  ...props
+}: IconSvgProps) => (
+  <svg
+    fill={fill}
+    height={size || height}
+    viewBox="0 0 24 24"
+    width={size || width}
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <path
+      d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <path
+      d="M4 22h16"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <path
+      d="M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <path
+      d="M18 2H6v7a6 6 0 0 0 12 0V2Z"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+  </svg>
+);
+
+export const IconUpload = ({
+  fill = "none",
+  size = 24,
+  height,
+  width,
+  ...props
+}: IconSvgProps) => (
+  <svg
+    fill={fill}
+    height={size || height}
+    viewBox="0 0 24 24"
+    width={size || width}
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <polyline
+      points="17,8 12,3 7,8"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+    <line
+      x1="12"
+      y1="3"
+      x2="12"
+      y2="15"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={2}
+    />
+  </svg>
+);
