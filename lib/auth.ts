@@ -120,6 +120,17 @@ export class AuthService {
       // Hash password
       const hashedPassword = await bcrypt.hash(data.password, 12);
 
+      // Check if user is pre-assigned as pengurus
+      const { data: pengurusData } = await supabase
+        .from('admin_nim')
+        .select('role, jabatan')
+        .eq('nim', data.nim)
+        .single();
+
+      // Determine role and jabatan
+      const userRole = pengurusData ? pengurusData.role : 'user';
+      const userJabatan = pengurusData ? pengurusData.jabatan : 'Member';
+
       // Insert new user
       const { data: newUser, error } = await supabase
         .from('users')
@@ -129,8 +140,8 @@ export class AuthService {
             nama_lengkap: data.nama_lengkap,
             email: data.email,
             password: hashedPassword,
-            role: 'user',
-            jabatan: 'Member',
+            role: userRole,
+            jabatan: userJabatan,
             email_verified: true // Mark as verified since we checked verification
           }
         ])
