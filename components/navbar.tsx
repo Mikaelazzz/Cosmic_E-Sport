@@ -9,12 +9,16 @@ import {
 } from "@heroui/navbar";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
+import { Avatar } from "@heroui/avatar";
 import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { useAuth } from "@/context/AuthContext";
 import {
   TwitterIcon,
   GithubIcon,
@@ -24,6 +28,29 @@ import {
 } from "@/components/icons";
 
 export const Navbar = () => {
+  const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
+
+  const handleProfileAction = (key: string) => {
+    switch (key) {
+      case 'profile':
+        router.push('/user/dashboard');
+        break;
+      case 'settings':
+        router.push('/user/settings');
+        break;
+      case 'logout':
+        handleLogout();
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky" className="border-b-2 border-[#1A237E] shadow-[0_0_32px_0_#1A237E] relative">
@@ -61,7 +88,59 @@ export const Navbar = () => {
         className="hidden sm:flex basis-1/5 sm:basis-full"
         justify="end"
       >
-      <ThemeSwitch />
+        <ThemeSwitch />
+        
+        {/* Jika user sudah login, tampilkan avatar dropdown */}
+        {isAuthenticated && user ? (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                isBordered
+                as="button"
+                className="transition-transform hover:scale-105"
+                color="warning"
+                name={user.nama_lengkap || user.email}
+                size="sm"
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.email)}&background=FFD700&color=000000`}
+              />
+            </DropdownTrigger>
+            <DropdownMenu 
+              aria-label="Profile Actions" 
+              variant="flat"
+              onAction={(key) => handleProfileAction(key as string)}
+            >
+              <DropdownItem key="profile" className="h-14 gap-2">
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold text-yellow-400">{user.email}</p>
+              </DropdownItem>
+              <DropdownItem key="dashboard">
+                Dashboard
+              </DropdownItem>
+              <DropdownItem key="settings">
+                Settings
+              </DropdownItem>
+              <DropdownItem key="help">
+                Help & Support
+              </DropdownItem>
+              <DropdownItem key="logout" color="danger">
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        ) : (
+          /* Jika user belum login, tampilkan tombol login */
+          <NavbarItem>
+            <Button
+              as={NextLink}
+              href="/auth/login"
+              size="sm"
+              className="w-full md:w-[110px] bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-lg font-bold py-2 rounded-md hover:bg-[#FFC300] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Login
+            </Button>
+          </NavbarItem>
+        )}
+        
         {/* <NavbarItem className="hidden sm:flex gap-2">
           <Link isExternal aria-label="Twitter" href={siteConfig.links.twitter}>
             <TwitterIcon className="text-default-500" />
@@ -88,10 +167,47 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
-        <Link isExternal aria-label="Github" href={siteConfig.links.github}>
-          <GithubIcon className="text-default-500" />
-        </Link>
         <ThemeSwitch />
+        
+        {/* Avatar untuk mobile jika user sudah login */}
+        {isAuthenticated && user ? (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                isBordered
+                as="button"
+                className="transition-transform hover:scale-105"
+                color="secondary"
+                name={user.nama_lengkap || user.email}
+                size="sm"
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.email)}&background=FFD700&color=000000`}
+              />
+            </DropdownTrigger>
+            <DropdownMenu 
+              aria-label="Profile Actions" 
+              variant="flat"
+              onAction={(key) => handleProfileAction(key as string)}
+            >
+              <DropdownItem key="profile" className="h-14 gap-2">
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold text-yellow-400">{user.email}</p>
+              </DropdownItem>
+              <DropdownItem key="dashboard">
+                Dashboard
+              </DropdownItem>
+              <DropdownItem key="settings">
+                Settings
+              </DropdownItem>
+              <DropdownItem key="help">
+                Help & Support
+              </DropdownItem>
+              <DropdownItem key="logout" color="danger">
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        ) : null}
+        
         <NavbarMenuToggle />
       </NavbarContent>
 
@@ -114,6 +230,32 @@ export const Navbar = () => {
               </Link>
             </NavbarMenuItem>
           ))}
+          
+          {/* Tombol login/logout untuk mobile menu */}
+          {!isAuthenticated ? (
+            <NavbarMenuItem>
+              <Button
+                as={NextLink}
+                href="/auth/login"
+                size="md"
+                className="w-full md:w-[110px] bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-lg font-bold py-2 rounded-md hover:bg-[#FFC300] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Login
+              </Button>
+            </NavbarMenuItem>
+          ) : (
+            <NavbarMenuItem>
+              <Button
+                color="danger"
+                variant="flat"
+                size="md"
+                className="w-full"
+                onPress={handleLogout}
+              >
+                Logout
+              </Button>
+            </NavbarMenuItem>
+          )}
         </div>
       </NavbarMenu>
     </HeroUINavbar>
