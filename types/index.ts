@@ -14,3 +14,16 @@ export interface Meeting {
   status: string;
   periode_id: number;
 }
+
+export interface Prestasi {
+  id: number;
+  nama_tournament: string;
+  tingkat_acara: 'Kampus' | 'Kota' | 'Provinsi' | 'Nasional' | 'Internasional';
+  tanggal_acara: string;
+  juara: number;
+  jumlah_anggota: number;
+  gambar_pemenang?: string;
+  deskripsi?: string;
+  created_at: string;
+  updated_at: string;
+}
