@@ -13,6 +13,10 @@ export interface Meeting {
   kelas: string;
   status: string;
   periode_id: number;
+  jumlah_hadir?: number;
+  jumlah_tidak_hadir?: number;
+  total_peserta?: number;
+  persentase_kehadiran?: number;
 }
 
 export interface Prestasi {
