@@ -35,9 +35,46 @@ export async function GET(
       );
     }
 
+    // Get attendance count for each meeting
+    const meetingsWithAttendance = await Promise.all(
+      (data || []).map(async (meeting) => {
+        // Get total attendance (hadir)
+        const { data: hadirData } = await supabase
+          .from('absen')
+          .select('id')
+          .eq('pertemuan_id', meeting.id)
+          .eq('status', 'hadir');
+
+        // Get total absent (tidak hadir)
+        const { data: tidakHadirData } = await supabase
+          .from('absen')
+          .select('id')
+          .eq('pertemuan_id', meeting.id)
+          .eq('status', 'tidak_hadir');
+
+        // Get total registered users for this meeting
+        const { data: totalUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'user');
+
+        const jumlah_hadir = hadirData?.length || 0;
+        const jumlah_tidak_hadir = tidakHadirData?.length || 0;
+        const total_peserta = totalUsers?.length || 0;
+
+        return {
+          ...meeting,
+          jumlah_hadir,
+          jumlah_tidak_hadir,
+          total_peserta,
+          persentase_kehadiran: total_peserta > 0 ? Math.round((jumlah_hadir / total_peserta) * 100) : 0
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: data || []
+      data: meetingsWithAttendance
     });
 
   } catch (error) {
