@@ -29,8 +29,11 @@ import {
 } from "@/components/icons";
 
 export const Navbar = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
+  // Debug logging
+  console.log('Navbar render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.email);
 
   const handleLogout = () => {
     logout();
@@ -40,7 +43,22 @@ export const Navbar = () => {
   const handleProfileAction = (key: string) => {
     switch (key) {
       case 'profile':
-        router.push('/user/dashboard');
+        router.push('/user');
+        break;
+      case 'dashboard':
+        if (user?.role === 'admin') {
+          router.push('/admin');
+        } else if (user?.role === 'moderator') {
+          router.push('/moderator');
+        } else {
+          router.push('/user');
+        }
+        break;
+      case 'jadwal-pertemuan':
+        router.push('/moderator/jadwal-pertemuan');
+        break;
+      case 'users':
+        router.push('/moderator/users');
         break;
       case 'settings':
         router.push('/user/settings');
@@ -91,55 +109,70 @@ export const Navbar = () => {
       >
         <ThemeSwitch />
         
-        {/* Jika user sudah login, tampilkan avatar dropdown */}
-        {isAuthenticated && user ? (
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <Avatar
-                isBordered
-                as="button"
-                className="transition-transform hover:scale-105"
-                color="warning"
-                name={generateInitials(user.nama_lengkap || user.email || 'User')}
-                size="sm"
-                src={getUserAvatarUrl(user, 40)}
-              />
-            </DropdownTrigger>
-            <DropdownMenu 
-              aria-label="Profile Actions" 
-              variant="flat"
-              onAction={(key) => handleProfileAction(key as string)}
-            >
-              <DropdownItem key="profile" className="h-14 gap-2">
-                <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
-              </DropdownItem>
-              <DropdownItem key="dashboard">
-                Dashboard
-              </DropdownItem>
-              <DropdownItem key="settings">
-                Settings
-              </DropdownItem>
-              <DropdownItem key="help">
-                Help & Support
-              </DropdownItem>
-              <DropdownItem key="logout" color="danger">
-                Log Out
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        ) : (
-          /* Jika user belum login, tampilkan tombol login */
-          <NavbarItem>
-            <Button
-              as={NextLink}
-              href="/auth/login"
-              size="sm"
-              className="w-full md:w-[110px] bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-lg font-bold py-2 rounded-md hover:bg-[#FFC300] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Login
-            </Button>
-          </NavbarItem>
+        {/* Don't render anything while loading */}
+        {!isLoading && (
+          <>
+            {/* Jika user sudah login, tampilkan avatar dropdown */}
+            {isAuthenticated && user ? (
+              <Dropdown placement="bottom-end">
+                <DropdownTrigger>
+                  <Avatar
+                    isBordered
+                    as="button"
+                    className="transition-transform hover:scale-105"
+                    color="warning"
+                    name={generateInitials(user.nama_lengkap || user.email || 'User')}
+                    size="sm"
+                    src={getUserAvatarUrl(user, 40)}
+                  />
+                </DropdownTrigger>
+                <DropdownMenu 
+                  aria-label="Profile Actions" 
+                  variant="flat"
+                  onAction={(key) => handleProfileAction(key as string)}
+                >
+                  <DropdownItem key="profile" className="h-14 gap-2">
+                    <p className="font-semibold">Signed in as</p>
+                    <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
+                  </DropdownItem>
+                  <DropdownItem key="dashboard">
+                    Dashboard
+                  </DropdownItem>
+                  {user.role === 'moderator' || user.role === 'admin' ? (
+                    <>
+                      <DropdownItem key="jadwal-pertemuan">
+                        Jadwal Pertemuan
+                      </DropdownItem>
+                      <DropdownItem key="users">
+                        Kelola Users
+                      </DropdownItem>
+                    </>
+                  ) : null}
+                  <DropdownItem key="settings">
+                    Settings
+                  </DropdownItem>
+                  <DropdownItem key="help">
+                    Help & Support
+                  </DropdownItem>
+                  <DropdownItem key="logout" color="danger">
+                    Log Out
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            ) : (
+              /* Jika user belum login, tampilkan tombol login */
+              <NavbarItem>
+                <Button
+                  as={NextLink}
+                  href="/auth/login"
+                  size="sm"
+                  className="w-full md:w-[110px] bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-lg font-bold py-2 rounded-md hover:bg-[#FFC300] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Login
+                </Button>
+              </NavbarItem>
+            )}
+          </>
         )}
         
         {/* <NavbarItem className="hidden sm:flex gap-2">
@@ -170,44 +203,69 @@ export const Navbar = () => {
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
         <ThemeSwitch />
         
-        {/* Avatar untuk mobile jika user sudah login */}
-        {isAuthenticated && user ? (
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <Avatar
-                isBordered
-                as="button"
-                className="transition-transform hover:scale-105"
-                color="secondary"
-                name={user.nama_lengkap || user.email}
+        {/* Don't render anything while loading */}
+        {!isLoading && (
+          <>
+            {/* Avatar untuk mobile jika user sudah login */}
+            {isAuthenticated && user ? (
+              <Dropdown placement="bottom-end">
+                <DropdownTrigger>
+                  <Avatar
+                    isBordered
+                    as="button"
+                    className="transition-transform hover:scale-105"
+                    color="warning"
+                    name={generateInitials(user.nama_lengkap || user.email || 'User')}
+                    size="sm"
+                    src={getUserAvatarUrl(user, 40)}
+                  />
+                </DropdownTrigger>
+                <DropdownMenu 
+                  aria-label="Profile Actions" 
+                  variant="flat"
+                  onAction={(key) => handleProfileAction(key as string)}
+                >
+                  <DropdownItem key="profile" className="h-14 gap-2">
+                    <p className="font-semibold">Signed in as</p>
+                    <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
+                  </DropdownItem>
+                  <DropdownItem key="dashboard">
+                    Dashboard
+                  </DropdownItem>
+                  {user.role === 'moderator' || user.role === 'admin' ? (
+                    <>
+                      <DropdownItem key="jadwal-pertemuan">
+                        Jadwal Pertemuan
+                      </DropdownItem>
+                      <DropdownItem key="users">
+                        Kelola Users
+                      </DropdownItem>
+                    </>
+                  ) : null}
+                  <DropdownItem key="settings">
+                    Settings
+                  </DropdownItem>
+                  <DropdownItem key="help">
+                    Help & Support
+                  </DropdownItem>
+                  <DropdownItem key="logout" color="danger">
+                    Log Out
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            ) : (
+              /* Jika user belum login, tampilkan tombol login untuk mobile */
+              <Button
+                as={NextLink}
+                href="/auth/login"
                 size="sm"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.email)}&background=FFD700&color=000000`}
-              />
-            </DropdownTrigger>
-            <DropdownMenu 
-              aria-label="Profile Actions" 
-              variant="flat"
-              onAction={(key) => handleProfileAction(key as string)}
-            >
-              <DropdownItem key="profile" className="h-14 gap-2">
-                <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold text-yellow-400">{user.email}</p>
-              </DropdownItem>
-              <DropdownItem key="dashboard">
-                Dashboard
-              </DropdownItem>
-              <DropdownItem key="settings">
-                Settings
-              </DropdownItem>
-              <DropdownItem key="help">
-                Help & Support
-              </DropdownItem>
-              <DropdownItem key="logout" color="danger">
-                Log Out
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        ) : null}
+                className="bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-sm font-bold px-3 py-1 rounded-md hover:bg-[#FFC300] transition-colors duration-200"
+              >
+                Login
+              </Button>
+            )}
+          </>
+        )}
         
         <NavbarMenuToggle />
       </NavbarContent>
@@ -231,32 +289,6 @@ export const Navbar = () => {
               </Link>
             </NavbarMenuItem>
           ))}
-          
-          {/* Tombol login/logout untuk mobile menu */}
-          {!isAuthenticated ? (
-            <NavbarMenuItem>
-              <Button
-                as={NextLink}
-                href="/auth/login"
-                size="md"
-                className="w-full md:w-[110px] bg-[#FFD700] text-black font-['Orbitron',sans-serif] text-lg font-bold py-2 rounded-md hover:bg-[#FFC300] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Login
-              </Button>
-            </NavbarMenuItem>
-          ) : (
-            <NavbarMenuItem>
-              <Button
-                color="danger"
-                variant="flat"
-                size="md"
-                className="w-full"
-                onPress={handleLogout}
-              >
-                Logout
-              </Button>
-            </NavbarMenuItem>
-          )}
         </div>
       </NavbarMenu>
     </HeroUINavbar>
