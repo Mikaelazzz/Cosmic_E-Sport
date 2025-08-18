@@ -51,3 +51,66 @@ After modifying the `.npmrc` file, you need to run `pnpm install` again to ensur
 ## License
 
 Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template/blob/main/LICENSE).
+
+
+## Feature 
+
+### Auth
+
+[x] Login
+
+[x] Register with Verifikassi Email
+
+[x] Forgot Password with Verifikasi Email
+
+[ ] Template HTML Email
+
+[ ] On Going Other Feature
+
+### Admin 
+
+[x] CRUD Periode 
+
+[x] CRUD Pengurus by NIM
+
+[x] CRUD Prestasi
+
+[ ] On Going Other Feature
+
+[ ] 
+
+### Moderator 
+
+[x] CRUD User > Role Anggota 
+
+[x] CRUD Pertemuan Rutin 
+
+[ ] Managing Team
+
+[ ] CRUD Event 
+
+[x] Fungsi Absen pada Pertemuan Rutin
+
+[ ] CRUD Informasi
+
+### User 
+
+[ ] CRUD Team
+
+[ ] Join Event Team / Individual
+
+[ ] Join Pertemuan Rutin > Scan QR Absen
+
+[ ] Get Informasi 
+
+### Other Feature
+
+[ ] Games
+
+[ ] Notifikasi WEB dan HP 
+
+[ ] Animasi yang keren untuk Website
+
+[ ] Intro saat masuk Dashboard
+
+[x] Cookie Akun
