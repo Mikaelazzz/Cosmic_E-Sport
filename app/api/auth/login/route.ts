@@ -29,9 +29,23 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Verify password (assuming passwords are hashed in database)
-    // For demo purposes, we'll skip password verification
-    // In production, use: const isValid = await bcrypt.compare(password, user.password);
+    // Verify password
+    let isValidPassword = false;
+    
+    if (user.password) {
+      // If password is hashed, verify it
+      isValidPassword = await bcrypt.compare(password, user.password);
+    } else {
+      // For legacy users without password, use demo password
+      isValidPassword = password === 'password123';
+    }
+    
+    if (!isValidPassword) {
+      return NextResponse.json({
+        success: false,
+        message: 'Password salah'
+      }, { status: 401 });
+    }
     
     // Create user session
     const userSession: UserSession = {
@@ -60,8 +74,18 @@ export async function POST(request: NextRequest) {
       message: 'Login berhasil'
     });
 
-    // Set authentication cookie
+    // Set secure httpOnly cookie for server-side
     setAuthCookie(response, userSession);
+    
+    // Set a separate client-side readable cookie
+    const sessionData = JSON.stringify(userSession);
+    response.cookies.set('cosmic_auth_client', sessionData, {
+      httpOnly: false, // This allows JavaScript to read it
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/'
+    });
 
     return response;
 

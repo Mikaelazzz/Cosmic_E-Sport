@@ -8,16 +8,21 @@ export async function POST(request: NextRequest) {
       message: 'Logout berhasil'
     });
 
-    // Clear authentication cookie
+    // Clear all auth cookies using the helper function
     clearAuthCookie(response);
-
+    
     return response;
-
   } catch (error) {
     console.error('Logout error:', error);
-    return NextResponse.json({
+    
+    const response = NextResponse.json({
       success: false,
-      message: 'Terjadi kesalahan server'
+      message: 'Logout gagal'
     }, { status: 500 });
+    
+    // Still try to clear cookies even if there's an error
+    clearAuthCookie(response);
+    
+    return response;
   }
 }
