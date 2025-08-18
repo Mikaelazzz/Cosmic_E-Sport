@@ -12,6 +12,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@herou
 import { useDisclosure } from "@heroui/use-disclosure";
 import { Spinner } from "@heroui/spinner";
 import { Divider } from "@heroui/divider";
+import { Alert } from "@heroui/alert";
 import { IconPlus, IconEdit, IconTrash, IconCalendar, IconUsers, IconDownload, IconSearch } from '@/components/icons';
 import { Meeting } from '@/types/index';
 
@@ -64,6 +65,95 @@ export default function PeriodePage() {
   });
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Alert state
+  const [alertConfig, setAlertConfig] = useState<{
+    show: boolean;
+    title: string;
+    description: string;
+    color: 'success' | 'danger' | 'warning' | 'primary' | 'secondary';
+  }>({
+    show: false,
+    title: '',
+    description: '',
+    color: 'primary'
+  });
+
+  // Show alert function
+  const showAlert = (title: string, description: string, color: 'success' | 'danger' | 'warning' | 'primary' | 'secondary' = 'primary') => {
+    setAlertConfig({
+      show: true,
+      title,
+      description,
+      color
+    });
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+      setAlertConfig(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
+
+  // Fix Data confirmation modal state
+  const [fixDataModal, setFixDataModal] = useState<{
+    isOpen: boolean;
+    isProcessing: boolean;
+  }>({
+    isOpen: false,
+    isProcessing: false
+  });
+
+  // Open fix data confirmation modal
+  const openFixDataModal = () => {
+    setFixDataModal({
+      isOpen: true,
+      isProcessing: false
+    });
+  };
+
+  // Close fix data modal
+  const closeFixDataModal = () => {
+    setFixDataModal({
+      isOpen: false,
+      isProcessing: false
+    });
+  };
+
+  // Attendance Slider Component
+  const AttendanceSlider = ({ meeting }: { meeting: Meeting }) => {
+    const total = meeting.total_peserta || 0;
+    const hadir = meeting.jumlah_hadir || 0;
+    const tidakHadir = meeting.jumlah_tidak_hadir || 0;
+    const persentase = meeting.persentase_kehadiran || 0;
+
+    if (total === 0) {
+      return (
+        <div className="w-full">
+          <div className="text-xs text-default-500 mb-1">Belum ada data kehadiran</div>
+          <div className="w-full h-2 bg-default-200 rounded-full"></div>
+          <div className="text-xs text-default-500 mt-1">0 / 0 peserta</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full min-w-[120px]">
+        <div className="flex justify-between text-xs text-default-600 mb-1">
+          <span>Hadir: {hadir}</span>
+          <span>{persentase}%</span>
+          <span>Tidak: {tidakHadir}</span>
+        </div>
+        <div className="relative w-full h-2 bg-default-200 rounded-full overflow-hidden">
+          <div 
+            className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#FFD700] to-[#FFA500] rounded-full transition-all duration-300"
+            style={{ width: `${persentase}%` }}
+          ></div>
+        </div>
+        <div className="text-xs text-default-500 mt-1 text-center">
+          {hadir + tidakHadir} / {total} peserta
+        </div>
+      </div>
+    );
+  };
 
   // Fetch current active period
   const fetchCurrentPeriod = async () => {
@@ -127,6 +217,34 @@ export default function PeriodePage() {
     }
   };
 
+  // Fix periode_id for existing meetings
+  const fixPeriodeId = async () => {
+    setFixDataModal(prev => ({ ...prev, isProcessing: true }));
+
+    try {
+      const response = await fetch('/api/admin/fix-periode-id', {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        showAlert('Berhasil!', result.message, 'success');
+        // Refresh meetings data
+        if (currentPeriod) {
+          await fetchMeetings(currentPeriod.id);
+        }
+        closeFixDataModal();
+      } else {
+        showAlert('Error!', result.message, 'danger');
+      }
+    } catch (error) {
+      console.error('Error fixing periode_id:', error);
+      showAlert('Error!', 'Terjadi kesalahan saat memperbaiki data', 'danger');
+    } finally {
+      setFixDataModal(prev => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   // Handle search filter
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -144,7 +262,7 @@ export default function PeriodePage() {
   const exportToCSV = () => {
     if (filteredMeetings.length === 0) return;
     
-    const headers = ['Topik', 'Tanggal', 'Jam Mulai', 'Jam Akhir', 'Kelas', 'Status'];
+    const headers = ['Topik', 'Tanggal', 'Jam Mulai', 'Jam Akhir', 'Kelas', 'Hadir', 'Tidak Hadir', 'Total Peserta', 'Persentase Kehadiran', 'Status'];
     const csvContent = [
       headers.join(','),
       ...filteredMeetings.map(meeting => [
@@ -153,6 +271,10 @@ export default function PeriodePage() {
         meeting.jam_mulai,
         meeting.jam_akhir,
         `"${meeting.kelas}"`,
+        meeting.jumlah_hadir || 0,
+        meeting.jumlah_tidak_hadir || 0,
+        meeting.total_peserta || 0,
+        `${meeting.persentase_kehadiran || 0}%`,
         meeting.status
       ].join(','))
     ].join('\n');
@@ -205,6 +327,9 @@ export default function PeriodePage() {
                 <th>Jam Mulai</th>
                 <th>Jam Akhir</th>
                 <th>Kelas</th>
+                <th>Hadir</th>
+                <th>Tidak Hadir</th>
+                <th>Persentase</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -217,6 +342,9 @@ export default function PeriodePage() {
                   <td>${meeting.jam_mulai}</td>
                   <td>${meeting.jam_akhir}</td>
                   <td>${meeting.kelas}</td>
+                  <td>${meeting.jumlah_hadir || 0}</td>
+                  <td>${meeting.jumlah_tidak_hadir || 0}</td>
+                  <td>${meeting.persentase_kehadiran || 0}%</td>
                   <td>${meeting.status}</td>
                 </tr>
               `).join('')}
@@ -336,13 +464,13 @@ export default function PeriodePage() {
           fetchNextPeriodInfo(),
           fetchAllPeriods()
         ]);
-        alert('Periode berhasil dibuat!');
+        showAlert('Berhasil!', 'Periode berhasil dibuat!', 'success');
       } else {
-        alert(result.message || 'Gagal membuat periode');
+        showAlert('Error!', result.message || 'Gagal membuat periode', 'danger');
       }
     } catch (error) {
       console.error('Error creating period:', error);
-      alert('Terjadi kesalahan saat membuat periode');
+      showAlert('Error!', 'Terjadi kesalahan saat membuat periode', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -367,13 +495,13 @@ export default function PeriodePage() {
           fetchNextPeriodInfo(),
           fetchAllPeriods()
         ]);
-        alert('Status periode berhasil diperbarui!');
+        showAlert('Berhasil!', 'Status periode berhasil diperbarui!', 'success');
       } else {
-        alert(result.message || 'Gagal memperbarui status');
+        showAlert('Error!', result.message || 'Gagal memperbarui status', 'danger');
       }
     } catch (error) {
       console.error('Error updating period status:', error);
-      alert('Terjadi kesalahan saat memperbarui status');
+      showAlert('Error!', 'Terjadi kesalahan saat memperbarui status', 'danger');
     }
   };
 
@@ -432,6 +560,19 @@ export default function PeriodePage() {
 
   return (
     <div className="space-y-6">
+      {/* Alert Notifications */}
+      {alertConfig.show && (
+        <Alert
+          hideIconWrapper
+          color={alertConfig.color}
+          description={alertConfig.description}
+          title={alertConfig.title}
+          variant="bordered"
+          onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
+          isClosable
+        />
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -560,6 +701,15 @@ export default function PeriodePage() {
                   <Button
                     size="sm"
                     variant="flat"
+                    color="warning"
+                    onPress={openFixDataModal}
+                    className="whitespace-nowrap"
+                  >
+                    Fix Data
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="flat"
                     color="primary"
                     startContent={<IconDownload />}
                     onPress={exportToCSV}
@@ -595,6 +745,7 @@ export default function PeriodePage() {
                     <TableColumn>TANGGAL</TableColumn>
                     <TableColumn>WAKTU</TableColumn>
                     <TableColumn>KELAS</TableColumn>
+                    <TableColumn>KEHADIRAN</TableColumn>
                     <TableColumn>STATUS</TableColumn>
                   </TableHeader>
                   <TableBody>
@@ -617,6 +768,9 @@ export default function PeriodePage() {
                         {formatTime(meeting.jam_mulai)} - {formatTime(meeting.jam_akhir)}
                       </TableCell>
                       <TableCell>{meeting.kelas || '-'}</TableCell>
+                      <TableCell>
+                        <AttendanceSlider meeting={meeting} />
+                      </TableCell>
                       <TableCell>
                         <Chip
                           color={getMeetingStatusColor(meeting.status)}
@@ -823,6 +977,66 @@ export default function PeriodePage() {
               </ModalFooter>
             </>
           )}
+        </ModalContent>
+      </Modal>
+
+      {/* Fix Data Confirmation Modal */}
+      <Modal 
+        isOpen={fixDataModal.isOpen} 
+        onOpenChange={(open) => !open && closeFixDataModal()}
+        backdrop="blur"
+        placement="center"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <span className="text-warning">Perbaiki Data Pertemuan</span>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-3">
+              <p className="text-default-700">
+                Apakah Anda yakin ingin memperbaiki data pertemuan yang belum memiliki periode_id?
+              </p>
+              <div className="bg-warning/10 p-3 rounded-lg border-l-4 border-warning">
+                <p className="text-sm text-default-800">
+                  <span className="font-semibold">Proses ini akan:</span>
+                </p>
+                <ul className="text-xs text-default-600 mt-1 space-y-1 ml-4">
+                  <li>• Mengisi periode_id yang kosong dengan periode aktif</li>
+                  <li>• Menampilkan data pertemuan di tabel periode admin</li>
+                  <li>• Tidak mengubah data yang sudah memiliki periode_id</li>
+                </ul>
+              </div>
+              <p className="text-sm text-primary">
+                ✅ Proses ini aman dan tidak akan menghapus data apapun
+              </p>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              color="default" 
+              variant="light" 
+              onPress={closeFixDataModal}
+              isDisabled={fixDataModal.isProcessing}
+            >
+              Batal
+            </Button>
+            <Button 
+              color="warning" 
+              onPress={fixPeriodeId}
+              isLoading={fixDataModal.isProcessing}
+              className="font-semibold"
+            >
+              {fixDataModal.isProcessing ? 'Memperbaiki...' : 'Ya, Perbaiki Data'}
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </div>

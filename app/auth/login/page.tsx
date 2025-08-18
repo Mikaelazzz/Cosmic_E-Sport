@@ -47,19 +47,24 @@ const LoginPage = () => {
       const response = await AuthService.login(formData);
       
       if (response.success && response.user) {
+        // Call login to update context and set cookie
         login(response.user);
         
-        // Redirect based on role
-        switch (response.user.role) {
-          case 'admin':
-            router.push('/admin/dashboard');
-            break;
-          case 'moderator':
-            router.push('/moderator/dashboard');
-            break;
-          default:
-            router.push('/user/dashboard');
-        }
+        // Small delay to ensure state is updated, then redirect
+        setTimeout(() => {
+          if (response.user) {
+            switch (response.user.role) {
+              case 'admin':
+                router.push('/admin');
+                break;
+              case 'moderator':
+                router.push('/moderator');
+                break;
+              default:
+                router.push('/user');
+            }
+          }
+        }, 100);
       } else {
         setError(response.message || "Login gagal");
       }

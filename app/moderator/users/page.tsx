@@ -147,17 +147,6 @@ export default function UsersPage() {
         created_at: user.created_at || new Date().toISOString()
       };
       setCurrentUser(userData);
-    } else if (!user && !currentUser) {
-      // Set demo user if no user in context
-      setCurrentUser({
-        id: 'demo-moderator',
-        nama_lengkap: 'Demo Moderator',
-        email: 'moderator@cosmic.com',
-        nim: 'MOD001',
-        role: 'moderator',
-        jabatan: 'moderator',
-        created_at: new Date().toISOString()
-      });
     }
   }, []);
 
