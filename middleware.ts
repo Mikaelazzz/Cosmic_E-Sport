@@ -4,10 +4,6 @@ import { getAuthCookie, updateActivityTime, getRedirectPath } from '@/lib/cookie
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Check if this is a logout request or force logout
-  const isLogoutRequest = request.nextUrl.searchParams.get('logout') === 'true';
-  const forceLogout = request.nextUrl.searchParams.get('force_logout') === 'true';
-  
   // Skip middleware for static files, API routes, and public assets
   if (
     pathname.startsWith('/_next') ||
@@ -28,23 +24,6 @@ export function middleware(request: NextRequest) {
   // Get user session from cookie
   const userSession = getAuthCookie(request);
   
-  // Check if user has explicitly logged out
-  const logoutCookie = request.cookies.get('cosmic_logout')?.value === 'true';
-  
-  // For demo purposes, create a demo session if no cookie exists (but not if logged out)
-  let effectiveUserSession = userSession;
-  if (!userSession && !logoutCookie) {
-    // Create demo moderator session for testing
-    effectiveUserSession = {
-      id: 'demo-vincentius',
-      nama_lengkap: 'Vincentius Johanes Lwie Jaya',
-      email: 'vincentius@cosmic.com',
-      role: 'moderator' as const,
-      loginTime: Date.now(),
-      lastActivity: Date.now()
-    };
-  }
-  
   // Protected routes that require authentication
   const protectedRoutes = ['/admin', '/moderator', '/user'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
@@ -55,15 +34,10 @@ export function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(route + '/')
   );
   
-  // If user is not authenticated or has logged out
-  if (!effectiveUserSession || logoutCookie) {
-    if (isProtectedRoute && !logoutCookie) {
+  // If user is not authenticated
+  if (!userSession) {
+    if (isProtectedRoute) {
       // Redirect to login page if trying to access protected route
-      return NextResponse.redirect(new URL('/auth/login', request.url));
-    }
-    
-    // If user has logged out and tries to access protected route, redirect to login
-    if (logoutCookie && isProtectedRoute) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }
     
@@ -71,39 +45,44 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // User is authenticated - update activity time (only if real session)
+  // User is authenticated - update activity time
   let response = NextResponse.next();
-  if (userSession) {
-    response = updateActivityTime(request, response);
-  }
+  response = updateActivityTime(request, response);
 
-  // Role-based redirects
-  const { role } = effectiveUserSession;  // If user tries to access wrong dashboard, redirect to correct one
-  if (pathname.startsWith('/admin') && role !== 'admin') {
-    return NextResponse.redirect(new URL(getRedirectPath(role), request.url));
-  }
+  // Role-based access control
+  const { role } = userSession;
   
-  if (pathname.startsWith('/moderator') && role !== 'moderator' && role !== 'admin') {
-    return NextResponse.redirect(new URL(getRedirectPath(role), request.url));
+  // Admin can access all routes - no restrictions
+  if (role === 'admin') {
+    // Admin has full access, continue
   }
-  
-  if (pathname.startsWith('/user') && role === 'admin') {
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+  // Moderator can access moderator and user routes, but not admin
+  else if (role === 'moderator') {
+    if (pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/moderator', request.url));
+    }
   }
-  
-  if (pathname.startsWith('/user') && role === 'moderator') {
-    return NextResponse.redirect(new URL('/moderator/dashboard', request.url));
+  // User can only access user routes
+  else if (role === 'user') {
+    if (pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/user', request.url));
+    }
+    if (pathname.startsWith('/moderator')) {
+      return NextResponse.redirect(new URL('/user', request.url));
+    }
   }
   
   // Auto-redirect from root to appropriate dashboard if user is logged in
-  if (pathname === '/' && effectiveUserSession) {
+  if (pathname === '/' && userSession) {
     return NextResponse.redirect(new URL(getRedirectPath(role), request.url));
   }
 
   // Auto-redirect from auth pages if already logged in
-  if (pathname.startsWith('/auth') && effectiveUserSession) {
+  if (pathname.startsWith('/auth') && userSession) {
     return NextResponse.redirect(new URL(getRedirectPath(role), request.url));
-  }  return response;
+  }
+
+  return response;
 }
 
 export const config = {

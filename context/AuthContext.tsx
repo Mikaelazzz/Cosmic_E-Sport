@@ -7,7 +7,6 @@ interface AuthContextType {
   user: User | null;
   login: (user: User) => void;
   logout: () => void;
-  loginDemo: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -22,26 +21,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user is logged in from cookie
     const checkAuth = () => {
       try {
-        // Check if this is a logout request or user has logged out
-        const urlParams = new URLSearchParams(window.location.search);
-        const isLogout = urlParams.get('logout') === 'true';
-        const hasLoggedOut = localStorage.getItem('cosmic_logged_out') === 'true';
-        
-        if (isLogout || hasLoggedOut) {
-          // If logging out, don't auto-login with demo user
-          localStorage.setItem('cosmic_logged_out', 'true');
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-        
         const userSession = getClientAuthCookie();
         
         if (userSession) {
           // Convert UserSession to User type
           const userData: User = {
             id: userSession.id,
-            nim: userSession.id === 'demo-vincentius' ? 'VIN12345' : 'DEMO001',
+            nim: userSession.id, // Use session ID as NIM
             nama_lengkap: userSession.nama_lengkap,
             email: userSession.email,
             role: userSession.role,
@@ -55,31 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Update activity time
           updateClientActivityTime();
         } else {
-          // For testing purposes, set a demo user and create session
-          const demoUser: User = {
-            id: 'demo-vincentius',
-            nim: 'VIN12345',
-            nama_lengkap: 'Vincentius Johanes Lwie Jaya',
-            email: 'vincentius@cosmic.com',
-            role: 'moderator',
-            jabatan: 'moderator',
-            email_verified: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          // Create and set session cookie for demo user
-          const demoSession: UserSession = {
-            id: demoUser.id,
-            nama_lengkap: demoUser.nama_lengkap,
-            email: demoUser.email,
-            role: demoUser.role as 'admin' | 'moderator' | 'user',
-            loginTime: Date.now(),
-            lastActivity: Date.now()
-          };
-          
-          setClientAuthCookie(demoSession);
-          setUser(demoUser);
+          // No session found, user needs to login
+          setUser(null);
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -107,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       document.addEventListener(event, handleActivity, true);
     });
     
-    // Check session every minute
+    // Check session every 5 minutes instead of every minute
     const sessionCheckInterval = setInterval(() => {
       const userSession = getClientAuthCookie();
       if (!userSession && user) {
@@ -115,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         window.location.href = '/';
       }
-    }, 60000); // Check every minute
+    }, 5 * 60000); // Check every 5 minutes
     
     return () => {
       events.forEach(event => {
@@ -126,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [!!user]); // Only depend on whether user exists, not the user object itself
 
   const login = (userData: User) => {
+    console.log('AuthContext - Login called with:', userData.email);
     setUser(userData);
     
     // Create session for cookie
@@ -138,75 +102,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastActivity: Date.now()
     };
     
-    // Set cookie
+    console.log('AuthContext - Setting client cookie:', userSession);
+    // Set cookie (this ensures client-side access)
     setClientAuthCookie(userSession);
     
-    // Redirect to appropriate dashboard
-    const redirectPath = getRedirectPath(userData.role);
-    window.location.href = redirectPath;
+    // Note: Don't redirect here, let the component handle it
+    // This allows the state to update properly before redirect
   };
 
   const logout = async () => {
     try {
       // Call logout API to clear server-side cookies
-      await fetch('/api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
+      
+      if (!response.ok) {
+        console.warn('Logout API failed, proceeding with client cleanup');
+      }
     } catch (error) {
       console.error('Error calling logout API:', error);
     }
     
+    // Clear user state
     setUser(null);
+    
+    // Clear all client-side auth data
     clearClientAuthCookie();
     
-    // Set logout flag in localStorage and cookie to prevent auto demo login
-    localStorage.setItem('cosmic_logged_out', 'true');
-    document.cookie = 'cosmic_logout=true; path=/; max-age=3600'; // 1 hour
+    // Clear any remaining data
+    localStorage.clear();
+    sessionStorage.clear();
     
     // Redirect to home page
     window.location.href = '/';
-  };
-
-  const loginDemo = () => {
-    // Clear logout flag and auto-login with demo user
-    localStorage.removeItem('cosmic_logged_out');
-    document.cookie = 'cosmic_logout=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
-    const demoUser: User = {
-      id: 'demo-vincentius',
-      nim: 'VIN12345',
-      nama_lengkap: 'Vincentius Johanes Lwie Jaya',
-      email: 'vincentius@cosmic.com',
-      role: 'moderator',
-      jabatan: 'moderator',
-      email_verified: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Create and set session cookie for demo user
-    const demoSession: UserSession = {
-      id: demoUser.id,
-      nama_lengkap: demoUser.nama_lengkap,
-      email: demoUser.email,
-      role: demoUser.role as 'admin' | 'moderator' | 'user',
-      loginTime: Date.now(),
-      lastActivity: Date.now()
-    };
-    
-    setClientAuthCookie(demoSession);
-    setUser(demoUser);
-    
-    // Redirect to moderator dashboard
-    window.location.href = '/moderator/dashboard';
   };
 
   const value: AuthContextType = {
     user,
     login,
     logout,
-    loginDemo,
     isLoading,
     isAuthenticated: !!user,
   };
@@ -230,11 +166,11 @@ export function useAuth() {
 function getRedirectPath(role: string): string {
   switch (role) {
     case 'admin':
-      return '/admin/dashboard';
+      return '/admin';
     case 'moderator':
-      return '/moderator/dashboard';
+      return '/moderator';
     case 'user':
-      return '/user/dashboard';
+      return '/user';
     default:
       return '/';
   }
