@@ -5,65 +5,33 @@ import type { User, LoginData, RegisterData, AuthResponse } from '@/types/type';
 export class AuthService {
   static async login(data: LoginData): Promise<AuthResponse> {
     try {
-      // Get user by NIM
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('nim', data.nim)
-        .single();
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      if (error || !user) {
-        return {
-          success: false,
-          message: 'NIM tidak ditemukan'
-        };
-      }
-
-      // Verify password
-      let isPasswordValid = false;
+      const result = await response.json();
       
-      // Check if password is already hashed (starts with $2b$ for bcrypt)
-      if (user.password.startsWith('$2b$')) {
-        // Password is hashed, use bcrypt compare
-        isPasswordValid = await bcrypt.compare(data.password, user.password);
+      if (response.ok) {
+        return {
+          success: true,
+          user: result.user,
+          message: result.message
+        };
       } else {
-        // Password is plain text (legacy data), compare directly
-        isPasswordValid = data.password === user.password;
-        
-        // Optionally, hash the password for future use
-        if (isPasswordValid) {
-          const hashedPassword = await bcrypt.hash(data.password, 12);
-          await supabase
-            .from('users')
-            .update({ password: hashedPassword })
-            .eq('id', user.id);
-        }
-      }
-      
-      if (!isPasswordValid) {
         return {
           success: false,
-          message: 'Password salah'
+          message: result.message || 'Login gagal'
         };
       }
-
-      // Update last login (optional)
-      await supabase
-        .from('users')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', user.id);
-
-      return {
-        success: true,
-        user: user as User,
-        message: 'Login berhasil'
-      };
-
     } catch (error) {
       console.error('Login error:', error);
       return {
         success: false,
-        message: 'Terjadi kesalahan sistem'
+        message: 'Terjadi kesalahan koneksi'
       };
     }
   }

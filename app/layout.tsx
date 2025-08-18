@@ -5,6 +5,7 @@ import clsx from "clsx";
 
 import { Providers } from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
+import SessionManager from "@/components/SessionManager";
 
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
@@ -50,6 +51,7 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <AuthProvider>
+            {/* <SessionManager /> */}
             <div className="relative flex flex-col h-screen">
               <NavbarWrapper />
               <main className="flex-grow">

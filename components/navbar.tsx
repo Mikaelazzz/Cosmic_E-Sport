@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/context/AuthContext";
+import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
 import {
   TwitterIcon,
   GithubIcon,
@@ -99,9 +100,9 @@ export const Navbar = () => {
                 as="button"
                 className="transition-transform hover:scale-105"
                 color="warning"
-                name={user.nama_lengkap || user.email}
+                name={generateInitials(user.nama_lengkap || user.email || 'User')}
                 size="sm"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.email)}&background=FFD700&color=000000`}
+                src={getUserAvatarUrl(user, 40)}
               />
             </DropdownTrigger>
             <DropdownMenu 
@@ -111,7 +112,7 @@ export const Navbar = () => {
             >
               <DropdownItem key="profile" className="h-14 gap-2">
                 <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold text-yellow-400">{user.email}</p>
+                <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
               </DropdownItem>
               <DropdownItem key="dashboard">
                 Dashboard
