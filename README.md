@@ -114,3 +114,5 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 [ ] Intro saat masuk Dashboard
 
 [x] Cookie Akun
+
+[ ] Landing Page with GSAP
