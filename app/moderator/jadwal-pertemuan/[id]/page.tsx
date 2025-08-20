@@ -239,6 +239,27 @@ export default function DetailPertemuanPage() {
     }
   }, [pertemuanId, fetchPertemuanDetail, fetchAbsensiData]);
 
+  // Real-time update listener for QR scan success
+  useEffect(() => {
+    const handleAbsensiUpdate = (event: CustomEvent) => {
+      const { pertemuanId: updatedPertemuanId } = event.detail;
+      
+      // Only refresh if the update is for this pertemuan
+      if (updatedPertemuanId.toString() === pertemuanId) {
+        console.log('🔄 Real-time absensi update detected, refreshing data...');
+        fetchAbsensiData();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('absensi-updated', handleAbsensiUpdate as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('absensi-updated', handleAbsensiUpdate as EventListener);
+    };
+  }, [pertemuanId, fetchAbsensiData]);
+
   // Filter absensi based on search and status
   useEffect(() => {
     let filtered = absensiList;
