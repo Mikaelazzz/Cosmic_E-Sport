@@ -57,62 +57,62 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 ### Auth
 
-[x] Login
+- [x] Login
 
-[x] Register with Verifikassi Email
+- [x] Register with Verifikassi Email
 
-[x] Forgot Password with Verifikasi Email
+- [x] Forgot Password with Verifikasi Email
 
-[ ] Template HTML Email
+- [ ] Template HTML Email
 
-[ ] On Going Other Feature
+- [ ] On Going Other Feature
 
 ### Admin 
 
-[x] CRUD Periode 
+- [x] CRUD Periode 
 
-[x] CRUD Pengurus by NIM
+- [x] CRUD Pengurus by NIM
 
-[x] CRUD Prestasi
+- [x] CRUD Prestasi
 
-[ ] On Going Other Feature
+- [ ] On Going Other Feature
 
-[ ] 
+- [ ] 
 
 ### Moderator 
 
-[x] CRUD User > Role Anggota 
+- [x] CRUD User > Role Anggota 
 
-[x] CRUD Pertemuan Rutin 
+- [x] CRUD Pertemuan Rutin 
 
-[ ] Managing Team
+- [ ] Managing Team
 
-[ ] CRUD Event 
+- [ ] CRUD Event 
 
-[x] Fungsi Absen pada Pertemuan Rutin
+- [x] Fungsi Absen pada Pertemuan Rutin
 
-[ ] CRUD Informasi
+- [x] CRUD Informasi
 
 ### User 
 
-[ ] CRUD Team
+- [ ] CRUD Team
 
-[ ] Join Event Team / Individual
+- [ ] Join Event Team / Individual
 
-[ ] Join Pertemuan Rutin > Scan QR Absen
+- [x] Join Pertemuan Rutin > Scan QR Absen
 
-[ ] Get Informasi 
+- [ ] Get Informasi 
 
 ### Other Feature
 
-[ ] Games
+- [ ] Games
 
-[ ] Notifikasi WEB dan HP 
+- [ ] Notifikasi WEB dan HP 
 
-[ ] Animasi yang keren untuk Website
+- [ ] Animasi yang keren untuk Website
 
-[ ] Intro saat masuk Dashboard
+- [ ] Intro saat masuk Dashboard
 
-[x] Cookie Akun
+- [x] Cookie Akun
 
-[ ] Landing Page with GSAP
+- [ ] Landing Page with GSAP
