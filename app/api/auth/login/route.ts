@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     // Create user session
     const userSession: UserSession = {
       id: user.id,
+      nim: user.nim,
       nama_lengkap: user.nama_lengkap,
       email: user.email,
       role: user.role,
