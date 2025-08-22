@@ -50,21 +50,35 @@ export function generateAvatarUrl(
 
 /**
  * Get user profile image URL
- * Returns profile_image if available, otherwise generates avatar from name
+ * Returns local profile image if available, otherwise returns empty string for fallback
  */
 export function getUserAvatarUrl(user: {
   nama_lengkap?: string;
   profile_image?: string;
   email?: string;
-}, size: number = 128): string {
-  // If user has profile image, return it
+  nim?: string;
+  role?: string;
+}, size: number = 128, forceRefresh: boolean = false): string {
+  // Check for local profile image first
+  if (user.nim && user.role) {
+    const fileName = `${user.role.toLowerCase()}-${user.nim}.jpg`;
+    let localAvatarPath = `/api/profile/${fileName}`;
+    
+    // Add cache busting timestamp if forceRefresh is true
+    if (forceRefresh) {
+      localAvatarPath += `?t=${Date.now()}`;
+    }
+    
+    return localAvatarPath;
+  }
+  
+  // If user has profile_image URL, return it
   if (user.profile_image && user.profile_image.trim() !== '') {
     return user.profile_image;
   }
   
-  // Otherwise generate avatar from name
-  const name = user.nama_lengkap || user.email || 'User';
-  return generateAvatarUrl(name, size);
+  // Return empty string to show initials fallback
+  return '';
 }
 
 /**

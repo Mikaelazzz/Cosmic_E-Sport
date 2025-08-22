@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export interface UserSession {
   id: string;
+  nim: string;
   nama_lengkap: string;
   email: string;
   role: 'admin' | 'moderator' | 'user';
