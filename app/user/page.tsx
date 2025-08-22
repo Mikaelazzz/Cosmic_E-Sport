@@ -144,17 +144,14 @@ export default function UserDashboard() {
   };
 
   if (loading) {
-    return (
-      <section className="p-6 max-w-4xl mx-auto">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded-md w-1/3"></div>
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-      </section>
-    );
-  }
+  return (
+    <section className="p-6 max-w-4xl mx-auto">
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    </section>
+  );
+}
 
   if (error) {
     return (

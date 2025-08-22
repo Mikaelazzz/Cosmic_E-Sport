@@ -15,6 +15,7 @@ import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -31,40 +32,105 @@ import {
 export const Navbar = () => {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Debug logging
   console.log('Navbar render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.email);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  // Dynamic navigation items based on user role
+  const getNavItems = () => {
+    if (!isAuthenticated || !user) {
+      return siteConfig.navItems; // Default items for non-authenticated users
+    }
+
+    switch (user.role) {
+      case 'admin':
+        return [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Pengurus", href: "/admin/pengurus" },
+          { label: "Periode", href: "/admin/periode" },
+          { label: "Prestasi", href: "/admin/prestasi" }
+        ];
+      case 'moderator':
+        return [
+          { label: "Dashboard", href: "/moderator" },
+          { label: "Users", href: "/moderator/users" },
+          { label: "Jadwal Pertemuan", href: "/moderator/jadwal-pertemuan" },
+          { label: "Informasi", href: "/moderator/informasi" }
+        ];
+      case 'user':
+        return [
+          { label: "Dashboard", href: "/user" }
+        ];
+      default:
+        return siteConfig.navItems;
+    }
   };
 
-  const handleProfileAction = (key: string) => {
+  // Dynamic menu items for mobile
+  const getNavMenuItems = () => {
+    if (!isAuthenticated || !user) {
+      return siteConfig.navMenuItems; // Default items for non-authenticated users
+    }
+
+    switch (user.role) {
+      case 'admin':
+        return [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Pengurus", href: "/admin/pengurus" },
+          { label: "Periode", href: "/admin/periode" },
+          { label: "Prestasi", href: "/admin/prestasi" }
+        ];
+      case 'moderator':
+        return [
+          { label: "Dashboard", href: "/moderator" },
+          { label: "Users", href: "/moderator/users" },
+          { label: "Jadwal Pertemuan", href: "/moderator/jadwal-pertemuan" },
+          { label: "Informasi", href: "/moderator/informasi" }
+        ];
+      case 'user':
+        return [
+          { label: "Dashboard", href: "/user" }
+        ];
+      default:
+        return siteConfig.navMenuItems;
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // The logout function in AuthContext already handles the redirect
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Fallback redirect in case of error
+      router.push('/');
+    }
+  };
+
+  const handleProfileAction = async (key: string) => {
     switch (key) {
+      case 'profile-info-desktop':
+      case 'profile-info-mobile':
+        // These are header items, don't perform any action
+        return;
       case 'profile':
-        router.push('/user');
-        break;
-      case 'dashboard':
         if (user?.role === 'admin') {
-          router.push('/admin');
+          router.push('/admin/profile');
         } else if (user?.role === 'moderator') {
-          router.push('/moderator');
+          router.push('/moderator/profile');
         } else {
-          router.push('/user');
+          router.push('/user/profile');
         }
         break;
-      case 'jadwal-pertemuan':
-        router.push('/moderator/jadwal-pertemuan');
+      case 'switch-to-moderator':
+        router.push('/moderator');
         break;
-      case 'users':
-        router.push('/moderator/users');
-        break;
-      case 'settings':
-        router.push('/user/settings');
+      case 'switch-to-user':
+        router.push('/user');
         break;
       case 'logout':
-        handleLogout();
+        await handleLogout();
         break;
       default:
         break;
@@ -86,7 +152,7 @@ export const Navbar = () => {
       {/* Menu navigasi di tengah */}
       <div className="absolute left-1/2 top-0 transform -translate-x-1/2 h-full flex items-center">
         <ul className="hidden lg:flex gap-8">
-          {siteConfig.navItems.map((item) => (
+          {getNavItems().map((item) => (
             <NavbarItem key={item.href}>
               <NextLink
                 className={clsx(
@@ -131,29 +197,27 @@ export const Navbar = () => {
                   variant="flat"
                   onAction={(key) => handleProfileAction(key as string)}
                 >
-                  <DropdownItem key="profile" className="h-14 gap-2">
+                  <DropdownItem key="profile-info-desktop" className="h-14 gap-2">
                     <p className="font-semibold">Signed in as</p>
                     <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
                   </DropdownItem>
-                  <DropdownItem key="dashboard">
-                    Dashboard
+                  <DropdownItem key="profile">
+                    Profile
                   </DropdownItem>
-                  {user.role === 'moderator' || user.role === 'admin' ? (
+                  {user.role === 'admin' ? (
                     <>
-                      <DropdownItem key="jadwal-pertemuan">
-                        Jadwal Pertemuan
+                      <DropdownItem key="switch-to-moderator">
+                        Beralih ke Moderator
                       </DropdownItem>
-                      <DropdownItem key="users">
-                        Kelola Users
+                      <DropdownItem key="switch-to-user">
+                        Beralih ke User
                       </DropdownItem>
                     </>
+                  ) : user.role === 'moderator' ? (
+                    <DropdownItem key="switch-to-user">
+                      Beralih ke User
+                    </DropdownItem>
                   ) : null}
-                  <DropdownItem key="settings">
-                    Settings
-                  </DropdownItem>
-                  <DropdownItem key="help">
-                    Help & Support
-                  </DropdownItem>
                   <DropdownItem key="logout" color="danger">
                     Log Out
                   </DropdownItem>
@@ -225,29 +289,27 @@ export const Navbar = () => {
                   variant="flat"
                   onAction={(key) => handleProfileAction(key as string)}
                 >
-                  <DropdownItem key="profile" className="h-14 gap-2">
+                  <DropdownItem key="profile-info-mobile" className="h-14 gap-2">
                     <p className="font-semibold">Signed in as</p>
                     <p className="font-semibold text-yellow-400">{user.nama_lengkap || user.email}</p>
                   </DropdownItem>
-                  <DropdownItem key="dashboard">
-                    Dashboard
+                  <DropdownItem key="profile">
+                    Profile
                   </DropdownItem>
-                  {user.role === 'moderator' || user.role === 'admin' ? (
+                  {user.role === 'admin' ? (
                     <>
-                      <DropdownItem key="jadwal-pertemuan">
-                        Jadwal Pertemuan
+                      <DropdownItem key="switch-to-moderator">
+                        Beralih ke Moderator
                       </DropdownItem>
-                      <DropdownItem key="users">
-                        Kelola Users
+                      <DropdownItem key="switch-to-user">
+                        Beralih ke User
                       </DropdownItem>
                     </>
+                  ) : user.role === 'moderator' ? (
+                    <DropdownItem key="switch-to-user">
+                      Beralih ke User
+                    </DropdownItem>
                   ) : null}
-                  <DropdownItem key="settings">
-                    Settings
-                  </DropdownItem>
-                  <DropdownItem key="help">
-                    Help & Support
-                  </DropdownItem>
                   <DropdownItem key="logout" color="danger">
                     Log Out
                   </DropdownItem>
@@ -272,23 +334,32 @@ export const Navbar = () => {
 
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
-          {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
+          {getNavMenuItems().map((item, index) => {
+            const isActive = pathname === item.href ;
+            return (
+              <NavbarMenuItem key={`${item.label}-${index}`}>
+                <Link
+                  color={isActive ? "primary" : "foreground"}
+                  href={item.href}
+                  size="lg"
+                >
+                  {item.label}
+                </Link>
+              </NavbarMenuItem>
+            );
+          })}
+          {/* Add logout button for mobile */}
+          {isAuthenticated && user && (
+            <NavbarMenuItem>
               <Link
-                color={
-                  index === 2
-                    ? "primary"
-                    : index === siteConfig.navMenuItems.length - 1
-                      ? "danger"
-                      : "foreground"
-                }
-                href="#"
+                color="danger"
                 size="lg"
+                onPress={() => handleLogout()}
               >
-                {item.label}
+                Log Out
               </Link>
             </NavbarMenuItem>
-          ))}
+          )}
         </div>
       </NavbarMenu>
     </HeroUINavbar>
