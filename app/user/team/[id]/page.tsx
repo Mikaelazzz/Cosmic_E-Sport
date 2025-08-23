@@ -10,6 +10,8 @@ import { Badge } from "@heroui/badge";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
+import { Input } from "@heroui/input";
+import { Textarea } from "@heroui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
@@ -23,7 +25,8 @@ import {
   X as XMarkIcon,
   ArrowLeft as ArrowLeftIcon,
   UserMinus as UserMinusIcon,
-  Crown as CrownIcon
+  Crown as CrownIcon,
+  Edit as EditIcon
 } from "lucide-react";
 
 interface TeamMember {
@@ -48,6 +51,25 @@ interface JoinRequest {
     nim?: string;
     role?: string;
   };
+}
+
+interface EventResult {
+  id: number;
+  team_id: number;
+  event_name: string;
+  event_date: string;
+  result: 'win' | 'lose' | 'draw';
+  position?: number;
+  total_participants?: number;
+  created_at: string;
+}
+
+interface EventStats {
+  total_events: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  win_rate: number;
 }
 
 interface TeamDetail {
@@ -83,6 +105,36 @@ export default function TeamDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
+  // Event management states
+  const [eventResults, setEventResults] = useState<EventResult[]>([]);
+  const [eventStats, setEventStats] = useState<EventStats>({
+    total_events: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    win_rate: 0
+  });
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [addEventData, setAddEventData] = useState({
+    event_name: "",
+    event_date: "",
+    result: "win" as "win" | "lose" | "draw",
+    position: "",
+    total_participants: ""
+  });
+  const [isAddingEvent, setIsAddingEvent] = useState(false);
+
+  // Edit team states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTeamData, setEditTeamData] = useState({
+    nama_team: "",
+    deskripsi: "",
+    requirements: "",
+    max_participants: 10,
+    event_name: ""
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+
   // Alert states
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({
@@ -102,6 +154,7 @@ export default function TeamDetailPage() {
   useEffect(() => {
     if (isAuthenticated && user && teamId) {
       fetchTeamDetail();
+      fetchEventResults();
     }
   }, [isAuthenticated, user, teamId]);
 
@@ -127,6 +180,129 @@ export default function TeamDetailPage() {
       setError("An error occurred while fetching team details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEventResults = async () => {
+    try {
+      const response = await fetch(`/api/teams/${teamId}/events`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setEventResults(result.data.events || []);
+          setEventStats(result.data.statistics || {
+            total_events: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            win_rate: 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching event results:', error);
+    }
+  };
+
+  // Function to open edit modal with current team data
+  const openEditModal = () => {
+    if (team) {
+      setEditTeamData({
+        nama_team: team.nama_team,
+        deskripsi: team.deskripsi,
+        requirements: team.requirements || "",
+        max_participants: team.max_participants,
+        event_name: team.event_name || ""
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  // Function to handle team update
+  const handleUpdateTeam = async () => {
+    if (!editTeamData.nama_team.trim() || !editTeamData.deskripsi.trim()) {
+      showAlert("warning", "Validation Error", "Team name and description are required");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(editTeamData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowEditModal(false);
+        fetchTeamDetail(); // Refresh team data
+        showAlert("success", "Team Updated", "Team details have been updated successfully.");
+      } else {
+        showAlert("danger", "Update Failed", result.message || "Failed to update team");
+      }
+    } catch (error) {
+      console.error('Error updating team:', error);
+      showAlert("danger", "Update Error", "An error occurred while updating team");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Function to handle add event result
+  const handleAddEvent = async () => {
+    if (!addEventData.event_name.trim()) {
+      showAlert("warning", "Validation Error", "Event name is required");
+      return;
+    }
+
+    setIsAddingEvent(true);
+    try {
+      const response = await fetch(`/api/teams/${teamId}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          event_name: addEventData.event_name,
+          event_date: addEventData.event_date || new Date().toISOString().split('T')[0],
+          result: addEventData.result,
+          position: addEventData.position ? parseInt(addEventData.position) : null,
+          total_participants: addEventData.total_participants ? parseInt(addEventData.total_participants) : null
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowAddEventModal(false);
+        setAddEventData({
+          event_name: "",
+          event_date: "",
+          result: "win",
+          position: "",
+          total_participants: ""
+        });
+        fetchEventResults(); // Refresh event data
+        fetchTeamDetail(); // Refresh team data to update win rate
+        showAlert("success", "Event Added", "Event result has been added successfully and win rate updated.");
+      } else {
+        showAlert("danger", "Add Event Failed", result.message || "Failed to add event result");
+      }
+    } catch (error) {
+      console.error('Error adding event:', error);
+      showAlert("danger", "Add Event Error", "An error occurred while adding event result");
+    } finally {
+      setIsAddingEvent(false);
     }
   };
 
@@ -383,15 +559,26 @@ export default function TeamDetailPage() {
             {/* Action Buttons */}
             <div className="flex flex-col gap-2 min-w-[200px]">
               {team.is_leader && (
-                <Button
-                  color="danger"
-                  variant="bordered"
-                  size="sm"
-                  startContent={<TrashIcon className="w-4 h-4" />}
-                  onPress={() => setShowDeleteModal(true)}
-                >
-                  Delete Team
-                </Button>
+                <>
+                  <Button
+                    color="warning"
+                    variant="bordered"
+                    size="sm"
+                    startContent={<EditIcon className="w-4 h-4" />}
+                    onPress={openEditModal}
+                  >
+                    Edit Team
+                  </Button>
+                  <Button
+                    color="danger"
+                    variant="bordered"
+                    size="sm"
+                    startContent={<TrashIcon className="w-4 h-4" />}
+                    onPress={() => setShowDeleteModal(true)}
+                  >
+                    Delete Team
+                  </Button>
+                </>
               )}
               {team.is_member && !team.is_leader && (
                 <Button
@@ -630,7 +817,215 @@ export default function TeamDetailPage() {
             </Card>
           </Tab>
         )}
+
+        <Tab key="events" title={`Events (${eventResults.length})`}>
+          <Card className="bg-[#111020]">
+            <CardBody className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#FFD700]">Event History</h3>
+                {team.is_leader && (
+                  <Button
+                    color="warning"
+                    variant="solid"
+                    className="bg-[#FFD700] text-black"
+                    onPress={() => setShowAddEventModal(true)}
+                  >
+                    Add Event Result
+                  </Button>
+                )}
+              </div>
+
+              {/* Event Statistics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <Card className="bg-[#1a1a2e] border border-gray-700">
+                  <CardBody className="p-4 text-center">
+                    <p className="text-2xl font-bold text-white">{eventStats.total_events}</p>
+                    <p className="text-sm text-gray-400">Total Events</p>
+                  </CardBody>
+                </Card>
+                <Card className="bg-[#1a1a2e] border border-green-500">
+                  <CardBody className="p-4 text-center">
+                    <p className="text-2xl font-bold text-green-400">{eventStats.wins}</p>
+                    <p className="text-sm text-gray-400">Wins</p>
+                  </CardBody>
+                </Card>
+                <Card className="bg-[#1a1a2e] border border-red-500">
+                  <CardBody className="p-4 text-center">
+                    <p className="text-2xl font-bold text-red-400">{eventStats.losses}</p>
+                    <p className="text-sm text-gray-400">Losses</p>
+                  </CardBody>
+                </Card>
+                <Card className="bg-[#1a1a2e] border border-[#FFD700]">
+                  <CardBody className="p-4 text-center">
+                    <p className="text-2xl font-bold text-[#FFD700]">{eventStats.win_rate}%</p>
+                    <p className="text-sm text-gray-400">Win Rate</p>
+                  </CardBody>
+                </Card>
+              </div>
+
+              {/* Event Results List */}
+              {eventResults.length > 0 ? (
+                <div className="space-y-4">
+                  {eventResults.map((event) => (
+                    <Card key={event.id} className="bg-[#1a1a2e] border border-gray-700">
+                      <CardBody className="p-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="font-bold text-white">{event.event_name}</h4>
+                            <p className="text-sm text-gray-400">
+                              {new Date(event.event_date).toLocaleDateString()}
+                            </p>
+                            {event.position && event.total_participants && (
+                              <p className="text-xs text-gray-500">
+                                Position: {event.position} of {event.total_participants}
+                              </p>
+                            )}
+                          </div>
+                          <Badge 
+                            color={
+                              event.result === 'win' ? 'success' : 
+                              event.result === 'lose' ? 'danger' : 
+                              'warning'
+                            }
+                            variant="flat"
+                            size="lg"
+                          >
+                            {event.result.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No event results recorded yet.</p>
+                  {team.is_leader && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Add your first event result to start tracking win rate.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </Tab>
       </Tabs>
+
+      {/* Add Event Result Modal */}
+      <Modal
+        isOpen={showAddEventModal}
+        onClose={() => setShowAddEventModal(false)}
+        size="lg"
+        classNames={{
+          base: "bg-[#1a1a2e]",
+          header: "border-b border-gray-700",
+          footer: "border-t border-gray-700"
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white">
+            Add Event Result
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="Event Name"
+                placeholder="Enter event name"
+                value={addEventData.event_name}
+                onChange={(e) => setAddEventData({...addEventData, event_name: e.target.value})}
+                variant="bordered"
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Input
+                label="Event Date"
+                type="date"
+                value={addEventData.event_date}
+                onChange={(e) => setAddEventData({...addEventData, event_date: e.target.value})}
+                variant="bordered"
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Select
+                label="Result"
+                placeholder="Select result"
+                selectedKeys={[addEventData.result]}
+                onSelectionChange={(keys) => {
+                  const result = Array.from(keys)[0] as "win" | "lose" | "draw";
+                  setAddEventData({...addEventData, result});
+                }}
+                variant="bordered"
+                classNames={{
+                  label: "text-gray-300",
+                  value: "text-white"
+                }}
+              >
+                <SelectItem key="win" textValue="Win">
+                  <span className="text-green-400">Win</span>
+                </SelectItem>
+                <SelectItem key="lose" textValue="Lose">
+                  <span className="text-red-400">Lose</span>
+                </SelectItem>
+                <SelectItem key="draw" textValue="Draw">
+                  <span className="text-yellow-400">Draw</span>
+                </SelectItem>
+              </Select>
+              
+              <Input
+                label="Position (Optional)"
+                type="number"
+                placeholder="Final position/rank"
+                value={addEventData.position}
+                onChange={(e) => setAddEventData({...addEventData, position: e.target.value})}
+                variant="bordered"
+                min={1}
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Input
+                label="Total Participants (Optional)"
+                type="number"
+                placeholder="Number of teams participated"
+                value={addEventData.total_participants}
+                onChange={(e) => setAddEventData({...addEventData, total_participants: e.target.value})}
+                variant="bordered"
+                min={1}
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="default"
+              variant="light"
+              onPress={() => setShowAddEventModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="warning"
+              className="bg-[#FFD700] text-black"
+              onPress={handleAddEvent}
+              isLoading={isAddingEvent}
+            >
+              Add Result
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Remove Member Modal */}
       <Modal
@@ -665,6 +1060,109 @@ export default function TeamDetailPage() {
               isLoading={isActionLoading}
             >
               Remove
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Team Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        size="lg"
+        classNames={{
+          base: "bg-[#1a1a2e]",
+          header: "border-b border-gray-700",
+          footer: "border-t border-gray-700"
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white">
+            Edit Team Details
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="Team Name"
+                placeholder="Enter team name"
+                value={editTeamData.nama_team}
+                onChange={(e) => setEditTeamData({...editTeamData, nama_team: e.target.value})}
+                variant="bordered"
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Textarea
+                label="Description"
+                placeholder="Enter team description"
+                value={editTeamData.deskripsi}
+                onChange={(e) => setEditTeamData({...editTeamData, deskripsi: e.target.value})}
+                variant="bordered"
+                rows={3}
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Textarea
+                label="Requirements (Optional)"
+                placeholder="Enter team requirements"
+                value={editTeamData.requirements}
+                onChange={(e) => setEditTeamData({...editTeamData, requirements: e.target.value})}
+                variant="bordered"
+                rows={2}
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Input
+                label="Max Participants"
+                type="number"
+                placeholder="Enter maximum participants"
+                value={editTeamData.max_participants.toString()}
+                onChange={(e) => setEditTeamData({...editTeamData, max_participants: parseInt(e.target.value) || 0})}
+                variant="bordered"
+                min={1}
+                max={10}
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+              
+              <Input
+                label="Event Name (Optional)"
+                placeholder="Enter event name"
+                value={editTeamData.event_name}
+                onChange={(e) => setEditTeamData({...editTeamData, event_name: e.target.value})}
+                variant="bordered"
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300"
+                }}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="default"
+              variant="light"
+              onPress={() => setShowEditModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="warning"
+              className="bg-[#FFD700] text-black"
+              onPress={handleUpdateTeam}
+              isLoading={isUpdating}
+            >
+              Update Team
             </Button>
           </ModalFooter>
         </ModalContent>

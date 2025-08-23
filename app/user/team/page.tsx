@@ -407,17 +407,10 @@ export default function TeamPage() {
                 variant="bordered"
               />
               <Input
-                label="Event Name"
-                placeholder="Enter event name (optional)"
-                value={createTeamData.event_name}
-                onValueChange={(value) => setCreateTeamData(prev => ({ ...prev, event_name: value }))}
-                variant="bordered"
-              />
-              <Input
                 label="Max Participants"
                 type="number"
-                min={2}
-                max={20}
+                min={1}
+                max={10}
                 value={createTeamData.max_participants.toString()}
                 onValueChange={(value) => setCreateTeamData(prev => ({ ...prev, max_participants: parseInt(value) || 10 }))}
                 variant="bordered"
