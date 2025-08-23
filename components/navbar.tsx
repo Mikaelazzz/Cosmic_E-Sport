@@ -16,6 +16,7 @@ import NextLink from "next/link";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -33,9 +34,17 @@ export const Navbar = () => {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [avatarKey, setAvatarKey] = useState(0);
 
   // Debug logging
   console.log('Navbar render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.email);
+
+  // Force avatar refresh when user changes
+  useEffect(() => {
+    if (user) {
+      setAvatarKey((prev: number) => prev + 1);
+    }
+  }, [user?.id, user?.nama_lengkap]);
 
   // Dynamic navigation items based on user role
   const getNavItems = () => {
@@ -183,13 +192,19 @@ export const Navbar = () => {
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
                   <Avatar
+                    key={`desktop-${avatarKey}`} // Force re-render when avatar changes
                     isBordered
                     as="button"
                     className="transition-transform hover:scale-105"
                     color="warning"
                     name={generateInitials(user.nama_lengkap || user.email || 'User')}
                     size="sm"
-                    src={getUserAvatarUrl(user, 40)}
+                    src={getUserAvatarUrl(user, 40, true)} // Use cache busting
+                    showFallback={true}
+                    classNames={{
+                      base: "bg-gradient-to-br from-blue-500 to-purple-600",
+                      fallback: "text-white text-sm font-bold"
+                    }}
                   />
                 </DropdownTrigger>
                 <DropdownMenu 
@@ -275,13 +290,19 @@ export const Navbar = () => {
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
                   <Avatar
+                    key={`mobile-${avatarKey}`} // Force re-render when avatar changes
                     isBordered
                     as="button"
                     className="transition-transform hover:scale-105"
                     color="warning"
                     name={generateInitials(user.nama_lengkap || user.email || 'User')}
                     size="sm"
-                    src={getUserAvatarUrl(user, 40)}
+                    src={getUserAvatarUrl(user, 40, true)} // Use cache busting
+                    showFallback={true}
+                    classNames={{
+                      base: "bg-gradient-to-br from-blue-500 to-purple-600",
+                      fallback: "text-white text-sm font-bold"
+                    }}
                   />
                 </DropdownTrigger>
                 <DropdownMenu 

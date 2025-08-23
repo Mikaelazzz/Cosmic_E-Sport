@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   login: (user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -19,15 +20,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is logged in from cookie
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
         const userSession = getClientAuthCookie();
         
         if (userSession) {
-          // Convert UserSession to User type
+          // Fetch complete user data from API using the session
+          try {
+            const response = await fetch('/api/user/profile', {
+              method: 'GET',
+              credentials: 'include'
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data) {
+                // Use complete data from API
+                setUser(result.data);
+                updateClientActivityTime();
+                return;
+              }
+            }
+          } catch (apiError) {
+            console.warn('Could not fetch user profile from API, using session data:', apiError);
+          }
+          
+          // Fallback to session data if API fails
           const userData: User = {
             id: userSession.id,
-            nim: userSession.id, // Use session ID as NIM
+            nim: userSession.nim || userSession.id,
             nama_lengkap: userSession.nama_lengkap,
             email: userSession.email,
             role: userSession.role,
@@ -95,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Create session for cookie
     const userSession: UserSession = {
       id: userData.id,
+      nim: userData.nim || userData.id, // Include nim in session
       nama_lengkap: userData.nama_lengkap,
       email: userData.email,
       role: userData.role as 'admin' | 'moderator' | 'user',
@@ -139,10 +161,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/';
   };
 
+  const refreshUser = async () => {
+    try {
+      const userSession = getClientAuthCookie();
+      
+      if (userSession) {
+        const response = await fetch('/api/user/profile', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setUser(result.data);
+            updateClientActivityTime();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     login,
     logout,
+    refreshUser,
     isLoading,
     isAuthenticated: !!user,
   };
