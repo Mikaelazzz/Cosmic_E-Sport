@@ -1,6 +1,24 @@
 import supabase from "@/lib/db";
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import type { User, LoginData, RegisterData, AuthResponse } from '@/types/type';
+
+// JWT utility functions
+export const verifyToken = (token: string): { userId: string } | null => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    return decoded;
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return null;
+  }
+};
+
+export const generateToken = (userId: string): string => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET!, {
+    expiresIn: '7d',
+  });
+};
 
 export class AuthService {
   static async login(data: LoginData): Promise<AuthResponse> {
