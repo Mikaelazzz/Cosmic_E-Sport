@@ -131,7 +131,8 @@ export default function TeamDetailPage() {
     deskripsi: "",
     requirements: "",
     max_participants: 10,
-    event_name: ""
+    event_name: "",
+    status: "open" as "open" | "closed"
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -216,7 +217,8 @@ export default function TeamDetailPage() {
         deskripsi: team.deskripsi,
         requirements: team.requirements || "",
         max_participants: team.max_participants,
-        event_name: team.event_name || ""
+        event_name: team.event_name || "",
+        status: team.status === "full" ? "open" : team.status as "open" | "closed" // Don't allow setting to 'full' manually
       });
       setShowEditModal(true);
     }
@@ -1027,44 +1029,6 @@ export default function TeamDetailPage() {
         </ModalContent>
       </Modal>
 
-      {/* Remove Member Modal */}
-      <Modal
-        isOpen={showRemoveModal}
-        onClose={() => setShowRemoveModal(false)}
-        classNames={{
-          base: "bg-[#1a1a2e]",
-          header: "border-b border-gray-700",
-          footer: "border-t border-gray-700"
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="text-white">
-            Remove Member
-          </ModalHeader>
-          <ModalBody>
-            <p className="text-gray-300">
-              Are you sure you want to remove <strong>{selectedMember?.nama_lengkap}</strong> from the team?
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => setShowRemoveModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="danger"
-              onPress={handleRemoveMember}
-              isLoading={isActionLoading}
-            >
-              Remove
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
       {/* Edit Team Modal */}
       <Modal
         isOpen={showEditModal}
@@ -1125,27 +1089,45 @@ export default function TeamDetailPage() {
                 type="number"
                 placeholder="Enter maximum participants"
                 value={editTeamData.max_participants.toString()}
-                onChange={(e) => setEditTeamData({...editTeamData, max_participants: parseInt(e.target.value) || 0})}
+                onChange={(e) => setEditTeamData({...editTeamData, max_participants: parseInt(e.target.value) || 1})}
                 variant="bordered"
                 min={1}
-                max={10}
+                max={50}
                 classNames={{
                   input: "text-white",
                   label: "text-gray-300"
                 }}
               />
               
-              <Input
-                label="Event Name (Optional)"
-                placeholder="Enter event name"
-                value={editTeamData.event_name}
-                onChange={(e) => setEditTeamData({...editTeamData, event_name: e.target.value})}
+              <Select
+                label="Team Status"
+                placeholder="Select team status"
+                selectedKeys={[editTeamData.status]}
+                onSelectionChange={(keys) => {
+                  const status = Array.from(keys)[0] as "open" | "closed";
+                  setEditTeamData({...editTeamData, status});
+                }}
                 variant="bordered"
                 classNames={{
-                  input: "text-white",
-                  label: "text-gray-300"
+                  label: "text-gray-300",
+                  value: "text-white"
                 }}
-              />
+              >
+                <SelectItem key="open" textValue="Open">
+                  <span className="text-green-400">Open - Accept new members</span>
+                </SelectItem>
+                <SelectItem key="closed" textValue="Closed">
+                  <span className="text-red-400">Closed - No new members</span>
+                </SelectItem>
+              </Select>
+              
+              {team && team.current_participants >= team.max_participants && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  <p className="text-yellow-400 text-sm">
+                    <strong>Note:</strong> Team is automatically set to "Full" when max capacity is reached.
+                  </p>
+                </div>
+              )}
             </div>
           </ModalBody>
           <ModalFooter>
@@ -1163,6 +1145,44 @@ export default function TeamDetailPage() {
               isLoading={isUpdating}
             >
               Update Team
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Remove Member Modal */}
+      <Modal
+        isOpen={showRemoveModal}
+        onClose={() => setShowRemoveModal(false)}
+        classNames={{
+          base: "bg-[#1a1a2e]",
+          header: "border-b border-gray-700",
+          footer: "border-t border-gray-700"
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white">
+            Remove Member
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-gray-300">
+              Are you sure you want to remove <strong>{selectedMember?.nama_lengkap}</strong> from the team?
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="default"
+              variant="light"
+              onPress={() => setShowRemoveModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onPress={handleRemoveMember}
+              isLoading={isActionLoading}
+            >
+              Remove
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -174,6 +174,12 @@ export default function TeamPage() {
   };
 
   const handleRequestToJoin = async (teamId: number) => {
+    // Check if user already has a team
+    if (myTeamData.count > 0) {
+      showAlert("warning", "Already in Team", "You can only be a member of one team at a time. Please leave your current team before joining another.");
+      return;
+    }
+
     try {
       const response = await fetch('/api/teams/join', {
         method: 'POST',
@@ -242,13 +248,20 @@ export default function TeamPage() {
       {/* Header Navigation */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <Button
-          color="warning"
-          variant="solid"
+          color={myTeamData.count > 0 ? "default" : "warning"}
+          variant={myTeamData.count > 0 ? "flat" : "solid"}
           size="lg"
-          className="bg-[#FFD700] text-black font-bold"
-          onPress={() => setShowCreateModal(true)}
+          className={myTeamData.count > 0 ? "border-gray-600 text-gray-400" : "bg-[#FFD700] text-black font-bold"}
+          onPress={() => {
+            if (myTeamData.count > 0) {
+              showAlert("warning", "Already in Team", "You can only be a member of one team at a time. Please leave your current team before creating another.");
+            } else {
+              setShowCreateModal(true);
+            }
+          }}
+          isDisabled={myTeamData.count > 0}
         >
-          Create Team
+          {myTeamData.count > 0 ? "Already in Team" : "Create Team"}
         </Button>
         <Button
           color="default"
@@ -333,16 +346,46 @@ export default function TeamPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <Button
-                    color="primary"
-                    variant="solid"
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => handleRequestToJoin(team.id)}
-                    isDisabled={team.current_participants >= team.max_participants}
-                  >
-                    Request To Join
-                  </Button>
+                  {/* Show different buttons based on team status and user status */}
+                  {team.status === 'open' && team.current_participants < team.max_participants && (
+                    <Button
+                      color={myTeamData.count > 0 ? "default" : "primary"}
+                      variant={myTeamData.count > 0 ? "flat" : "solid"}
+                      size="sm"
+                      className="flex-1"
+                      onPress={() => handleRequestToJoin(team.id)}
+                      isDisabled={myTeamData.count > 0} // Disable if user already has a team
+                    >
+                      {myTeamData.count > 0 ? "Already in Team" : "Request To Join"}
+                    </Button>
+                  )}
+                  
+                  {/* Show status info for closed teams */}
+                  {team.status === 'closed' && (
+                    <Button
+                      color="warning"
+                      variant="flat"
+                      size="sm"
+                      className="flex-1"
+                      isDisabled
+                    >
+                      Team Closed
+                    </Button>
+                  )}
+                  
+                  {/* Show status info for full teams */}
+                  {team.current_participants >= team.max_participants && (
+                    <Button
+                      color="danger"
+                      variant="flat"
+                      size="sm"
+                      className="flex-1"
+                      isDisabled
+                    >
+                      Team Full
+                    </Button>
+                  )}
+                  
                   <Button
                     color="default"
                     variant="light"

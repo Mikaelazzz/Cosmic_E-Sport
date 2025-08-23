@@ -31,20 +31,11 @@ export async function GET(request: NextRequest) {
     const userTeamIds = userTeams?.map(ut => ut.team_id) || [];
     const hasTeam = userTeams && userTeams.length > 0;
 
-    // If user already has a team or pending request, return empty array
-    if (hasTeam) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        message: "You already have a team or pending request"
-      });
-    }
-
-    // Fetch all open teams excluding ones created by current user
+    // Fetch all teams (open and closed, but not full) excluding ones created by current user
     const { data: teams, error } = await supabase
       .from('teams')
       .select('*')
-      .eq('status', 'open')
+      .in('status', ['open', 'closed']) // Include both open and closed teams
       .neq('created_by', user?.id) // Exclude teams created by current user
       .order('created_at', { ascending: false });
 
@@ -93,7 +84,7 @@ export async function GET(request: NextRequest) {
 
       const participantCount = participants?.length || 0;
       
-      // Skip full teams
+      // Skip full teams (only exclude teams that have reached max capacity)
       if (participantCount >= team.max_participants) {
         continue;
       }
@@ -120,7 +111,9 @@ export async function GET(request: NextRequest) {
         created_by: team.created_by,
         created_at: team.created_at,
         event_name: team.event_name,
-        participants: processedParticipants
+        participants: processedParticipants,
+        user_has_team: hasTeam, // Add info if user already has a team
+        user_can_join: !hasTeam && team.status === 'open' && participantCount < team.max_participants
       });
     }
 
@@ -150,6 +143,50 @@ export async function POST(request: NextRequest) {
     if (!nama_team || !deskripsi) {
       return NextResponse.json(
         { success: false, message: "Team name and description are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user is already in any team (limit to 1 team per user)
+    const { data: userTeams, error: userTeamError } = await supabase
+      .from('team_participants')
+      .select('team_id, status')
+      .eq('user_id', user?.id)
+      .eq('status', 'approved');
+
+    if (userTeamError) {
+      console.error('Error checking user teams:', userTeamError);
+      return NextResponse.json(
+        { success: false, message: "Failed to check user team status" },
+        { status: 500 }
+      );
+    }
+
+    if (userTeams && userTeams.length > 0) {
+      return NextResponse.json(
+        { success: false, message: "You are already a member of another team. You can only be in one team at a time." },
+        { status: 400 }
+      );
+    }
+
+    // Check if user has any pending requests
+    const { data: pendingRequests, error: pendingError } = await supabase
+      .from('team_participants')
+      .select('team_id, status')
+      .eq('user_id', user?.id)
+      .eq('status', 'pending');
+
+    if (pendingError) {
+      console.error('Error checking pending requests:', pendingError);
+      return NextResponse.json(
+        { success: false, message: "Failed to check pending requests" },
+        { status: 500 }
+      );
+    }
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      return NextResponse.json(
+        { success: false, message: "You have pending join requests. Please cancel them before creating a new team." },
         { status: 400 }
       );
     }
