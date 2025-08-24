@@ -10,6 +10,7 @@
     "lint": "eslint --fix"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@heroui/alert": "^2.2.24",
     "@heroui/avatar": "^2.2.20",
     "@heroui/button": "2.2.24",
