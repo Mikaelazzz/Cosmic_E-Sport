@@ -1,3 +1,4 @@
+"use client"
 import { Link } from "@heroui/link";
 import { Snippet } from "@heroui/snippet";
 import { Code } from "@heroui/code";
@@ -12,19 +13,24 @@ import NextLink from "next/link";
 import { ShineBorder } from "@/components/shine-border";
 import ScrollFloat from "@/components/ScrollFloat";
 import CardScrollAnimation from "@/components/CardScrollAnimation";
+import Preloader from "@/components/Preloader";
+import { useEffect, useState } from "react";
 
 
 export default function Home() {
+  const [showPreloader, setShowPreloader] = useState(true);
+  useEffect(() => {
+    setShowPreloader(true);
+  }, []);
+
   return (
     <>
+      {showPreloader && <Preloader onFinish={() => setShowPreloader(false)} />}
+      {!showPreloader && (
+        <>
     {/* Halaman utama */}
     <section
-      className="relative flex flex-col items-center justify-center w-full aspect-video min-h-screen overflow-hidden"
-      // style={{
-      //   backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(26,35,126,0.7) 100%), url('/ukm.jpg')`,
-      //   backgroundSize: 'cover',
-      //   backgroundPosition: 'center',
-      // }}
+      className="relative flex flex-col items-center justify-center w-full aspect-video overflow-hidden"
       >
       {/* Aurora sebagai background */}
       <div className="absolute inset-0 z-0">
@@ -66,7 +72,7 @@ export default function Home() {
     </section>
 
     {/* Halaman kedua */}
-    <section className="flex flex-col items-center justify-center w-full min-h-screen p-8 bg-black text-white">
+    <section className="flex flex-col items-center justify-center w-full p-8 bg-black text-white">
       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
         Tentang <span className="text-[#FFD700]">Cosmic</span>
       </h1>
@@ -318,7 +324,7 @@ export default function Home() {
 
     {/* Halaman Keempat */}
     <section className="flex flex-col items-center justify-center w-full min-h-screen p-8">
-       <h1 className="text-3xl md:text-8xl font-bold mb-4 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
+       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
         <CardScrollAnimation 
         className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
         animationDuration={0.8}
@@ -387,11 +393,20 @@ export default function Home() {
       </div>
     </div>
   </CardScrollAnimation>
+
+  <Button 
+  className="mt-8"
+  color="warning"
+  variant="ghost">
+    Tampilkan Lainnya
+  </Button>
     </section> 
 
     
       
       
       </>
+      )}
+    </>
   );
 }
