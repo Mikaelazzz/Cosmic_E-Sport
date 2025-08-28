@@ -16,9 +16,9 @@ export const metadata: Metadata = {
     default: siteConfig.name,
     template: `%s - ${siteConfig.name}`,
   },
-  description: siteConfig.description,
+  // description: siteConfig.description,
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logc.png",
   },
 };
 
@@ -54,7 +54,7 @@ export default function RootLayout({
             {/* <SessionManager /> */}
             <div className="relative flex flex-col h-screen">
               <NavbarWrapper />
-              <main className="flex-grow">
+              <main className="flex-grow pt-24">
                 {children}
               </main>
               <footer className="w-full flex items-center justify-center py-3 bg-gray-900 text-gray-400">

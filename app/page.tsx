@@ -15,6 +15,7 @@ import ScrollFloat from "@/components/ScrollFloat";
 import CardScrollAnimation from "@/components/CardScrollAnimation";
 import Preloader from "@/components/Preloader";
 import { useEffect, useState } from "react";
+import Spinner from "@/components/Spinner";
 
 
 export default function Home() {
@@ -23,13 +24,56 @@ export default function Home() {
     setShowPreloader(true);
   }, []);
 
+  // Dummy data prestasi (replace with real data if available)
+  const prestasiList = [
+    {
+      title: "Nama Tournament",
+      level: "Tingkat Acara",
+      date: "Tanggal",
+      players: "5-7 Player",
+      img: "/pengurus/download.jpg",
+      badge: "1st"
+    },
+    {
+      title: "Nama Tournament",
+      level: "Tingkat Acara",
+      date: "Tanggal",
+      players: "5-7 Player",
+      img: "/pengurus/download.jpg",
+      badge: "1st"
+    },
+    {
+      title: "Tournament Lainnya",
+      level: "Nasional",
+      date: "2025-08-01",
+      players: "6 Player",
+      img: "/pengurus/download.jpg",
+      badge: "2nd"
+    },
+    // Tambah data lain jika perlu
+  ];
+  const [showCount, setShowCount] = useState(2);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Logic: 2, 6, 10, 14, ...
+  const handleShowMore = () => {
+    setLoadingMore(true);
+    setTimeout(() => {
+      setShowCount(prev => {
+        if (prev === 2) return Math.min(6, prestasiList.length);
+        return Math.min(prev + 4, prestasiList.length);
+      });
+      setLoadingMore(false);
+    }, 1000);
+  };
+
   return (
     <>
       {showPreloader && <Preloader onFinish={() => setShowPreloader(false)} />}
       {!showPreloader && (
         <>
     {/* Halaman utama */}
-    <section
+    <section id="home"
       className="relative flex flex-col items-center justify-center w-full aspect-video overflow-hidden"
       >
       {/* Aurora sebagai background */}
@@ -71,8 +115,8 @@ export default function Home() {
       </div>
     </section>
 
-    {/* Halaman kedua */}
-    <section className="flex flex-col items-center justify-center w-full p-8 bg-black text-white">
+  {/* Halaman kedua */}
+  <section id="tentang" className="flex flex-col items-center justify-center w-full p-8 bg-black text-white">
       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
         Tentang <span className="text-[#FFD700]">Cosmic</span>
       </h1>
@@ -106,8 +150,8 @@ export default function Home() {
       </div>
     </section>
 
-    {/* Halaman Ketiga */}
-<section className="flex flex-col items-center justify-center w-full min-h-screen p-8 bg-black text-white">
+  {/* Halaman Ketiga */}
+<section id="pengurus" className="flex flex-col items-center justify-center w-full min-h-screen p-8 bg-black text-white">
   <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
     Pengurus <span className="text-[#FFD700]">Cosmic</span>
   </h1>
@@ -322,85 +366,61 @@ export default function Home() {
   </CardScrollAnimation>
 </section>
 
+
     {/* Halaman Keempat */}
-    <section className="flex flex-col items-center justify-center w-full min-h-screen p-8">
-       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
-        <CardScrollAnimation 
+    <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8">
+      <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
+      <CardScrollAnimation
         className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
         animationDuration={0.8}
         ease="back.out(1.7)"
         scrollStart="top bottom-=150px"
         scrollEnd="bottom top+=50px"
         stagger={0.15}
-  >
-   <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
-      <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
-      {/* Shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-      {/* Yellow badge */}
-      <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
-        1st
-      </div>
-      
-      {/* Profile image */}
-      <div className="mb-4">
-        <img 
-          src="/pengurus/download.jpg" 
-          alt="Member 2" 
-          className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
-          />
-      </div>
-      
-      {/* Name */}
-      <div className="text-start text-white font-[orbitron]">
-        <h1 className="text-lg font-bold" >
-          Nama Tournament
-        </h1>
-        <h2 className="text-[13px]">Tingkat Acara</h2>
-        <h2 className="text-[13px]">Tanggal</h2>
-        <br />
-        <small className="text-[10px] mt-4">5-7 Player</small>
-      </div>
-    </div>
-
-    <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
-      <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
-      {/* Shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-      {/* Yellow badge */}
-      <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
-        1st
-      </div>
-      
-      {/* Profile image */}
-      <div className="mb-4">
-        <img 
-          src="/pengurus/download.jpg" 
-          alt="Member 2" 
-          className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
-          />
-      </div>
-      
-      {/* Name */}
-      <div className="text-start text-white font-[orbitron]">
-        <h1 className="text-lg font-bold" >
-          Nama Tournament
-        </h1>
-        <h2 className="text-[13px]">Tingkat Acara</h2>
-        <h2 className="text-[13px]">Tanggal</h2>
-        <br />
-        <small className="text-[10px] mt-4">5-7 Player</small>
-      </div>
-    </div>
-  </CardScrollAnimation>
-
-  <Button 
-  className="mt-8"
-  color="warning"
-  variant="ghost">
-    Tampilkan Lainnya
-  </Button>
-    </section> 
+      >
+        {prestasiList.slice(0, showCount).map((item, idx) => (
+          <div key={idx} className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
+            <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
+            {/* Shine effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+            {/* Yellow badge */}
+            <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
+              {item.badge}
+            </div>
+            {/* Profile image */}
+            <div className="mb-4">
+              <img
+                src={item.img}
+                alt={item.title}
+                className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
+              />
+            </div>
+            {/* Name */}
+            <div className="text-start text-white font-[orbitron]">
+              <h1 className="text-lg font-bold" >
+                {item.title}
+              </h1>
+              <h2 className="text-[13px]">{item.level}</h2>
+              <h2 className="text-[13px]">{item.date}</h2>
+              <br />
+              <small className="text-[10px] mt-4">{item.players}</small>
+            </div>
+          </div>
+        ))}
+      </CardScrollAnimation>
+      {showCount < prestasiList.length && (
+        <Button
+          className="mt-8 flex items-center gap-2"
+          color="warning"
+          variant="ghost"
+          onClick={handleShowMore}
+          disabled={loadingMore}
+        >
+          {loadingMore && <Spinner size={18} className="mr-2" />}
+          {loadingMore ? "Memuat..." : "Tampilkan Lainnya"}
+        </Button>
+      )}
+    </section>
 
     
       
