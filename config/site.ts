@@ -1,50 +1,42 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Next.js + HeroUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  name: "Cosmic E-Sport",
+  // description: "Make beautiful websites regardless of your design experience.",
   navItems: [
     {
+      label: "Home",
+      href: "/#home",
+    },
+    {
       label: "Tentang",
-      href: "/",
+      href: "/#tentang",
     },
     {
       label: "Pengurus",
-      href: "/docs",
+      href: "/#pengurus",
     },
     {
       label: "Prestasi",
-      href: "/pricing",
+      href: "/#prestasi",
     }
   ],
   navMenuItems: [
     {
+      label: "Home",
+      href: "/#home",
+    },
+    {
       label: "Tentang",
-      href: "/profile",
+      href: "/#tentang",
     },
     {
       label: "Pengurus",
-      href: "/dashboard",
+      href: "/#pengurus",
     },
     {
       label: "Prestasi",
-      href: "/projects",
-    },
-    {
-      label: "Team",
-      href: "/team",
-    },
-    {
-      label: "Calendar",
-      href: "/calendar",
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-    },
-    {
-      label: "Help & Feedback",
-      href: "/help-feedback",
+      href: "/#prestasi",
     },
     {
       label: "Logout",

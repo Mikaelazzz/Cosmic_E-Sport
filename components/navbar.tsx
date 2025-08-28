@@ -65,11 +65,14 @@ export const Navbar = () => {
           { label: "Dashboard", href: "/moderator" },
           { label: "Users", href: "/moderator/users" },
           { label: "Jadwal Pertemuan", href: "/moderator/jadwal-pertemuan" },
-          { label: "Informasi", href: "/moderator/informasi" }
+          { label: "Informasi", href: "/moderator/informasi" },
+          { label: "Event", href: "/moderator/events" }
         ];
       case 'user':
         return [
-          { label: "Dashboard", href: "/user" }
+          { label: "Dashboard", href: "/user" },
+          { label: "Event", href: "/user/events" },
+          { label: "Team", href: "/user/team" }
         ];
       default:
         return siteConfig.navItems;
@@ -95,11 +98,14 @@ export const Navbar = () => {
           { label: "Dashboard", href: "/moderator" },
           { label: "Users", href: "/moderator/users" },
           { label: "Jadwal Pertemuan", href: "/moderator/jadwal-pertemuan" },
-          { label: "Informasi", href: "/moderator/informasi" }
+          { label: "Informasi", href: "/moderator/informasi" },
+          { label: "Event", href: "/moderator/events" }
         ];
       case 'user':
         return [
-          { label: "Dashboard", href: "/user" }
+          { label: "Dashboard", href: "/user" },
+          { label: "Event", href: "/user/events" },
+          { label: "Team", href: "/user/team" }
         ];
       default:
         return siteConfig.navMenuItems;
@@ -147,7 +153,7 @@ export const Navbar = () => {
   };
 
   return (
-    <HeroUINavbar maxWidth="xl" position="sticky" className="border-b-2 border-[#1A237E] shadow-[0_0_32px_0_#1A237E] relative">
+  <HeroUINavbar maxWidth="xl" className="fixed top-0 left-0 w-full z-50 border-b-2 border-[#1A237E] shadow-[0_0_32px_0_#1A237E] backdrop-blur-lg">
       {/* Logo di kiri */}
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
