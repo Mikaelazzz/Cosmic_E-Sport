@@ -153,7 +153,7 @@ export const Navbar = () => {
   };
 
   return (
-  <HeroUINavbar maxWidth="xl" className="fixed top-0 left-0 w-full z-50 border-b-2 border-[#1A237E] shadow-[0_0_32px_0_#1A237E] backdrop-blur-lg">
+  <HeroUINavbar maxWidth="xl" position="sticky" className="sticky top-0 left-0 w-full z-[999] border-b-2 border-[#1A237E] shadow-[0_0_32px_0_#1A237E] backdrop-blur-lg print:hidden">
       {/* Logo di kiri */}
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="gap-3 max-w-fit">
