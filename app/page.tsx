@@ -74,8 +74,8 @@ export default function Home() {
         <>
     {/* Halaman utama */}
     <section id="home"
-      className="relative flex flex-col items-center justify-center w-full aspect-video overflow-hidden"
-      >
+      className="relative flex flex-col items-center justify-center w-full aspect-video"
+    >
       {/* Aurora sebagai background */}
       <div className="absolute inset-0 z-0">
         <Aurora
@@ -368,7 +368,7 @@ export default function Home() {
 
 
     {/* Halaman Keempat */}
-    <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8">
+  <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8">
       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
       <CardScrollAnimation
         className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
