@@ -71,7 +71,7 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 - [x] CRUD Periode 
 
-- [x] CRUD Pengurus by NIM
+- [x] CRUD Pengurus by NIM // TODO: Ketika Periode selesai maka Pengurus NIM otomatis Dihapus dan berganti menjadi anggota, memperbaiki tampilan
 
 - [x] CRUD Prestasi
 
@@ -87,7 +87,7 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 - [ ] Managing Team
 
-- [ ] CRUD Event 
+- [x] CRUD Event 
 
 - [x] Fungsi Absen pada Pertemuan Rutin
 
@@ -95,9 +95,9 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 ### User 
 
-- [ ] CRUD Team
+- [x] CRUD Team TODO: Menambahkan ID Server Nick MLBB
 
-- [ ] Join Event Team / Individual
+- [x] Join Event Team / Individual
 
 - [x] Join Pertemuan Rutin > Scan QR Absen
 
@@ -111,8 +111,8 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 - [ ] Animasi yang keren untuk Website
 
-- [ ] Intro saat masuk Dashboard
+- [x] Intro saat masuk Dashboard
 
 - [x] Cookie Akun
 
-- [ ] Landing Page with GSAP
+- [x] Landing Page with GSAP
