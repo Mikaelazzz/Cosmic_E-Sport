@@ -116,3 +116,5 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 - [x] Cookie Akun
 
 - [x] Landing Page with GSAP
+
+<!-- ADD some feature games with Api from >> https://ceknickname.com/lainnya -->
