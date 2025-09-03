@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         status,
         bukti_pembayaran,
         catatan,
+        rejection_reason,
         tanggal_daftar,
         tanggal_approve,
         events(
@@ -87,6 +88,7 @@ export async function GET(request: NextRequest) {
           status,
           bukti_pembayaran,
           catatan,
+          rejection_reason,
           tanggal_daftar,
           tanggal_approve,
           events(
