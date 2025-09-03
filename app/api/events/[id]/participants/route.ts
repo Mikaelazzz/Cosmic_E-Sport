@@ -32,9 +32,10 @@ export async function GET(
         status,
         bukti_pembayaran,
         catatan,
+        rejection_reason,
         tanggal_daftar,
         tanggal_approve,
-        users(
+        users!event_participants_user_id_fkey(
           id,
           nama_lengkap,
           email,
@@ -61,9 +62,34 @@ export async function GET(
       );
     }
 
+    // Enhance participants data with team member count
+    const enhancedParticipants = await Promise.all(
+      (participants || []).map(async (participant) => {
+        let teamMemberCount = 0;
+        
+        if (participant.team_id) {
+          // Get team member count
+          const { data: teamMembers, error: membersError } = await supabase
+            .from('team_participants')
+            .select('id')
+            .eq('team_id', participant.team_id)
+            .eq('status', 'approved');
+          
+          if (!membersError) {
+            teamMemberCount = teamMembers?.length || 0;
+          }
+        }
+
+        return {
+          ...participant,
+          team_member_count: teamMemberCount
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: participants || []
+      data: enhancedParticipants
     });
 
   } catch (error) {
@@ -217,7 +243,7 @@ export async function POST(
       // Check if team already registered (Design A: 1 record per team)
       const { data: existingTeamParticipant, error: teamParticipantError } = await supabase
         .from('event_participants')
-        .select('id, status, user_id')
+        .select('id, status, user_id, rejection_reason')
         .eq('event_id', eventId)
         .eq('team_id', team_id)
         .single();
@@ -240,12 +266,13 @@ export async function POST(
             { status: 400 }
           );
         }
+        // If status is 'rejected', we'll update the existing record instead of creating new one
       }
     } else {
       // For individual events, check if user already registered
       const { data: existingParticipant, error: participantError } = await supabase
         .from('event_participants')
-        .select('id, status')
+        .select('id, status, rejection_reason')
         .eq('event_id', eventId)
         .eq('user_id', user?.id)
         .single();
@@ -262,6 +289,7 @@ export async function POST(
             { status: 400 }
           );
         }
+        // If status is 'rejected', we'll update the existing record instead of creating new one
       }
     }
 
@@ -313,88 +341,181 @@ export async function POST(
         console.log(`  ${index + 1}. User ${member.user_id} (${(member.users as any).nama_lengkap}) - Role: ${member.role_in_team}`);
       });
 
-      // Create single team registration record
-      const teamRegistration = {
-        event_id: parseInt(eventId),
-        user_id: user?.id, // Team leader who registered
-        team_id: team_id,
-        nim: userData.nim,
-        participant_type: 'team',
-        status: event.biaya > 0 ? 'pending' : 'approved',
-        bukti_pembayaran: bukti_pembayaran || null,
-        catatan: catatan || `Team registration by leader (${teamMembers.length} members)`,
-        tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
-      };
-
-      console.log('📋 Team registration record to insert:', teamRegistration);
-
-      // Insert team registration
-      const { data: newParticipant, error: createError } = await supabase
+      // Check if there's an existing rejected registration to update
+      const { data: existingTeamReg, error: existingTeamError } = await supabase
         .from('event_participants')
-        .insert([teamRegistration])
-        .select();
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('team_id', team_id)
+        .single();
 
-      console.log('💾 Insert result:', {
-        newParticipant,
-        createError,
-        success: !!newParticipant
-      });
+      if (existingTeamReg && existingTeamReg.status === 'rejected') {
+        // Update existing rejected team registration
+        const teamUpdateData = {
+          user_id: user?.id, // Update to current leader
+          status: event.biaya > 0 ? 'pending' : 'approved',
+          bukti_pembayaran: bukti_pembayaran || null,
+          catatan: catatan || `Team re-registration by leader (${teamMembers.length} members)`,
+          rejection_reason: null, // Clear previous rejection reason
+          tanggal_daftar: new Date().toISOString(), // Update registration date
+          tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
+        };
 
-      if (createError) {
-        console.error('❌ Error creating team registration:', createError);
-        return NextResponse.json(
-          { success: false, message: "Failed to register team for event", error: createError },
-          { status: 500 }
-        );
-      }
+        console.log('📋 Team registration update data:', teamUpdateData);
 
-      console.log('✅ Successfully registered team');
-      return NextResponse.json({
-        success: true,
-        message: `Team successfully registered! ${teamMembers.length} members will participate.`,
-        data: {
-          teamRegistration: newParticipant[0],
-          teamMemberCount: teamMembers.length,
-          teamMembers: teamMembers.map(m => ({
-            user_id: m.user_id,
-            nama_lengkap: (m.users as any).nama_lengkap,
-            role_in_team: m.role_in_team
-          }))
+        const { data: updatedParticipant, error: updateError } = await supabase
+          .from('event_participants')
+          .update(teamUpdateData)
+          .eq('id', existingTeamReg.id)
+          .select();
+
+        if (updateError) {
+          console.error('❌ Error updating team registration:', updateError);
+          return NextResponse.json(
+            { success: false, message: "Failed to re-register team for event", error: updateError },
+            { status: 500 }
+          );
         }
-      });
+
+        console.log('✅ Successfully re-registered team');
+        return NextResponse.json({
+          success: true,
+          message: `Team successfully re-registered! ${teamMembers.length} members will participate.`,
+          data: {
+            teamRegistration: updatedParticipant[0],
+            teamMemberCount: teamMembers.length,
+            teamMembers: teamMembers.map(m => ({
+              user_id: m.user_id,
+              nama_lengkap: (m.users as any).nama_lengkap,
+              role_in_team: m.role_in_team
+            }))
+          }
+        });
+      } else {
+        // Create new team registration record
+        const teamRegistration = {
+          event_id: parseInt(eventId),
+          user_id: user?.id, // Team leader who registered
+          team_id: team_id,
+          nim: userData.nim,
+          participant_type: 'team',
+          status: event.biaya > 0 ? 'pending' : 'approved',
+          bukti_pembayaran: bukti_pembayaran || null,
+          catatan: catatan || `Team registration by leader (${teamMembers.length} members)`,
+          tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
+        };
+
+        console.log('📋 Team registration record to insert:', teamRegistration);
+
+        // Insert team registration
+        const { data: newParticipant, error: createError } = await supabase
+          .from('event_participants')
+          .insert([teamRegistration])
+          .select();
+
+        console.log('💾 Insert result:', {
+          newParticipant,
+          createError,
+          success: !!newParticipant
+        });
+
+        if (createError) {
+          console.error('❌ Error creating team registration:', createError);
+          return NextResponse.json(
+            { success: false, message: "Failed to register team for event", error: createError },
+            { status: 500 }
+          );
+        }
+
+        console.log('✅ Successfully registered team');
+        return NextResponse.json({
+          success: true,
+          message: `Team successfully registered! ${teamMembers.length} members will participate.`,
+          data: {
+            teamRegistration: newParticipant[0],
+            teamMemberCount: teamMembers.length,
+            teamMembers: teamMembers.map(m => ({
+              user_id: m.user_id,
+              nama_lengkap: (m.users as any).nama_lengkap,
+              role_in_team: m.role_in_team
+            }))
+          }
+        });
+      }
 
     } else {
       // For individual events, register only the user
-      const { data: newParticipant, error: createError } = await supabase
+      // Check if there's an existing rejected registration to update
+      const { data: existingParticipant, error: existingError } = await supabase
         .from('event_participants')
-        .insert({
-          event_id: parseInt(eventId),
-          user_id: user!.id,
-          team_id: null,
-          nim: userData.nim,
-          participant_type: 'individual',
-          status: event.biaya > 0 ? 'pending' : 'approved',
-          bukti_pembayaran: bukti_pembayaran || null,
-          catatan: catatan || null,
-          tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
-        })
-        .select()
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('user_id', user?.id)
         .single();
 
-      if (createError) {
-        console.error('Error creating participant:', createError);
-        return NextResponse.json(
-          { success: false, message: "Failed to register for event", error: createError },
-          { status: 500 }
-        );
-      }
+      if (existingParticipant && existingParticipant.status === 'rejected') {
+        // Update existing rejected registration
+        const { data: updatedParticipant, error: updateError } = await supabase
+          .from('event_participants')
+          .update({
+            status: event.biaya > 0 ? 'pending' : 'approved',
+            bukti_pembayaran: bukti_pembayaran || null,
+            catatan: catatan || null,
+            rejection_reason: null, // Clear previous rejection reason
+            tanggal_daftar: new Date().toISOString(), // Update registration date
+            tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
+          })
+          .eq('id', existingParticipant.id)
+          .select()
+          .single();
 
-      return NextResponse.json({
-        success: true,
-        message: event.biaya > 0 
-          ? "Registration submitted. Please wait for approval." 
-          : "Successfully registered for event!"
-      });
+        if (updateError) {
+          console.error('Error updating participant:', updateError);
+          return NextResponse.json(
+            { success: false, message: "Failed to re-register for event", error: updateError },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: event.biaya > 0 
+            ? "Re-registration submitted. Please wait for approval." 
+            : "Successfully re-registered for event!"
+        });
+      } else {
+        // Create new registration
+        const { data: newParticipant, error: createError } = await supabase
+          .from('event_participants')
+          .insert({
+            event_id: parseInt(eventId),
+            user_id: user!.id,
+            team_id: null,
+            nim: userData.nim,
+            participant_type: 'individual',
+            status: event.biaya > 0 ? 'pending' : 'approved',
+            bukti_pembayaran: bukti_pembayaran || null,
+            catatan: catatan || null,
+            tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating participant:', createError);
+          return NextResponse.json(
+            { success: false, message: "Failed to register for event", error: createError },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: event.biaya > 0 
+            ? "Registration submitted. Please wait for approval." 
+            : "Successfully registered for event!"
+        });
+      }
     }
 
   } catch (error) {

@@ -28,7 +28,7 @@ export async function PUT(
     const eventId = resolvedParams.id;
     const participantId = resolvedParams.participantId;
     const body = await request.json();
-    const { status, catatan } = body;
+    const { status, rejection_reason } = body;
 
     if (!['approved', 'rejected'].includes(status)) {
       return NextResponse.json(
@@ -52,11 +52,16 @@ export async function PUT(
       );
     }
 
-    if (participant.status !== 'pending') {
+    if (participant.status !== 'pending' && !(participant.status === 'rejected' && status === 'approved')) {
       return NextResponse.json(
         { success: false, message: "Participant has already been processed" },
         { status: 400 }
       );
+    }
+
+    // Special handling for rejected participants being approved (re-registration)
+    if (participant.status === 'rejected' && status === 'approved') {
+      console.log('🔄 Allowing re-registration for rejected participant');
     }
 
     // If approving, check if event is full
@@ -83,14 +88,25 @@ export async function PUT(
     }
 
     // Update participant status
+    const updateData: any = {
+      rejection_reason: status === 'rejected' ? rejection_reason : null,
+      tanggal_approve: status === 'approved' ? new Date().toISOString() : null,
+      approved_by: user!.id
+    };
+
+    // Auto re-registration: When rejected, automatically set to pending for re-registration
+    if (status === 'rejected') {
+      updateData.status = 'pending'; // Auto allow re-registration
+      updateData.rejection_reason = rejection_reason;
+      updateData.tanggal_approve = null;
+      console.log('🔄 Auto-allowing re-registration after rejection');
+    } else {
+      updateData.status = status;
+    }
+
     const { data: updatedParticipant, error: updateError } = await supabase
       .from('event_participants')
-      .update({
-        status,
-        catatan: catatan || null,
-        tanggal_approve: status === 'approved' ? new Date().toISOString() : null,
-        approved_by: user!.id
-      })
+      .update(updateData)
       .eq('id', participantId)
       .select()
       .single();
@@ -106,7 +122,9 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       data: updatedParticipant,
-      message: `Participant ${status} successfully`
+      message: status === 'rejected' 
+        ? `Participant rejected with reason: ${rejection_reason}. Auto re-registration enabled.`
+        : `Participant ${status} successfully`
     });
 
   } catch (error) {

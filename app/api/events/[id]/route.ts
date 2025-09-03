@@ -19,11 +19,28 @@ export async function GET(
     const resolvedParams = await params;
     const eventId = resolvedParams.id;
 
-    // Fetch event with participant counts
+    // Fetch event with participant counts (exclude deleted events)
     const { data: event, error } = await supabase
-      .from('active_events')
-      .select('*')
+      .from('events')
+      .select(`
+        id,
+        nama_event,
+        gambar,
+        tanggal_pelaksanaan,
+        tanggal_awal,
+        tanggal_akhir,
+        deskripsi,
+        syarat_dan_ketentuan,
+        status,
+        max_participant,
+        anggota_participant,
+        biaya,
+        participant_type,
+        created_at,
+        updated_at
+      `)
       .eq('id', eventId)
+      .neq('status', 'cancelled') // Exclude cancelled events (soft deleted)
       .single();
 
     if (error || !event) {
@@ -231,8 +248,7 @@ export async function DELETE(
     const { data: participants, error: participantsError } = await supabase
       .from('event_participants')
       .select('id')
-      .eq('event_id', eventId)
-      .limit(1);
+      .eq('event_id', eventId);
 
     if (participantsError) {
       console.error('Error checking participants:', participantsError);
@@ -242,31 +258,56 @@ export async function DELETE(
       );
     }
 
+    // Instead of checking for participants, we'll handle deletion differently
     if (participants && participants.length > 0) {
-      return NextResponse.json(
-        { success: false, message: "Cannot delete event with existing participants. Please remove all participants first." },
-        { status: 400 }
-      );
+      // If event has participants, mark as cancelled instead of deleted
+      // This preserves data integrity and follows existing status constraints
+      console.log(`Event ${eventId} has ${participants.length} participants. Performing soft delete by setting status to cancelled.`);
+      
+      const { error: softDeleteError } = await supabase
+        .from('events')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', eventId);
+
+      if (softDeleteError) {
+        console.error('Error soft deleting event:', softDeleteError);
+        return NextResponse.json(
+          { success: false, message: "Failed to delete event" },
+          { status: 500 }
+        );
+      }
+
+      console.log(`Event ${eventId} successfully soft deleted (status: cancelled)`);
+      return NextResponse.json({
+        success: true,
+        message: "Event deleted successfully"
+      });
+    } else {
+      // If no participants, hard delete the event
+      console.log(`Event ${eventId} has no participants. Performing hard delete.`);
+      
+      const { error: deleteError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (deleteError) {
+        console.error('Error deleting event:', deleteError);
+        return NextResponse.json(
+          { success: false, message: "Failed to delete event" },
+          { status: 500 }
+        );
+      }
+
+      console.log(`Event ${eventId} successfully hard deleted`);
+      return NextResponse.json({
+        success: true,
+        message: "Event deleted successfully"
+      });
     }
-
-    // Delete the event (CASCADE will handle participants)
-    const { error: deleteError } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', eventId);
-
-    if (deleteError) {
-      console.error('Error deleting event:', deleteError);
-      return NextResponse.json(
-        { success: false, message: "Failed to delete event" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Event deleted successfully"
-    });
 
   } catch (error) {
     console.error('Error in event deletion:', error);

@@ -13,10 +13,27 @@ export async function GET(request: NextRequest) {
     const { user, error: authError } = getAuthenticatedUser(request);
     if (authError) return authError;
 
-    // Fetch events with participant counts (exclude deleted and cancelled from view)
+    // Fetch events with participant counts (exclude cancelled and completed)
     const { data: events, error } = await supabase
-      .from('active_events')
-      .select('*')
+      .from('events')
+      .select(`
+        id,
+        nama_event,
+        gambar,
+        tanggal_pelaksanaan,
+        tanggal_awal,
+        tanggal_akhir,
+        deskripsi,
+        syarat_dan_ketentuan,
+        status,
+        max_participant,
+        anggota_participant,
+        biaya,
+        participant_type,
+        created_at,
+        updated_at
+      `)
+      .neq('status', 'cancelled') // Exclude cancelled events (soft deleted)
       .order('created_at', { ascending: false });
 
     if (error) {
