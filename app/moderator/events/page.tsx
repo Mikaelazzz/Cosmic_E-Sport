@@ -74,8 +74,10 @@ interface EventParticipant {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   bukti_pembayaran: string | null;
   catatan: string | null;
+  rejection_reason?: string | null;
   tanggal_daftar: string;
   tanggal_approve: string | null;
+  team_member_count?: number;
   users: {
     id: string;
     nama_lengkap: string;
@@ -120,6 +122,16 @@ const participantStatusColorMap = {
   cancelled: "default",
 } as const;
 
+const rejectionReasons = [
+  { key: "slot_penuh", label: "Slot telah penuh" },
+  { key: "bukti_tidak_valid", label: "Bukti pendaftaran tidak valid" },
+  { key: "team_tidak_lengkap", label: "Team tidak lengkap" },
+  { key: "syarat_tidak_terpenuhi", label: "Syarat dan ketentuan tidak terpenuhi" },
+  { key: "dokumen_kurang", label: "Dokumen pendukung kurang lengkap" },
+  { key: "pembayaran_gagal", label: "Pembayaran tidak sesuai" },
+  { key: "lainnya", label: "Lainnya" },
+];
+
 const statusOptions = [
   { key: "open", label: "Open" },
   { key: "closed", label: "Closed" },
@@ -135,7 +147,9 @@ export default function EventsPage() {
   const { user, isAuthenticated, loading } = useAuth();
   
   const [events, setEvents] = useState<Event[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<Event[]>([]);
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [activeTab, setActiveTab] = useState("management");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   
@@ -145,6 +159,7 @@ export default function EventsPage() {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
   const { isOpen: isParticipantsOpen, onOpen: onParticipantsOpen, onClose: onParticipantsClose } = useDisclosure();
+  const { isOpen: isRejectOpen, onOpen: onRejectOpen, onClose: onRejectClose } = useDisclosure();
   
   // Form states
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -173,6 +188,11 @@ export default function EventsPage() {
   } | null>(null);
   const [alertVisible, setAlertVisible] = useState(false);
 
+  // Rejection modal state
+  const [selectedParticipantForReject, setSelectedParticipantForReject] = useState<EventParticipant | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [customRejectionReason, setCustomRejectionReason] = useState("");
+
   const showAlert = (color: "success" | "warning" | "danger", title: string, description: string) => {
     setAlertConfig({ color, title, description });
     setAlertVisible(true);
@@ -183,7 +203,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/events', {
+      const response = await fetch('/api/events/moderator', {
         method: 'GET',
         credentials: 'include'
       });
@@ -191,7 +211,10 @@ export default function EventsPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setEvents(result.data);
+          // For moderator view, we can show all events except cancelled ones (soft deleted)
+          // If you want to show cancelled events for audit, remove this filter
+          const activeEvents = result.data.filter((event: Event) => event.status !== 'cancelled');
+          setEvents(activeEvents);
           setError("");
         } else {
           setError(result.message || "Failed to fetch events");
@@ -202,6 +225,36 @@ export default function EventsPage() {
     } catch (error) {
       console.error('Error fetching events:', error);
       setError("An error occurred while fetching events");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch history events (cancelled/deleted events)
+  const fetchHistoryEvents = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/events/moderator', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Show only cancelled events (deleted events)
+          const deletedEvents = result.data.filter((event: Event) => event.status === 'cancelled');
+          setHistoryEvents(deletedEvents);
+          setError("");
+        } else {
+          setError(result.message || "Failed to fetch history events");
+        }
+      } else {
+        setError("Failed to fetch history events");
+      }
+    } catch (error) {
+      console.error('Error fetching history events:', error);
+      setError("An error occurred while fetching history events");
     } finally {
       setIsLoading(false);
     }
@@ -228,9 +281,13 @@ export default function EventsPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchEvents();
+      if (activeTab === "management") {
+        fetchEvents();
+      } else if (activeTab === "history") {
+        fetchHistoryEvents();
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, activeTab]);
 
   // Handle form submission for create/edit
   const handleSubmit = async () => {
@@ -256,38 +313,115 @@ export default function EventsPage() {
 
     setIsSubmitting(true);
     try {
-      const url = selectedEvent ? `/api/events/${selectedEvent.id}` : '/api/events';
-      const method = selectedEvent ? 'PUT' : 'POST';
+      if (selectedEvent) {
+        // Update existing event
+        const url = `/api/events/${selectedEvent.id}`;
+        const submitData = {
+          ...formData,
+          gambar: uploadedImage
+        };
 
-      const submitData = {
-        ...formData,
-        gambar: uploadedImage
-      };
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(submitData)
+        });
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(submitData)
-      });
+        const result = await response.json();
 
-      const result = await response.json();
-
-      if (result.success) {
-        showAlert("success", selectedEvent ? "Event Updated" : "Event Created", 
-                 selectedEvent ? "Event has been updated successfully" : "Event has been created successfully");
-        
-        fetchEvents();
-        resetForm();
-        if (selectedEvent) {
+        if (result.success) {
+          showAlert("success", "Event Updated", "Event has been updated successfully");
+          fetchEvents();
+          resetForm();
           onEditClose();
         } else {
-          onCreateClose();
+          showAlert("danger", "Error", result.message || "Failed to update event");
         }
       } else {
-        showAlert("danger", "Error", result.message || "Failed to save event");
+        // Create new event
+        const submitData = {
+          ...formData,
+          gambar: null // Initially null, will be updated after image upload
+        };
+
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(submitData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          const newEventId = result.data.id;
+          
+          // If there's an uploaded image, upload it to the proper path
+          if (uploadedImage && uploadedImage.startsWith('blob:')) {
+            try {
+              // Get the file from the blob URL
+              const response = await fetch(uploadedImage);
+              const blob = await response.blob();
+              
+              // Determine file extension from blob type
+              let extension = 'jpg'; // default
+              const mimeType = blob.type;
+              if (mimeType === 'image/png') extension = 'png';
+              else if (mimeType === 'image/webp') extension = 'webp';
+              else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') extension = 'jpg';
+              
+              const file = new File([blob], `event-${newEventId}.${extension}`, { type: mimeType });
+              
+              // Upload to proper path structure
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('eventId', newEventId.toString());
+
+              const uploadResponse = await fetch('/api/events/upload-image', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+              });
+
+              const uploadResult = await uploadResponse.json();
+
+              if (uploadResult.success) {
+                // Update the event with the proper image path
+                const updateResponse = await fetch(`/api/events/${newEventId}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    ...submitData,
+                    gambar: uploadResult.data.filePath
+                  })
+                });
+
+                if (!updateResponse.ok) {
+                  console.warn('Failed to update event with image path');
+                }
+              } else {
+                console.warn('Failed to upload image:', uploadResult.message);
+              }
+            } catch (imageError) {
+              console.warn('Error handling image upload:', imageError);
+            }
+          }
+
+          showAlert("success", "Event Created", "Event has been created successfully");
+          fetchEvents();
+          resetForm();
+          onCreateClose();
+        } else {
+          showAlert("danger", "Error", result.message || "Failed to create event");
+        }
       }
     } catch (error) {
       console.error('Error saving event:', error);
@@ -297,7 +431,35 @@ export default function EventsPage() {
     }
   };
 
-  // Handle delete
+  // Handle restore event
+  const handleRestoreEvent = async (event: Event) => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/events/${event.id}/restore`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showAlert("success", "Event Restored", "Event has been restored successfully");
+        if (activeTab === "history") {
+          fetchHistoryEvents();
+        }
+        fetchEvents(); // Refresh management tab as well
+      } else {
+        showAlert("danger", "Restore Failed", result.message || "Failed to restore event");
+      }
+    } catch (error) {
+      console.error('Error restoring event:', error);
+      showAlert("danger", "Restore Error", "An error occurred while restoring event");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle delete event
   const handleDelete = async () => {
     if (!selectedEvent) return;
 
@@ -327,7 +489,7 @@ export default function EventsPage() {
   };
 
   // Handle participant status change
-  const handleParticipantStatusChange = async (participantId: number, newStatus: 'approved' | 'rejected', catatan?: string) => {
+  const handleParticipantStatusChange = async (participantId: number, newStatus: 'approved' | 'rejected', rejectionReason?: string) => {
     if (!selectedEvent) return;
 
     try {
@@ -339,7 +501,7 @@ export default function EventsPage() {
         credentials: 'include',
         body: JSON.stringify({
           status: newStatus,
-          catatan: catatan || null
+          rejection_reason: newStatus === 'rejected' ? rejectionReason : null
         })
       });
 
@@ -356,6 +518,30 @@ export default function EventsPage() {
       console.error('Error updating participant status:', error);
       showAlert("danger", "Update Error", "An error occurred while updating participant status");
     }
+  };
+
+  // Handle rejection with reason
+  const handleRejectWithReason = () => {
+    if (!selectedParticipantForReject) return;
+
+    const finalReason = rejectionReason === "lainnya" ? customRejectionReason : 
+                       rejectionReasons.find(r => r.key === rejectionReason)?.label || rejectionReason;
+
+    handleParticipantStatusChange(selectedParticipantForReject.id, 'rejected', finalReason);
+    
+    // Reset modal state
+    setSelectedParticipantForReject(null);
+    setRejectionReason("");
+    setCustomRejectionReason("");
+    onRejectClose();
+  };
+
+  // Open rejection modal
+  const openRejectModal = (participant: EventParticipant) => {
+    setSelectedParticipantForReject(participant);
+    setRejectionReason("");
+    setCustomRejectionReason("");
+    onRejectOpen();
   };
 
   // Reset form
@@ -484,16 +670,59 @@ export default function EventsPage() {
           <h1 className="text-3xl font-bold text-white">Events Management</h1>
           <p className="text-gray-400 mt-2">Manage events and competitions</p>
         </div>
-        <Button
+        {activeTab === "management" && (
+          <Button
+            color="primary"
+            startContent={<PlusIcon className="w-5 h-5" />}
+            onPress={() => {
+              resetForm();
+              onCreateOpen();
+            }}
+          >
+            Create Event
+          </Button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6">
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as string)}
           color="primary"
-          startContent={<PlusIcon className="w-5 h-5" />}
-          onPress={() => {
-            resetForm();
-            onCreateOpen();
+          variant="underlined"
+          classNames={{
+            tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
+            cursor: "w-full bg-primary",
+            tab: "max-w-fit px-0 h-12",
+            tabContent: "group-data-[selected=true]:text-primary"
           }}
         >
-          Create Event
-        </Button>
+          <Tab
+            key="management"
+            title={
+              <div className="flex items-center gap-2">
+                <UsersIcon className="w-5 h-5" />
+                <span>Management</span>
+                <Chip size="sm" variant="flat" color="primary">
+                  {events.length}
+                </Chip>
+              </div>
+            }
+          />
+          <Tab
+            key="history"
+            title={
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5" />
+                <span>History Event</span>
+                <Chip size="sm" variant="flat" color="danger">
+                  {historyEvents.length}
+                </Chip>
+              </div>
+            }
+          />
+        </Tabs>
       </div>
 
       {/* Error Message */}
@@ -503,29 +732,45 @@ export default function EventsPage() {
         </Alert>
       )}
 
-      {/* Events Table */}
-      <Card className="bg-[#111020] border-2 border-[#FFD700]">
-        <CardBody className="p-0">
-          <Table
-            aria-label="Events table"
-            classNames={{
-              wrapper: "bg-transparent",
-              th: "bg-[#1a1a2e] text-[#FFD700] border-b border-[#FFD700]/20",
-              td: "border-b border-[#FFD700]/10 text-gray-300",
-              tr: "hover:bg-[#1a1a2e]/50",
-            }}
-          >
-            <TableHeader>
-              <TableColumn>EVENT NAME</TableColumn>
-              <TableColumn>TYPE</TableColumn>
-              <TableColumn>DATE</TableColumn>
-              <TableColumn>PARTICIPANTS</TableColumn>
-              <TableColumn>COST</TableColumn>
-              <TableColumn>STATUS</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent="No events found">
-              {events.map((event) => (
+      {/* Management Tab Content */}
+      {activeTab === "management" && (
+        <>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner size="lg" color="primary" />
+              <span className="ml-3 text-gray-400">Loading events...</span>
+            </div>
+          ) : (
+            <>
+              {/* Events Table */}
+              <Card className="bg-[#111020] border-2 border-[#FFD700]">
+            <CardBody className="p-0">
+              <Table
+                aria-label="Events table"
+                classNames={{
+                  wrapper: "bg-transparent",
+                  th: "bg-[#1a1a2e] text-[#FFD700] border-b border-[#FFD700]/20",
+                  td: "border-b border-[#FFD700]/10 text-gray-300",
+                  tr: "hover:bg-[#1a1a2e]/50",
+                }}
+              >
+                <TableHeader>
+                  <TableColumn>EVENT NAME</TableColumn>
+                  <TableColumn>TYPE</TableColumn>
+                  <TableColumn>DATE</TableColumn>
+                  <TableColumn>PARTICIPANTS</TableColumn>
+                  <TableColumn>COST</TableColumn>
+                  <TableColumn>STATUS</TableColumn>
+                  <TableColumn>ACTIONS</TableColumn>
+                </TableHeader>
+                <TableBody emptyContent={
+                  <div className="text-center py-8">
+                    <UsersIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">No events found</p>
+                    <p className="text-gray-500 text-sm">Create your first event to get started</p>
+                  </div>
+                }>
+                  {events.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -637,6 +882,147 @@ export default function EventsPage() {
           </Table>
         </CardBody>
       </Card>
+            </>
+          )}
+        </>
+      )}
+
+      {/* History Tab Content */}
+      {activeTab === "history" && (
+        <>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner size="lg" color="primary" />
+              <span className="ml-3 text-gray-400">Loading history...</span>
+            </div>
+          ) : (
+            <>
+              {/* History Events Table */}
+              <Card className="bg-[#111020] border-2 border-[#FFD700]">
+            <CardBody className="p-0">
+              <Table
+                aria-label="History events table"
+                classNames={{
+                  wrapper: "bg-transparent",
+                  th: "bg-[#1a1a2e] text-[#FFD700] border-b border-[#FFD700]/20",
+                  td: "border-b border-[#FFD700]/10 text-gray-300",
+                  tr: "hover:bg-[#1a1a2e]/50",
+                }}
+              >
+                <TableHeader>
+                  <TableColumn>EVENT NAME</TableColumn>
+                  <TableColumn>TYPE</TableColumn>
+                  <TableColumn>DATE</TableColumn>
+                  <TableColumn>PARTICIPANTS</TableColumn>
+                  <TableColumn>COST</TableColumn>
+                  <TableColumn>STATUS</TableColumn>
+                  <TableColumn>DELETED AT</TableColumn>
+                  <TableColumn>ACTIONS</TableColumn>
+                </TableHeader>
+                <TableBody emptyContent={
+                  <div className="text-center py-8">
+                    <CalendarIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium">No deleted events found</p>
+                    <p className="text-gray-500 text-sm">Events that have been deleted will appear here</p>
+                  </div>
+                }>
+                  {historyEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {event.gambar && (
+                            <div className="w-20 h-11 rounded-lg overflow-hidden bg-gray-800 opacity-60">
+                              <Image
+                                src={event.gambar.startsWith('/src/events/') 
+                                  ? `/api/images/events/${event.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
+                                  : event.gambar}
+                                alt={event.nama_event}
+                                width={80}
+                                height={44}
+                                className="w-full h-full object-cover grayscale"
+                                style={{ aspectRatio: '16/9' }}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-400 line-through">{event.nama_event}</p>
+                            <p className="text-sm text-gray-500">
+                              Registration: {formatDate(event.tanggal_awal)} - {formatDate(event.tanggal_akhir)}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          color="default"
+                          size="sm"
+                          variant="flat"
+                        >
+                          {event.participant_type}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-medium text-gray-400">
+                            {formatDate(event.tanggal_pelaksanaan)}
+                          </p>
+                          <p className="text-xs text-gray-500">Event Date</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-medium text-gray-400">
+                            {event.anggota_participant || 0} / {event.max_participant}
+                          </p>
+                          <p className="text-xs text-gray-500">participants</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium text-gray-400">
+                          {event.biaya > 0 ? `Rp ${event.biaya.toLocaleString()}` : 'Free'}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          color="danger"
+                          size="sm"
+                          variant="flat"
+                        >
+                          Deleted
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <p className="text-sm text-gray-400">
+                            {formatDate(event.updated_at)}
+                          </p>
+                          <p className="text-xs text-gray-500">Deleted Date</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            color="success"
+                            variant="flat"
+                            startContent={<CheckIcon className="w-4 h-4" />}
+                            onPress={() => handleRestoreEvent(event)}
+                            isLoading={isSubmitting}
+                          >
+                            Restore
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardBody>
+          </Card>
+            </>
+          )}
+        </>
+      )}
 
       {/* Create/Edit Modal */}
       <Modal
@@ -848,6 +1234,8 @@ export default function EventsPage() {
               <TableHeader>
                 <TableColumn>PARTICIPANT</TableColumn>
                 <TableColumn>TYPE</TableColumn>
+                <TableColumn>TEAM INFO</TableColumn>
+                <TableColumn>NOTE</TableColumn>
                 <TableColumn>REGISTRATION</TableColumn>
                 <TableColumn>PAYMENT PROOF</TableColumn>
                 <TableColumn>STATUS</TableColumn>
@@ -880,6 +1268,31 @@ export default function EventsPage() {
                       </Chip>
                     </TableCell>
                     <TableCell>
+                      {participant.participant_type === 'team' ? (
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-[#FFD700]">
+                            {participant.team_member_count || 0}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Anggota
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Individual</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {participant.catatan ? (
+                        <div className="max-w-xs">
+                          <p className="text-sm text-gray-300 truncate" title={participant.catatan}>
+                            {participant.catatan}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No note</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <span className="text-sm">{formatDate(participant.tanggal_daftar)}</span>
                     </TableCell>
                     <TableCell>
@@ -897,13 +1310,27 @@ export default function EventsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        color={participantStatusColorMap[participant.status]}
-                        size="sm"
-                        variant="flat"
-                      >
-                        {participant.status.toUpperCase()}
-                      </Chip>
+                      <div className="flex flex-col gap-1">
+                        <Chip
+                          color={participantStatusColorMap[participant.status]}
+                          size="sm"
+                          variant="flat"
+                        >
+                          {participant.status.toUpperCase()}
+                        </Chip>
+                        {participant.rejection_reason && (
+                          <div className="flex items-center gap-1">
+                            <div className="text-xs text-orange-400 bg-orange-500/10 px-2 py-1 rounded">
+                              Re-registration
+                            </div>
+                          </div>
+                        )}
+                        {participant.rejection_reason && (
+                          <div className="text-xs text-red-400 max-w-xs truncate" title={`Previous rejection: ${participant.rejection_reason}`}>
+                            Previous: {participant.rejection_reason}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {participant.status === 'pending' && (
@@ -922,10 +1349,15 @@ export default function EventsPage() {
                             size="sm"
                             color="danger"
                             variant="flat"
-                            onPress={() => handleParticipantStatusChange(participant.id, 'rejected')}
+                            onPress={() => openRejectModal(participant)}
                           >
                             <XMarkIcon className="w-4 h-4" />
                           </Button>
+                          {participant.rejection_reason && (
+                            <div className="text-xs text-orange-500 ml-2">
+                              Re-registration
+                            </div>
+                          )}
                         </div>
                       )}
                     </TableCell>
@@ -1042,6 +1474,77 @@ export default function EventsPage() {
         </ModalContent>
       </Modal>
 
+      {/* Rejection Modal */}
+      <Modal
+        isOpen={isRejectOpen}
+        onClose={onRejectClose}
+        size="md"
+        classNames={{
+          backdrop: "bg-black/80",
+          base: "bg-[#111020] border border-red-500",
+          header: "border-b border-red-500/20",
+          footer: "border-t border-red-500/20",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <h3 className="text-xl font-bold text-red-500">Reject Participant</h3>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-white mb-4">
+              Reject participant "{selectedParticipantForReject?.participant_type === 'team' 
+                ? selectedParticipantForReject?.teams?.nama_team
+                : selectedParticipantForReject?.users.nama_lengkap}"?
+            </p>
+            
+            <Select
+              label="Alasan Penolakan"
+              placeholder="Pilih alasan penolakan"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              classNames={{
+                label: "text-gray-300",
+                trigger: "bg-slate-800 border-slate-600 data-[hover=true]:border-[#FFD700]/50",
+                value: "text-white",
+              }}
+            >
+              {rejectionReasons.map((reason) => (
+                <SelectItem key={reason.key} value={reason.key}>
+                  {reason.label}
+                </SelectItem>
+              ))}
+            </Select>
+            
+            {rejectionReason === "lainnya" && (
+              <Textarea
+                label="Alasan Khusus"
+                placeholder="Masukkan alasan penolakan..."
+                value={customRejectionReason}
+                onChange={(e) => setCustomRejectionReason(e.target.value)}
+                minRows={3}
+                classNames={{
+                  label: "text-gray-300",
+                  input: "bg-slate-800 border-slate-600 text-white",
+                  inputWrapper: "bg-slate-800 border-slate-600 data-[hover=true]:border-[#FFD700]/50",
+                }}
+              />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button color="default" variant="light" onPress={onRejectClose}>
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onPress={handleRejectWithReason}
+              isDisabled={!rejectionReason || (rejectionReason === "lainnya" && !customRejectionReason.trim())}
+            >
+              Reject Participant
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={isDeleteOpen}
@@ -1081,3 +1584,4 @@ export default function EventsPage() {
     </div>
   );
 }
+
