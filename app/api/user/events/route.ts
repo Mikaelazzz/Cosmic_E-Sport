@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         rejection_reason,
         tanggal_daftar,
         tanggal_approve,
-        events(
+        events!inner(
           id,
           nama_event,
           gambar,
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('user_id', user?.id)
+      .neq('events.status', 'cancelled') // Filter out cancelled events
       .order('tanggal_daftar', { ascending: false });
 
     if (individualError) {
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
           rejection_reason,
           tanggal_daftar,
           tanggal_approve,
-          events(
+          events!inner(
             id,
             nama_event,
             gambar,
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
         `)
         .in('team_id', teamIds)
         .not('user_id', 'eq', user?.id) // Exclude individual registrations to avoid duplicates
+        .neq('events.status', 'cancelled') // Filter out cancelled events
         .order('tanggal_daftar', { ascending: false });
 
       if (teamEventsError) {
