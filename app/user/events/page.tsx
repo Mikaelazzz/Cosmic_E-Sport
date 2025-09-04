@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   Card,
@@ -10,12 +11,6 @@ import {
   Textarea,
   Select,
   SelectItem,
-  Table,
-  TableHeader,
-  TableBody,
-  TableColumn,
-  TableRow,
-  TableCell,
   Modal,
   ModalContent,
   ModalHeader,
@@ -86,9 +81,108 @@ const participantStatusColorMap = {
   cancelled: "default",
 } as const;
 
+// Component untuk tombol bracket
+const BracketButton: React.FC<{ event: Event }> = ({ event }) => {
+  const [hasBracket, setHasBracket] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  // Check if bracket should be accessible
+  const isBracketAccessible = () => {
+    const now = new Date();
+    const eventDateTime = new Date(event.tanggal_pelaksanaan);
+    
+    // Bracket accessible if:
+    // 1. Current date >= event date (registration closed)
+    // 2. Event status is not 'open' (registration is closed)
+    return now >= eventDateTime && event.status !== 'open';
+  };
+
+  useEffect(() => {
+    const checkBracket = async () => {
+      try {
+        const response = await fetch(`/api/events/${event.id}/bracket`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setHasBracket(result.success && result.data !== null);
+        }
+      } catch (error) {
+        console.error('Error checking bracket:', error);
+        setHasBracket(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkBracket();
+  }, [event.id]);
+
+  if (isLoading) {
+    return null;
+  }
+
+  // If bracket is not accessible yet
+  if (!isBracketAccessible()) {
+    const eventDateTime = new Date(event.tanggal_pelaksanaan);
+    const formattedDate = eventDateTime.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    return (
+      <div className="text-center p-2 bg-gray-800/50 rounded-lg">
+        <span className="text-xs text-gray-400">Bracket tersedia {formattedDate}</span>
+      </div>
+    );
+  }
+
+  if (!hasBracket) {
+    return (
+      <div className="text-center p-2 bg-gray-800/50 rounded-lg">
+        <span className="text-sm text-gray-400">Bracket belum tersedia</span>
+      </div>
+    );
+  }
+
+  // Create slug from event name and ID
+  const createEventSlug = (eventName: string, eventId: number) => {
+    const slug = eventName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with dashes
+      .replace(/-+/g, '-') // Replace multiple dashes with single dash
+      .trim();
+    return `${slug}-${eventId}`;
+  };
+
+  const eventSlug = createEventSlug(event.nama_event, event.id);
+
+  return (
+    <Button
+      color="secondary"
+      variant="flat"
+      className="w-full"
+      startContent={
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M2 3H6V7H2V3ZM18 3H22V7H18V3ZM2 17H6V21H2V17ZM18 17H22V21H18V17ZM7 4H17V6H7V4ZM7 18H17V20H7V18ZM8 8V16H10V13H14V16H16V8H14V11H10V8H8Z"/>
+        </svg>
+      }
+      onPress={() => router.push(`/user/events/${eventSlug}/bracket`)}
+    >
+      Lihat Bracket
+    </Button>
+  );
+};
+
 export default function UserEventsPage() {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<MyEventParticipant[]>([]);
   const [userTeams, setUserTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +246,31 @@ export default function UserEventsPage() {
     }
   };
 
+  // Fetch history events (completed and cancelled events)
+  const fetchHistoryEvents = async () => {
+    try {
+      const response = await fetch('/api/events/history', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setHistoryEvents(result.data || []);
+          setError("");
+        } else {
+          setError(result.message || "Failed to fetch history events");
+        }
+      } else {
+        setError("Failed to fetch history events");
+      }
+    } catch (error) {
+      console.error('Error fetching history events:', error);
+      setError("An error occurred while fetching history events");
+    }
+  };
+
   // Fetch user's teams
   const fetchUserTeams = async () => {
     try {
@@ -195,11 +314,16 @@ export default function UserEventsPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       setIsLoading(true);
-      Promise.all([fetchEvents(), fetchMyEvents(), fetchUserTeams()]).finally(() => {
-        setIsLoading(false);
-      });
+      
+      if (activeTab === "available") {
+        fetchEvents().finally(() => setIsLoading(false));
+      } else if (activeTab === "history") {
+        fetchHistoryEvents().finally(() => setIsLoading(false));
+      } else if (activeTab === "my-events") {
+        Promise.all([fetchMyEvents(), fetchUserTeams()]).finally(() => setIsLoading(false));
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, activeTab]);
 
   // Handle join event
   const handleJoinEvent = async () => {
@@ -380,6 +504,28 @@ export default function UserEventsPage() {
     });
   };
 
+  // Navigate to event detail
+  const navigateToEventDetail = (eventName: string) => {
+    const slug = encodeURIComponent(eventName);
+    router.push(`/user/events/${slug}`);
+  };
+
+  // Get event status chip for history events
+  const getEventStatusChip = (event: Event) => {
+    const now = new Date();
+    const eventDate = new Date(event.tanggal_pelaksanaan);
+    
+    if (event.status === 'cancelled') {
+      return <Chip color="danger" variant="flat" size="sm">Dibatalkan</Chip>;
+    }
+    
+    if (now > eventDate || event.status === 'completed') {
+      return <Chip color="default" variant="flat" size="sm">Berakhir</Chip>;
+    }
+
+    return <Chip color="success" variant="flat" size="sm">Aktif</Chip>;
+  };
+
   // Check if user can join team event (only team leaders can register)
   const canJoinTeamEvent = (event: Event) => {
     
@@ -474,6 +620,224 @@ export default function UserEventsPage() {
     }
   };
 
+  // Render event card (used for both available and history events)
+  const renderEventCard = (event: Event, isHistory = false) => {
+    return (
+      <Card
+        key={event.id}
+        className={`bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFE55C] transition-colors cursor-pointer ${
+          isHistory ? 'opacity-60 grayscale hover:opacity-80' : ''
+        }`}
+        isPressable
+        onPress={() => navigateToEventDetail(event.nama_event)}
+      >
+        <CardBody className="p-6">
+          {/* Event Image */}
+          {event.gambar && (
+            <div className="w-full rounded-lg overflow-hidden mb-4 bg-gray-800" style={{ aspectRatio: '16/9' }}>
+              <img
+                src={formatEventImagePath(event.id, event.gambar) || event.gambar}
+                alt={event.nama_event}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('Event image failed to load:', event.gambar);
+                  const img = e.target as HTMLImageElement;
+                  // Try original path as fallback
+                  if (img.src !== event.gambar && event.gambar) {
+                    img.src = event.gambar;
+                  } else {
+                    img.style.display = 'none';
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Event Header */}
+          <div className="mb-4">
+            <h2 className={`text-xl font-bold text-[#FFD700] mb-2 ${isHistory ? 'line-through' : ''}`}>
+              {event.nama_event}
+            </h2>
+            <div className="flex items-center gap-2">
+              {isHistory ? (
+                getEventStatusChip(event)
+              ) : (
+                <Chip
+                  color={
+                    event.status in statusColorMap
+                      ? statusColorMap[event.status as keyof typeof statusColorMap]
+                      : "default"
+                  }
+                  size="sm"
+                  variant="flat"
+                >
+                  {event.status.toUpperCase()}
+                </Chip>
+              )}
+              <Chip 
+                color={event.participant_type === 'team' ? "secondary" : "primary"} 
+                size="sm" 
+                variant="bordered"
+              >
+                {event.participant_type.toUpperCase()}
+              </Chip>
+            </div>
+          </div>
+
+          {/* Event Details */}
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-[#FFD700]" />
+              <span className="text-gray-300 text-sm">{formatDate(event.tanggal_pelaksanaan)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ClockIcon className="w-4 h-4 text-[#FFD700]" />
+              <span className="text-gray-300 text-sm">
+                Registration: {formatDate(event.tanggal_awal)} - {formatDate(event.tanggal_akhir)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <UsersIcon className="w-4 h-4 text-[#FFD700]" />
+              <Badge color="primary" variant="flat">
+                {event.anggota_participant}/{event.max_participant}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <CurrencyDollarIcon className="w-4 h-4 text-[#FFD700]" />
+              <span className="text-gray-300 text-sm">
+                {event.biaya > 0 ? formatCurrency(event.biaya) : "Free"}
+              </span>
+            </div>
+          </div>
+
+          {/* Description */}
+          {event.deskripsi && (
+            <p className="text-gray-300 text-sm mb-4 line-clamp-3">{event.deskripsi}</p>
+          )}
+
+          {/* Action Button */}
+          <div className="space-y-2">
+            {/* Bracket Button - Show if bracket exists */}
+            <BracketButton event={event} />
+            
+            {!isHistory ? (
+              // Available events - existing logic
+              event.participant_type === 'team' ? (
+                // Team event logic
+                canJoinTeamEvent(event) ? (
+                  <Button
+                    color={isTeamRegistered(event.id) ? "default" : "primary"}
+                    variant={isTeamRegistered(event.id) ? "flat" : "solid"}
+                    className="w-full"
+                    onPress={() => handleJoinClick(event)}
+                    isDisabled={!isRegistrationOpen(event) || isTeamRegistered(event.id)}
+                  >
+                    {isTeamRegistered(event.id) 
+                      ? "Team Already Registered" 
+                      : !isRegistrationOpen(event) 
+                        ? "Registration Closed" 
+                        : "Register Team"}
+                  </Button>
+                ) : isTeamRegistered(event.id) ? (
+                  // Member of team that's already registered
+                  <Button
+                    color="success"
+                    variant="flat"
+                    className="w-full"
+                    isDisabled
+                  >
+                    Registered Leader Team
+                  </Button>
+                ) : (
+                  <div className="text-center">
+                    <Button
+                      color="warning"
+                      variant="flat"
+                      className="w-full"
+                      isDisabled
+                    >
+                      Only Team Leaders Can Register
+                    </Button>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Ask your team leader to register this team event
+                    </p>
+                  </div>
+                )
+              ) : (
+                // Individual event logic
+                (() => {
+                  const regStatus = getRegistrationStatus(event.id);
+                  const canRegister = canRegisterForEvent(event);
+                  const hasPending = hasPendingRegistration(event.id);
+                  
+                  if (regStatus?.status === 'approved') {
+                    return (
+                      <Button
+                        color="success"
+                        variant="flat"
+                        className="w-full"
+                        isDisabled
+                      >
+                        Registered
+                      </Button>
+                    );
+                  } else if (hasPending) {
+                    return (
+                      <Button
+                        color="warning"
+                        variant="flat"
+                        className="w-full"
+                        isDisabled
+                      >
+                        ⏳ Pending Review
+                        {regStatus?.rejection_reason && (
+                          <div className="text-xs mt-1">
+                            Re-review: {regStatus.rejection_reason}
+                          </div>
+                        )}
+                      </Button>
+                    );
+                  } else if (!isRegistrationOpen(event)) {
+                    return (
+                      <Button
+                        color="default"
+                        variant="flat"
+                        className="w-full"
+                        isDisabled
+                      >
+                        Registration Closed
+                      </Button>
+                    );
+                  } else {
+                    return (
+                      <Button
+                        color="primary"
+                        variant="solid"
+                        className="w-full"
+                        onPress={() => handleJoinClick(event)}
+                      >
+                        Join Event
+                      </Button>
+                    );
+                  }
+                })()
+              )
+            ) : (
+              // History events - disabled button
+              <Button
+                variant="bordered"
+                className="w-full border-gray-600 text-gray-400 cursor-not-allowed"
+                isDisabled
+              >
+                {event.status === 'cancelled' ? 'Event Dibatalkan' : 'Event Berakhir'}
+              </Button>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -532,322 +896,221 @@ export default function UserEventsPage() {
             cursor: "bg-[#FFD700]",
           }}
         >
-          <Tab key="available" title="Available Events" />
-          <Tab key="my-events" title="My Events" />
+          <Tab 
+            key="available" 
+            title={
+              <div className="flex items-center gap-2">
+                <span>Available Events</span>
+                <Chip size="sm" color="success" variant="flat">
+                  {events.length}
+                </Chip>
+              </div>
+            } 
+          />
+          <Tab 
+            key="history" 
+            title={
+              <div className="flex items-center gap-2">
+                <span>History Event</span>
+                <Chip size="sm" color="default" variant="flat">
+                  {historyEvents.length}
+                </Chip>
+              </div>
+            } 
+          />
+          <Tab 
+            key="my-events" 
+            title={
+              <div className="flex items-center gap-2">
+                <span>My Events</span>
+                <Chip size="sm" color="primary" variant="flat">
+                  {myEvents.length}
+                </Chip>
+              </div>
+            } 
+          />
         </Tabs>
       </div>
 
       {/* Available Events Tab */}
       {activeTab === "available" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <Card
-              key={event.id}
-              className="bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFE55C] transition-colors"
-            >
-              <CardBody className="p-6">
-                {/* Event Image */}
-                {event.gambar && (
-                  <div className="w-full rounded-lg overflow-hidden mb-4 bg-gray-800" style={{ aspectRatio: '16/9' }}>
-                    <img
-                      src={formatEventImagePath(event.id, event.gambar) || event.gambar}
-                      alt={event.nama_event}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Event image failed to load:', event.gambar);
-                        const img = e.target as HTMLImageElement;
-                        // Try original path as fallback
-                        if (img.src !== event.gambar && event.gambar) {
-                          img.src = event.gambar;
-                        } else {
-                          img.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Event Header */}
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-[#FFD700] mb-2">{event.nama_event}</h2>
-                  <div className="flex items-center gap-2">
-                    <Chip color={statusColorMap[event.status]} size="sm" variant="flat">
-                      {event.status.toUpperCase()}
-                    </Chip>
-                    <Chip 
-                      color={event.participant_type === 'team' ? "secondary" : "primary"} 
-                      size="sm" 
-                      variant="bordered"
-                    >
-                      {event.participant_type.toUpperCase()}
-                    </Chip>
-                  </div>
+        <>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Spinner size="lg" color="warning" />
+              <span className="ml-3 text-gray-300">Loading events...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.length > 0 ? (
+                events.map((event) => renderEventCard(event))
+              ) : (
+                <div className="col-span-full text-center py-20">
+                  <CalendarIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 text-lg">Tidak ada event tersedia saat ini</p>
+                  <p className="text-gray-500 text-sm mt-2">Event baru akan segera hadir!</p>
                 </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
-                {/* Event Details */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-[#FFD700]" />
-                    <span className="text-gray-300 text-sm">{formatDate(event.tanggal_pelaksanaan)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="w-4 h-4 text-[#FFD700]" />
-                    <span className="text-gray-300 text-sm">
-                      Registration: {formatDate(event.tanggal_awal)} - {formatDate(event.tanggal_akhir)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UsersIcon className="w-4 h-4 text-[#FFD700]" />
-                    <Badge color="primary" variant="flat">
-                      {event.anggota_participant}/{event.max_participant}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CurrencyDollarIcon className="w-4 h-4 text-[#FFD700]" />
-                    <span className="text-gray-300 text-sm">
-                      {event.biaya > 0 ? formatCurrency(event.biaya) : "Free"}
-                    </span>
-                  </div>
+      {/* History Events Tab */}
+      {activeTab === "history" && (
+        <>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Spinner size="lg" color="warning" />
+              <span className="ml-3 text-gray-300">Loading history...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {historyEvents.length > 0 ? (
+                historyEvents.map((event) => renderEventCard(event, true))
+              ) : (
+                <div className="col-span-full text-center py-20">
+                  <ClockIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 text-lg">Belum ada history event</p>
+                  <p className="text-gray-500 text-sm mt-2">Event yang telah berakhir atau dibatalkan akan muncul di sini</p>
                 </div>
-
-                {/* Description */}
-                {event.deskripsi && (
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-3">{event.deskripsi}</p>
-                )}
-
-                {/* Action Button */}
-                <div className="space-y-2">
-                  
-                  {event.participant_type === 'team' ? (
-                    // Team event logic
-                    canJoinTeamEvent(event) ? (
-                      <Button
-                        color={isTeamRegistered(event.id) ? "default" : "primary"}
-                        variant={isTeamRegistered(event.id) ? "flat" : "solid"}
-                        className="w-full"
-                        onPress={() => handleJoinClick(event)}
-                        isDisabled={!isRegistrationOpen(event) || isTeamRegistered(event.id)}
-                      >
-                        {isTeamRegistered(event.id) 
-                          ? "Team Already Registered" 
-                          : !isRegistrationOpen(event) 
-                            ? "Registration Closed" 
-                            : "Register Team"}
-                      </Button>
-                    ) : isTeamRegistered(event.id) ? (
-                      // Member of team that's already registered
-                      <Button
-                        color="success"
-                        variant="flat"
-                        className="w-full"
-                        isDisabled
-                      >
-                        Registered Leader Team
-                      </Button>
-                    ) : (
-                      <div className="text-center">
-                        <Button
-                          color="warning"
-                          variant="flat"
-                          className="w-full"
-                          isDisabled
-                        >
-                          Only Team Leaders Can Register
-                        </Button>
-                        <p className="text-sm text-gray-400 mt-1">
-                          Ask your team leader to register this team event
-                        </p>
-                      </div>
-                    )
-                  ) : (
-                    // Individual event logic
-                    (() => {
-                      const regStatus = getRegistrationStatus(event.id);
-                      const canRegister = canRegisterForEvent(event);
-                      const hasPending = hasPendingRegistration(event.id);
-                      
-                      if (regStatus?.status === 'approved') {
-                        return (
-                          <Button
-                            color="success"
-                            variant="flat"
-                            className="w-full"
-                            isDisabled
-                          >
-                            Registered
-                          </Button>
-                        );
-                      } else if (hasPending) {
-                        return (
-                          <Button
-                            color="warning"
-                            variant="flat"
-                            className="w-full"
-                            isDisabled
-                          >
-                            ⏳ Pending Review
-                            {regStatus?.rejection_reason && (
-                              <div className="text-xs mt-1">
-                                Re-review: {regStatus.rejection_reason}
-                              </div>
-                            )}
-                          </Button>
-                        );
-                      } else if (!isRegistrationOpen(event)) {
-                        return (
-                          <Button
-                            color="default"
-                            variant="flat"
-                            className="w-full"
-                            isDisabled
-                          >
-                            Registration Closed
-                          </Button>
-                        );
-                      } else {
-                        return (
-                          <Button
-                            color="primary"
-                            variant="solid"
-                            className="w-full"
-                            onPress={() => handleJoinClick(event)}
-                          >
-                            Join Event
-                          </Button>
-                        );
-                      }
-                    })()
-                  )}
-                </div>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* My Events Tab */}
       {activeTab === "my-events" && (
-        <Card className="bg-[#111020] border-2 border-[#FFD700]">
-          <CardBody className="p-0">
-            <Table
-              aria-label="My events table"
-              classNames={{
-                wrapper: "bg-transparent",
-                th: "bg-[#1a1a2e] text-[#FFD700] border-b border-[#FFD700]/20",
-                td: "border-b border-[#FFD700]/10 text-gray-300",
-                tr: "hover:bg-[#1a1a2e]/50",
-              }}
-            >
-              <TableHeader>
-                <TableColumn>EVENT</TableColumn>
-                <TableColumn>EVENT DATE</TableColumn>
-                <TableColumn>REGISTRATION</TableColumn>
-                <TableColumn>STATUS</TableColumn>
-                <TableColumn>PAYMENT</TableColumn>
-              </TableHeader>
-              <TableBody emptyContent="No events registered">
-                {myEvents.map((myEvent) => (
-                  <TableRow key={myEvent.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {myEvent.events.gambar && (
-                          <img
-                            src={formatEventImagePath(myEvent.events.id, myEvent.events.gambar) || myEvent.events.gambar}
-                            alt={myEvent.events.nama_event}
-                            width={40}
-                            height={40}
-                            className="rounded-lg object-cover"
-                            onError={(e) => {
-                              console.error('My event image failed to load:', myEvent.events.gambar);
-                              const img = e.target as HTMLImageElement;
-                              // Try original path as fallback
-                              if (img.src !== myEvent.events.gambar && myEvent.events.gambar) {
-                                img.src = myEvent.events.gambar;
-                              } else {
-                                img.style.display = 'none';
-                              }
-                            }}
-                          />
-                        )}
-                        <div>
-                          <p className="font-medium text-white">{myEvent.events.nama_event}</p>
-                          <p className="text-sm text-gray-400">
-                            {formatCurrency(myEvent.events.biaya)}
-                          </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {myEvents.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-400">No events registered</p>
+            </div>
+          ) : (
+            myEvents.map((myEvent) => (
+              <Card 
+                key={myEvent.id} 
+                className="bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFD700]/80 transition-all duration-300 cursor-pointer"
+                isPressable
+                onPress={() => navigateToEventDetail(myEvent.events.nama_event)}
+              >
+                <CardBody className="p-4">
+                  {/* Event Image */}
+                  <div className="relative mb-4">
+                    {myEvent.events.gambar ? (
+                      <img
+                        src={formatEventImagePath(myEvent.events.id, myEvent.events.gambar) || myEvent.events.gambar}
+                        alt={myEvent.events.nama_event}
+                        className="w-full h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          console.error('My event image failed to load:', myEvent.events.gambar);
+                          const img = e.target as HTMLImageElement;
+                          if (img.src !== myEvent.events.gambar && myEvent.events.gambar) {
+                            img.src = myEvent.events.gambar;
+                          } else {
+                            img.style.display = 'none';
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center">
+                        <span className="text-gray-400">No image</span>
+                      </div>
+                    )}
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-2 right-2">
+                      <Chip
+                        color={participantStatusColorMap[myEvent.status]}
+                        size="sm"
+                        variant="flat"
+                        className="font-medium"
+                      >
+                        {myEvent.status.toUpperCase()}
+                      </Chip>
+                    </div>
+                  </div>
+
+                  {/* Event Info */}
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-[#FFD700] mb-1">
+                        {myEvent.events.nama_event}
+                      </h3>
+                      <p className="text-sm text-gray-400">
+                        {formatCurrency(myEvent.events.biaya)}
+                      </p>
+                    </div>
+
+                    {/* Event Date */}
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm">{formatDate(myEvent.events.tanggal_pelaksanaan)}</span>
+                    </div>
+
+                    {/* Registration Date */}
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs">Registered: {formatDate(myEvent.tanggal_daftar)}</span>
+                    </div>
+
+                    {/* Rejection Reason */}
+                    {myEvent.rejection_reason && myEvent.status === 'pending' && (
+                      <div className="space-y-1">
+                        <div className="text-xs text-orange-400 bg-orange-500/10 px-2 py-1 rounded">
+                          Re-review: {myEvent.rejection_reason}
+                        </div>
+                        <div className="text-xs text-blue-400">
+                          Sedang ditinjau ulang
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span>{formatDate(myEvent.events.tanggal_pelaksanaan)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{formatDate(myEvent.tanggal_daftar)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Chip
-                          color={participantStatusColorMap[myEvent.status]}
-                          size="sm"
-                          variant="flat"
-                        >
-                          {myEvent.status.toUpperCase()}
-                        </Chip>
-                        {myEvent.rejection_reason && myEvent.status === 'pending' && (
-                          <div className="text-xs text-orange-400 bg-orange-500/10 px-2 py-1 rounded max-w-xs">
-                            Re-review: {myEvent.rejection_reason}
-                          </div>
-                        )}
-                        {myEvent.rejection_reason && myEvent.status === 'pending' && (
-                          <div className="text-xs text-blue-400">
-                            Sedang ditinjau ulang
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {myEvent.bukti_pembayaran ? (
-                          <div className="flex items-center gap-2">
-                            <img 
-                              src={myEvent.bukti_pembayaran} 
-                              alt="Payment proof"
-                              className="w-8 h-8 object-cover rounded border border-green-500 cursor-pointer hover:scale-110 transition-transform"
-                              onClick={() => handleImagePreview(myEvent.bukti_pembayaran!)}
-                              onError={(e) => {
-                                console.error('Payment proof image failed to load:', myEvent.bukti_pembayaran);
-                                const img = e.target as HTMLImageElement;
-                                img.style.display = 'none';
-                                // Show fallback chip
-                                const parentDiv = img.parentNode as HTMLElement;
-                                if (parentDiv && !parentDiv.querySelector('.fallback-chip')) {
-                                  const chip = document.createElement('span');
-                                  chip.className = 'fallback-chip inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
-                                  chip.textContent = 'Submitted';
-                                  parentDiv.appendChild(chip);
-                                }
-                              }}
-                            />
-                            <Chip color="success" size="sm" variant="flat">
-                              Submitted
+                    )}
+
+                    {/* Payment Status */}
+                    <div className="pt-2 border-t border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Payment:</span>
+                        <div className="flex items-center gap-2">
+                          {myEvent.bukti_pembayaran ? (
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={myEvent.bukti_pembayaran} 
+                                alt="Payment proof"
+                                className="w-6 h-6 object-cover rounded border border-green-500 cursor-pointer hover:scale-110 transition-transform"
+                                onClick={() => handleImagePreview(myEvent.bukti_pembayaran!)}
+                                onError={(e) => {
+                                  console.error('Payment proof image failed to load:', myEvent.bukti_pembayaran);
+                                  const img = e.target as HTMLImageElement;
+                                  img.style.display = 'none';
+                                }}
+                              />
+                              <Chip color="success" size="sm" variant="flat">
+                                Submitted
+                              </Chip>
+                            </div>
+                          ) : myEvent.events.biaya > 0 ? (
+                            <Chip color="warning" size="sm" variant="flat">
+                              Pending
                             </Chip>
-                          </div>
-                        ) : myEvent.events.biaya > 0 ? (
-                          <Chip color="warning" size="sm" variant="flat">
-                            Pending
-                          </Chip>
-                        ) : (
-                          <Chip color="default" size="sm" variant="flat">
-                            Free Event
-                          </Chip>
-                        )}
+                          ) : (
+                            <Chip color="default" size="sm" variant="flat">
+                              Free Event
+                            </Chip>
+                          )}
+                        </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardBody>
-        </Card>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            ))
+          )}
+        </div>
       )}
 
       {/* Join Event Modal */}
