@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import EventImageUpload from "@/components/EventImageUpload";
 import {
@@ -41,6 +42,8 @@ import {
   CurrencyDollarIcon,
   CheckIcon,
   XMarkIcon,
+  TrophyIcon,
+  PlayIcon,
 } from "@heroicons/react/24/outline";
 
 interface Event {
@@ -56,7 +59,7 @@ interface Event {
   max_participant: number;
   biaya: number;
   participant_type: 'individual' | 'team';
-  status: 'open' | 'closed' | 'cancelled' | 'completed';
+  status: 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -105,14 +108,15 @@ interface EventFormData {
   max_participant: number;
   biaya: number;
   participant_type: 'individual' | 'team';
-  status: 'open' | 'closed' | 'cancelled' | 'completed';
+  status: 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
 }
 
 const statusColorMap = {
   open: "success",
   closed: "warning", 
+  ongoing: "primary",
+  completed: "secondary",
   cancelled: "danger",
-  completed: "primary",
 } as const;
 
 const participantStatusColorMap = {
@@ -144,7 +148,8 @@ const participantTypeOptions = [
 ];
 
 export default function EventsPage() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   
   const [events, setEvents] = useState<Event[]>([]);
   const [historyEvents, setHistoryEvents] = useState<Event[]>([]);
@@ -199,6 +204,43 @@ export default function EventsPage() {
     setTimeout(() => setAlertVisible(false), 5000);
   };
 
+  // Auto update event status based on date
+  const autoUpdateEventStatus = async (events: Event[]) => {
+    const now = new Date();
+    const eventsToUpdate: Event[] = [];
+
+    events.forEach(event => {
+      const eventDate = new Date(event.tanggal_pelaksanaan);
+      
+      // If event date has passed and status is still 'open', change to 'closed'
+      if (now >= eventDate && event.status === 'open') {
+        eventsToUpdate.push(event);
+      }
+    });
+
+    // Update events that need status change
+    for (const event of eventsToUpdate) {
+      try {
+        await fetch(`/api/events/${event.id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ status: 'closed' })
+        });
+      } catch (error) {
+        console.error('Error auto-updating event status:', error);
+      }
+    }
+
+    // If any events were updated, refresh the data
+    if (eventsToUpdate.length > 0) {
+      return true; // Indicates refresh needed
+    }
+    return false;
+  };
+
   // Fetch events
   const fetchEvents = async () => {
     try {
@@ -211,10 +253,28 @@ export default function EventsPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          // For moderator view, we can show all events except cancelled ones (soft deleted)
-          // If you want to show cancelled events for audit, remove this filter
-          const activeEvents = result.data.filter((event: Event) => event.status !== 'cancelled');
-          setEvents(activeEvents);
+          // Auto-update event status if needed
+          const needsRefresh = await autoUpdateEventStatus(result.data);
+          
+          if (needsRefresh) {
+            // Refresh data after auto-update
+            const refreshResponse = await fetch('/api/events/moderator', {
+              method: 'GET',
+              credentials: 'include'
+            });
+            
+            if (refreshResponse.ok) {
+              const refreshResult = await refreshResponse.json();
+              if (refreshResult.success) {
+                const activeEvents = refreshResult.data.filter((event: Event) => event.status !== 'cancelled');
+                setEvents(activeEvents);
+              }
+            }
+          } else {
+            // For moderator view, we can show all events except cancelled ones (soft deleted)
+            const activeEvents = result.data.filter((event: Event) => event.status !== 'cancelled');
+            setEvents(activeEvents);
+          }
           setError("");
         } else {
           setError(result.message || "Failed to fetch events");
@@ -596,10 +656,98 @@ export default function EventsPage() {
     onParticipantsOpen();
   };
 
+  // Handle bracket view
+  const handleViewBracket = (event: Event) => {
+    router.push(`/moderator/events/${event.id}/bracket`);
+  };
+
   // Handle delete confirmation
   const handleDeleteConfirm = (event: Event) => {
     setSelectedEvent(event);
     onDeleteOpen();
+  };
+
+  // Handle start event (workaround: use 'closed' status for ongoing events)
+  const handleStartEvent = async (event: Event) => {
+    try {
+      // For now, we'll use 'closed' status to represent ongoing events
+      // until database constraint is fixed
+      const response = await fetch(`/api/events/${event.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'ongoing' // Try 'ongoing' first
+        }),
+      });
+
+      if (!response.ok) {
+        // If 'ongoing' fails due to constraint, try 'closed' as workaround
+        const fallbackResponse = await fetch(`/api/events/${event.id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            status: 'closed'
+          }),
+        });
+
+        if (fallbackResponse.ok) {
+          await fetchEvents();
+          showAlert('warning', 'Event Dimulai!', 'Event berhasil dimulai (menggunakan status sementara)');
+          return;
+        } else {
+          showAlert('danger', 'Gagal!', 'Gagal memulai event');
+          return;
+        }
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        await fetchEvents();
+        showAlert('success', 'Berhasil!', 'Event berhasil dimulai');
+      } else {
+        showAlert('danger', 'Gagal!', result.message || 'Gagal memulai event');
+      }
+    } catch (error) {
+      console.error('Error starting event:', error);
+      showAlert('danger', 'Error!', 'Terjadi kesalahan saat memulai event');
+    }
+  };
+
+  // Handle complete event
+  const handleCompleteEvent = async (event: Event) => {
+    try {
+      const response = await fetch(`/api/events/${event.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'completed'
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          await fetchEvents(); // Refresh events list
+          showAlert('success', 'Berhasil!', 'Event berhasil diselesaikan');
+        } else {
+          showAlert('danger', 'Gagal!', result.message || 'Gagal menyelesaikan event');
+        }
+      } else {
+        showAlert('danger', 'Gagal!', 'Gagal menyelesaikan event');
+      }
+    } catch (error) {
+      console.error('Error completing event:', error);
+      showAlert('danger', 'Error!', 'Terjadi kesalahan saat menyelesaikan event');
+    }
   };
 
   // Format currency
@@ -620,7 +768,7 @@ export default function EventsPage() {
     });
   };
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Spinner size="lg" />
@@ -861,6 +1009,43 @@ export default function EventsPage() {
                         isIconOnly
                         size="sm"
                         variant="light"
+                        color="warning"
+                        onPress={() => handleViewBracket(event)}
+                        className="text-[#FFD700] hover:text-[#FFE55C]"
+                      >
+                        <TrophyIcon className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Start/Stop Event Buttons */}
+                      {event.status === 'closed' && (
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          color="success"
+                          variant="flat"
+                          onPress={() => handleStartEvent(event)}
+                          title="Start Event"
+                        >
+                          <PlayIcon className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {event.status === 'ongoing' && (
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          color="secondary"
+                          variant="flat"
+                          onPress={() => handleCompleteEvent(event)}
+                          title="Complete Event"
+                        >
+                          <CheckIcon className="w-4 h-4" />
+                        </Button>
+                      )}
+                      
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
                         onPress={() => handleEdit(event)}
                       >
                         <PencilIcon className="w-4 h-4" />
@@ -1069,7 +1254,7 @@ export default function EventsPage() {
                 classNames={{ value: "text-white" }}
               >
                 {participantTypeOptions.map((type) => (
-                  <SelectItem key={type.key} value={type.key}>
+                  <SelectItem key={type.key}>
                     {type.label}
                   </SelectItem>
                 ))}
@@ -1153,7 +1338,7 @@ export default function EventsPage() {
                   classNames={{ value: "text-white" }}
                 >
                   {statusOptions.map((status) => (
-                    <SelectItem key={status.key} value={status.key}>
+                    <SelectItem key={status.key}>
                       {status.label}
                     </SelectItem>
                   ))}
@@ -1254,7 +1439,7 @@ export default function EventsPage() {
                         <p className="text-sm text-gray-400">
                           {participant.participant_type === 'team' 
                             ? `Leader: ${participant.users.nama_lengkap}` 
-                            : participant.users.email}
+                            : participant.users.nim}
                         </p>
                       </div>
                     </TableCell>
@@ -1466,7 +1651,73 @@ export default function EventsPage() {
               </>
             )}
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter className="flex justify-between">
+            <div className="flex gap-2">
+              {/* Close Registration Button - only show if event is open and event date has passed */}
+              {selectedEvent?.status === 'open' && new Date() >= new Date(selectedEvent.tanggal_pelaksanaan) && (
+                <Button
+                  color="warning"
+                  variant="flat"
+                  startContent={<XMarkIcon className="w-4 h-4" />}
+                  onPress={async () => {
+                    try {
+                      const response = await fetch(`/api/events/${selectedEvent.id}/status`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ status: 'closed' })
+                      });
+
+                      if (response.ok) {
+                        await fetchEvents();
+                        showAlert('success', 'Berhasil!', 'Pendaftaran telah ditutup');
+                        onViewClose();
+                      } else {
+                        showAlert('danger', 'Gagal!', 'Gagal menutup pendaftaran');
+                      }
+                    } catch (error) {
+                      console.error('Error closing registration:', error);
+                      showAlert('danger', 'Error!', 'Terjadi kesalahan');
+                    }
+                  }}
+                >
+                  Tutup Pendaftaran
+                </Button>
+              )}
+              
+              {/* Start Event Button - only show if event is closed */}
+              {selectedEvent?.status === 'closed' && (
+                <Button
+                  color="success"
+                  variant="flat"
+                  startContent={<PlayIcon className="w-4 h-4" />}
+                  onPress={() => {
+                    handleStartEvent(selectedEvent);
+                    onViewClose();
+                  }}
+                >
+                  Mulai Event
+                </Button>
+              )}
+              
+              {/* Complete Event Button - only show if event is ongoing */}
+              {selectedEvent?.status === 'ongoing' && (
+                <Button
+                  color="warning"
+                  variant="flat"
+                  startContent={<CheckIcon className="w-4 h-4" />}
+                  onPress={() => {
+                    handleCompleteEvent(selectedEvent);
+                    onViewClose();
+                  }}
+                >
+                  Akhiri Event
+                </Button>
+              )}
+            </div>
+            
             <Button color="default" variant="light" onPress={onViewClose}>
               Close
             </Button>
@@ -1509,7 +1760,7 @@ export default function EventsPage() {
               }}
             >
               {rejectionReasons.map((reason) => (
-                <SelectItem key={reason.key} value={reason.key}>
+                <SelectItem key={reason.key}>
                   {reason.label}
                 </SelectItem>
               ))}
