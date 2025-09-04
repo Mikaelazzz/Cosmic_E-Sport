@@ -177,7 +177,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Ce.png" 
           alt="Lwie Jaya" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -185,7 +185,7 @@ export default function Home() {
       
       {/* Name */}
       <h3 className="text-center text-white text-lg font-[orbitron] font-bold">
-        Vincentius
+        Vincent
       </h3>
     </div>
 
@@ -202,7 +202,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Qu.png" 
           alt="Member 2" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -227,7 +227,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Re.png" 
           alt="Member 3" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -252,7 +252,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Pa.png" 
           alt="Lwie Jaya" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -277,7 +277,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/St.png" 
           alt="Member 2" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -302,7 +302,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Ar.png" 
           alt="Member 3" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -327,7 +327,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Ni.png" 
           alt="Member 2" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
@@ -352,7 +352,7 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4">
         <img 
-          src="/pengurus/tes.jpg" 
+          src="/pengurus/Ho.png" 
           alt="Member 3" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
