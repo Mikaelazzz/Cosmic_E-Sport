@@ -573,27 +573,20 @@ export default function UsersPage() {
       case "name":
         return (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-300">
-              {user.profile_image || (user.nim && user.role) ? (
-                <img 
-                  src={getUserAvatarUrl(user, 32)}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/logo.png';
-                  }}
-                />
-              ) : (
-                <img 
-                  src="/logo.png"
-                  alt="COSMIC Logo"
-                  className="w-full h-full object-cover"
-                />
-              )}
-            </div>
+            <div className="w-12 h-12 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    // key={avatarKey} 
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
             <div className="flex flex-col">
               <p className="text-sm font-medium">{user.nama_lengkap}</p>
-              <p className="text-xs text-default-500">{user.email}</p>
+              {/* <p className="text-xs text-default-500">{user.email}</p> */}
             </div>
           </div>
         );
