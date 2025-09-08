@@ -3,13 +3,13 @@ import * as React from "react";
 import { IconSvgProps } from "@/types";
 
 export const Logo: React.FC<React.ImgHTMLAttributes<HTMLImageElement> & { size?: number }> = ({
-  size = 64,
+  size = 48,
   width,
   height,
   ...props
 }) => (
   <img
-    src="/logo.png"
+    src="/logc.png"
     alt="Logo"
     width={width ?? size}
     height={height ?? size}
