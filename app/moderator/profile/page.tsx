@@ -33,7 +33,7 @@ const EyeIcon = ({ isVisible, onClick }: { isVisible: boolean; onClick: () => vo
   </button>
 );
 
-// CropEditor (bisa dipindah ke /components/CropEditor jika digunakan di banyak tempat)
+// Crop Editor Component dengan aspect ratio 1:1
 const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   imageSrc: string;
   onCrop: (croppedImageBlob: Blob) => void;
@@ -42,25 +42,52 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cropArea, setCropArea] = useState({ x: 50, y: 50, size: 200 });
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageDimensions, setImageDimensions] = useState({ width: 400, height: 400 });
+  const [displayDimensions, setDisplayDimensions] = useState({ width: 400, height: 400 });
 
   const handleImageLoad = () => {
     const img = imageRef.current;
-    if (!img) return;
+    const container = containerRef.current;
+    if (!img || !container) return;
 
-    const containerWidth = 400;
-    const containerHeight = 400;
-    const minSize = Math.min(containerWidth, containerHeight) * 0.5;
-
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    // Calculate display dimensions while maintaining aspect ratio
+    const maxContainerSize = 500; // Increased for better visibility
+    const aspectRatio = naturalWidth / naturalHeight;
+    
+    let displayWidth, displayHeight;
+    
+    if (aspectRatio > 1) {
+      // Landscape image
+      displayWidth = Math.min(maxContainerSize, naturalWidth);
+      displayHeight = displayWidth / aspectRatio;
+    } else {
+      // Portrait or square image
+      displayHeight = Math.min(maxContainerSize, naturalHeight);
+      displayWidth = displayHeight * aspectRatio;
+    }
+    
+    setImageDimensions({ width: naturalWidth, height: naturalHeight });
+    setDisplayDimensions({ width: displayWidth, height: displayHeight });
+    
+    // Set initial crop area (square in the center with maximum possible size)
+    const minDimension = Math.min(displayWidth, displayHeight);
+    const maxCropSize = minDimension * 0.8; // 80% of the smaller dimension
+    
     setCropArea({
-      x: (containerWidth - minSize) / 2,
-      y: (containerHeight - minSize) / 2,
-      size: minSize,
+      x: (displayWidth - maxCropSize) / 2,
+      y: (displayHeight - maxCropSize) / 2,
+      width: maxCropSize,
+      height: maxCropSize, // Always square (1:1 aspect ratio)
     });
+    
     setImageLoaded(true);
   };
 
@@ -95,8 +122,9 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
       const newX = e.clientX - rect.left - dragStart.x;
       const newY = e.clientY - rect.top - dragStart.y;
 
-      const maxX = 400 - cropArea.size;
-      const maxY = 400 - cropArea.size;
+      // Constrain crop area within image boundaries
+      const maxX = displayDimensions.width - cropArea.width;
+      const maxY = displayDimensions.height - cropArea.height;
 
       setCropArea(prev => ({
         ...prev,
@@ -106,15 +134,35 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     } else if (isResizing) {
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
+      
+      // Use the maximum delta to maintain square aspect ratio
       const delta = Math.max(deltaX, deltaY);
-
-      const newSize = Math.max(50, Math.min(300, cropArea.size + delta));
-
-      const sizeDiff = newSize - cropArea.size;
-      const newX = Math.max(0, Math.min(400 - newSize, cropArea.x - sizeDiff / 2));
-      const newY = Math.max(0, Math.min(400 - newSize, cropArea.y - sizeDiff / 2));
-
-      setCropArea({ x: newX, y: newY, size: newSize });
+      
+      // Calculate new size (always square)
+      const currentSize = cropArea.width; // Since it's square, width = height
+      const newSize = Math.max(50, currentSize + delta);
+      
+      // Maximum size is limited by the smallest image dimension and boundaries
+      const maxSize = Math.min(
+        displayDimensions.width - cropArea.x,
+        displayDimensions.height - cropArea.y,
+        displayDimensions.width,
+        displayDimensions.height
+      );
+      
+      const finalSize = Math.min(newSize, maxSize);
+      
+      // Adjust position to keep crop area within bounds
+      const maxX = displayDimensions.width - finalSize;
+      const maxY = displayDimensions.height - finalSize;
+      
+      setCropArea(prev => ({
+        x: Math.max(0, Math.min(maxX, prev.x)),
+        y: Math.max(0, Math.min(maxY, prev.y)),
+        width: finalSize,
+        height: finalSize, // Keep 1:1 aspect ratio
+      }));
+      
       setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
@@ -132,19 +180,30 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = 400;
-    canvas.height = 400;
+    // Set canvas size to square (1:1 aspect ratio)
+    const outputSize = 400;
+    canvas.width = outputSize;
+    canvas.height = outputSize;
 
-    const scaleX = img.naturalWidth / 400;
-    const scaleY = img.naturalHeight / 400;
+    // Calculate scaling factors from display to natural image size
+    const scaleX = imageDimensions.width / displayDimensions.width;
+    const scaleY = imageDimensions.height / displayDimensions.height;
 
+    // Calculate source crop area in natural image coordinates
+    const sourceX = cropArea.x * scaleX;
+    const sourceY = cropArea.y * scaleY;
+    const sourceWidth = cropArea.width * scaleX;
+    const sourceHeight = cropArea.height * scaleY;
+
+    // Clear canvas and draw cropped image
+    ctx.clearRect(0, 0, outputSize, outputSize);
     ctx.drawImage(
       img,
-      cropArea.x * scaleX,
-      cropArea.y * scaleY,
-      cropArea.size * scaleX,
-      cropArea.size * scaleY,
-      0, 0, 400, 400
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0, 0, outputSize, outputSize
     );
 
     canvas.toBlob((blob) => {
@@ -153,11 +212,21 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col items-center">
+      <div className="text-center mb-4">
+        <p className="text-sm text-gray-400 mb-2">Drag to move, use corner handles to resize</p>
+        <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
+      </div>
+      
       <div
         ref={containerRef}
-        className="relative inline-block rounded-lg overflow-hidden border-2 border-gray-600"
-        style={{ width: '400px', height: '400px' }}
+        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900"
+        style={{ 
+          width: `${displayDimensions.width}px`, 
+          height: `${displayDimensions.height}px`,
+          maxWidth: '90vw',
+          maxHeight: '70vh'
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -166,36 +235,106 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
           ref={imageRef}
           src={imageSrc}
           alt="Crop preview"
-          className="w-full h-full object-cover"
+          className="block"
           onLoad={handleImageLoad}
-          style={{ width: '400px', height: '400px' }}
+          style={{ 
+            width: `${displayDimensions.width}px`, 
+            height: `${displayDimensions.height}px`,
+            objectFit: 'contain'
+          }}
+          draggable={false}
         />
         {imageLoaded && (
-          <div
-            className="absolute border-2 border-yellow-400 cursor-move"
-            style={{
-              left: `${cropArea.x}px`,
-              top: `${cropArea.y}px`,
-              width: `${cropArea.size}px`,
-              height: `${cropArea.size}px`,
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-            }}
-            onMouseDown={(e) => handleMouseDown(e, 'drag')}
-          >
-            <div className="w-full h-full border border-white border-opacity-50" />
-            <div className="absolute -top-1 -left-1 w-3 h-3 bg-yellow-400 rounded-full cursor-nw-resize" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full cursor-ne-resize" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-            <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-yellow-400 rounded-full cursor-sw-resize" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full cursor-se-resize" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-          </div>
+          <>
+            {/* Overlay to darken non-crop areas */}
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Top overlay */}
+              <div 
+                className="absolute bg-black bg-opacity-50"
+                style={{
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${cropArea.y}px`
+                }}
+              />
+              {/* Bottom overlay */}
+              <div 
+                className="absolute bg-black bg-opacity-50"
+                style={{
+                  top: `${cropArea.y + cropArea.height}px`,
+                  left: 0,
+                  width: '100%',
+                  height: `${displayDimensions.height - cropArea.y - cropArea.height}px`
+                }}
+              />
+              {/* Left overlay */}
+              <div 
+                className="absolute bg-black bg-opacity-50"
+                style={{
+                  top: `${cropArea.y}px`,
+                  left: 0,
+                  width: `${cropArea.x}px`,
+                  height: `${cropArea.height}px`
+                }}
+              />
+              {/* Right overlay */}
+              <div 
+                className="absolute bg-black bg-opacity-50"
+                style={{
+                  top: `${cropArea.y}px`,
+                  left: `${cropArea.x + cropArea.width}px`,
+                  width: `${displayDimensions.width - cropArea.x - cropArea.width}px`,
+                  height: `${cropArea.height}px`
+                }}
+              />
+            </div>
+
+            {/* Crop area */}
+            <div
+              className="absolute border-2 border-yellow-400 cursor-move bg-transparent"
+              style={{
+                left: `${cropArea.x}px`,
+                top: `${cropArea.y}px`,
+                width: `${cropArea.width}px`,
+                height: `${cropArea.height}px`,
+              }}
+              onMouseDown={(e) => handleMouseDown(e, 'drag')}
+            >
+              {/* Grid lines for better visualization */}
+              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="border border-white border-opacity-20" />
+                ))}
+              </div>
+              
+              {/* Corner resize handles */}
+              <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
+              <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
+              <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
+              <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full cursor-se-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
+            </div>
+          </>
         )}
       </div>
+      
       <canvas ref={canvasRef} className="hidden" />
-      <div className="flex gap-2">
-        <Button color="success" onPress={handleCrop} isDisabled={!imageLoaded}>
+      
+      <div className="flex gap-3 mt-6">
+        <Button 
+          color="success" 
+          onPress={handleCrop} 
+          isDisabled={!imageLoaded}
+          className="px-8"
+        >
           Crop & Save
         </Button>
-        <Button color="danger" variant="light" onPress={onCancel}>
+        <Button 
+          color="danger" 
+          variant="light" 
+          onPress={onCancel}
+          className="px-8"
+        >
           Cancel
         </Button>
       </div>
