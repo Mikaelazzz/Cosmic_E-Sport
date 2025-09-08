@@ -3,10 +3,10 @@ import supabase from '@/lib/db';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { name, email, nim, role, password } = body;
 
@@ -39,7 +39,7 @@ export async function PATCH(
       email,
       nim: nim || null,
       role,
-      updated_at: new Date().toISOString()
+      update_at: new Date().toISOString() // Sesuai dengan database schema
     };
 
     // Only update password if provided
@@ -79,10 +79,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if user exists and get their role/jabatan
     const { data: userData, error: fetchError } = await supabase
