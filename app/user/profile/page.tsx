@@ -10,7 +10,28 @@ import { Spinner } from "@heroui/spinner";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
-import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
+import { getUserAvatarUrl } from "@/lib/avatar";
+import { VerificationCodeInput } from "@/components/VerificationCodeInput";
+
+// Eye Icon Component
+const EyeIcon = ({ isVisible, onClick }: { isVisible: boolean; onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="text-gray-400 hover:text-white transition-colors"
+  >
+    {isVisible ? (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+    ) : (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+      </svg>
+    )}
+  </button>
+);
 
 // Impor CropEditor dari profile-admin atau buat file terpisah jika digunakan bersama
 const CropEditor = ({ imageSrc, onCrop, onCancel }: {
@@ -183,7 +204,7 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
 };
 
 export default function UserProfilePage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -195,6 +216,31 @@ export default function UserProfilePage() {
   const [editAnimation, setEditAnimation] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lottieRef = useRef<any>(null);
+  
+  // Email verification states
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  
+  // Change password states
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+    symbol: false,
+    isValid: false,
+    match: false
+  });
 
   const [formData, setFormData] = useState({
     nim: "",
@@ -224,6 +270,33 @@ export default function UserProfilePage() {
     };
     loadAnimation();
   }, []);
+
+  // Check email verification status
+  useEffect(() => {
+    const checkEmailVerification = async () => {
+      if (!user?.email) return;
+      
+      try {
+        const response = await fetch('/api/auth/check-email-verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: user.email }),
+        });
+
+        const result = await response.json();
+        setIsEmailVerified(result.verified || false);
+      } catch (error) {
+        console.error('Error checking email verification:', error);
+        setIsEmailVerified(user?.email_verified || false);
+      }
+    };
+
+    if (user?.email) {
+      checkEmailVerification();
+    }
+  }, [user?.email]);
 
   // Fetch fresh user data
   useEffect(() => {
@@ -326,6 +399,9 @@ export default function UserProfilePage() {
         setMessage("Avatar removed successfully!");
         setMessageType("success");
         setAvatarKey(prev => prev + 1);
+        
+        // Refresh user data to update navbar and other components
+        await refreshUser();
       } else {
         setMessage(result.message || "Failed to remove avatar");
         setMessageType("error");
@@ -378,6 +454,143 @@ export default function UserProfilePage() {
     }
     setIsEditing(false);
     setMessage("");
+  };
+
+  const handleSendVerification = async () => {
+    if (!user?.email) return;
+
+    setIsSendingVerification(true);
+    setMessage("");
+
+    try {
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setVerificationSent(true);
+        setShowVerificationModal(true);
+        setMessage("Kode verifikasi telah dikirim ke email Anda.");
+        setMessageType("success");
+      } else {
+        setMessage(result.message || "Gagal mengirim kode verifikasi");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error('Error sending verification:', error);
+      setMessage("Terjadi kesalahan saat mengirim kode verifikasi");
+      setMessageType("error");
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
+  const handleVerifyCode = async (code: string) => {
+    if (!user?.email) return;
+
+    setIsVerifyingCode(true);
+
+    try {
+      const response = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: user.email, code }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setIsEmailVerified(true);
+        setShowVerificationModal(false);
+        setMessage("Email berhasil diverifikasi!");
+        setMessageType("success");
+      } else {
+        setMessage(result.message || "Kode verifikasi tidak valid");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error('Error verifying code:', error);
+      setMessage("Terjadi kesalahan saat memverifikasi kode");
+      setMessageType("error");
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
+  const validatePassword = (password: string, confirmPassword: string = passwordData.confirmPassword) => {
+    const validation = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      symbol: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      isValid: false,
+      match: password === confirmPassword && password.length > 0
+    };
+    
+    validation.isValid = validation.length && validation.uppercase && validation.number && validation.symbol && validation.match;
+    setPasswordValidation(validation);
+    return validation.isValid;
+  };
+
+  const handlePasswordChange = (field: 'newPassword' | 'confirmPassword', value: string) => {
+    const newPasswordData = { ...passwordData, [field]: value };
+    setPasswordData(newPasswordData);
+    
+    if (field === 'newPassword') {
+      validatePassword(value, newPasswordData.confirmPassword);
+    } else {
+      validatePassword(newPasswordData.newPassword, value);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordValidation.isValid) {
+      setMessage("Password tidak memenuhi kriteria yang diperlukan");
+      setMessageType("error");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setMessage("");
+
+    try {
+      const response = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newPassword: passwordData.newPassword
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowChangePasswordModal(false);
+        setPasswordData({ newPassword: "", confirmPassword: "" });
+        setMessage("Password berhasil diubah!");
+        setMessageType("success");
+      } else {
+        setMessage(result.message || "Gagal mengubah password");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setMessage("Terjadi kesalahan saat mengubah password");
+      setMessageType("error");
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   if (isLoading) {
@@ -448,19 +661,43 @@ export default function UserProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-yellow-400 mb-2">Email</label>
-                <Input
-                  value={user.email}
-                  size="lg"
-                  type="email"
-                  isReadOnly
-                  variant="flat"
-                  className="bg-transparent"
-                  classNames={{
-                    input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg",
-                  }}
-                />
+                <label className="block text-sm font-medium text-yellow-400 mb-2">
+                  Email
+                  {isEmailVerified ? (
+                    <span className="ml-2 text-green-400 text-xs">✓ Terverifikasi</span>
+                  ) : (
+                    <span className="ml-2 text-red-400 text-xs">⚠ Belum diverifikasi</span>
+                  )}
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={user.email}
+                    size="lg"
+                    type="email"
+                    isReadOnly
+                    variant="flat"
+                    className="bg-transparent flex-1"
+                    classNames={{
+                      input: "bg-transparent text-white placeholder-gray-400",
+                      inputWrapper: `bg-transparent border-2 border-gray-600 rounded-lg ${!isEmailVerified ? 'border-red-500/50' : 'border-green-500/50'}`,
+                    }}
+                  />
+                  {!isEmailVerified && (
+                    <Button
+                      onClick={handleSendVerification}
+                      disabled={isSendingVerification}
+                      size="lg"
+                      className="bg-yellow-500 text-black font-semibold hover:bg-yellow-400 transition-colors whitespace-nowrap"
+                    >
+                      {isSendingVerification ? 'Mengirim...' : verificationSent ? 'Kirim Ulang' : 'Verifikasi'}
+                    </Button>
+                  )}
+                </div>
+                {!isEmailVerified && (
+                  <p className="text-red-400 text-xs mt-1">
+                    Email Anda belum diverifikasi. Silakan klik tombol "Verifikasi" untuk mendapatkan kode verifikasi.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -501,17 +738,17 @@ export default function UserProfilePage() {
             {/* Right side - Avatar */}
             <div className="flex flex-col items-center justify-start space-y-4">
               <div className="relative">
-                <Avatar
-                  key={avatarKey}
-                  src={getUserAvatarUrl(user, 200, true)}
-                  name={generateInitials(user.nama_lengkap || user.email || 'User')}
-                  className="w-48 h-48 border-4 border-yellow-400 text-4xl font-bold"
-                  showFallback
-                  classNames={{
-                    base: "bg-gradient-to-br from-blue-500 to-purple-600",
-                    fallback: "text-white text-4xl font-bold",
-                  }}
-                />
+                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    key={avatarKey} // Force re-render when avatar changes
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-48 h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
                 <Button
                   size="sm"
                   className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
@@ -583,6 +820,16 @@ export default function UserProfilePage() {
                   Save
                 </Button>
                 <Button
+                  color="warning"
+                  variant="light"
+                  size="lg"
+                  className="px-6"
+                  onPress={() => setShowChangePasswordModal(true)}
+                  isDisabled={isSaving}
+                >
+                  Change Password
+                </Button>
+                <Button
                   color="danger"
                   variant="light"
                   size="lg"
@@ -597,6 +844,183 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      <Modal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        size="md"
+        classNames={{
+          base: "bg-black",
+          header: "border-b border-gray-700",
+          body: "py-6",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white flex flex-col gap-1">
+            <h3 className="text-xl font-bold">Verifikasi Email</h3>
+            <p className="text-sm text-gray-400">
+              Masukkan kode verifikasi 6 digit yang dikirim ke email Anda
+            </p>
+          </ModalHeader>
+          <ModalBody className="pb-6">
+            <div className="text-center">
+              <p className="text-gray-300 text-sm mb-4">
+                Kode verifikasi telah dikirim ke:
+              </p>
+              <p className="text-yellow-400 font-semibold mb-6">
+                {user?.email}
+              </p>
+              
+              <VerificationCodeInput
+                onComplete={handleVerifyCode}
+                disabled={isVerifyingCode}
+              />
+              
+              {isVerifyingCode && (
+                <p className="text-gray-400 text-sm mt-4">
+                  Memverifikasi kode...
+                </p>
+              )}
+              
+              <div className="mt-6 flex gap-2 justify-center">
+                <Button
+                  onClick={handleSendVerification}
+                  disabled={isSendingVerification}
+                  variant="ghost"
+                  className="text-yellow-400 border-yellow-400"
+                >
+                  {isSendingVerification ? 'Mengirim...' : 'Kirim Ulang Kode'}
+                </Button>
+                <Button
+                  onClick={() => setShowVerificationModal(false)}
+                  variant="ghost"
+                  className="text-gray-400"
+                >
+                  Batal
+                </Button>
+              </div>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        size="md"
+        classNames={{
+          base: "bg-black",
+          header: "border-b border-gray-700",
+          body: "py-6",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white flex flex-col gap-1">
+            <h3 className="text-xl font-bold">Ubah Password</h3>
+            <p className="text-sm text-gray-400">
+              Masukkan password baru Anda
+            </p>
+          </ModalHeader>
+          <ModalBody className="pb-6 space-y-4">
+            <div>
+              <Input
+                label="Password Baru"
+                type={showNewPassword ? "text" : "password"}
+                value={passwordData.newPassword}
+                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                className="w-full"
+                color="warning"
+                endContent={
+                  <EyeIcon 
+                    isVisible={showNewPassword} 
+                    onClick={() => setShowNewPassword(!showNewPassword)} 
+                  />
+                }
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Konfirmasi Password"
+                type={showConfirmPassword ? "text" : "password"}
+                value={passwordData.confirmPassword}
+                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                className="w-full"
+                color="warning"
+                endContent={
+                  <EyeIcon 
+                    isVisible={showConfirmPassword} 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                  />
+                }
+              />
+            </div>
+
+            {/* Password Requirements */}
+            {passwordData.newPassword.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-300 mb-2">Persyaratan Password:</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
+                      {passwordValidation.length ? '✓' : '✗'}
+                    </span>
+                    <span>Minimal 8 karakter</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
+                      {passwordValidation.uppercase ? '✓' : '✗'}
+                    </span>
+                    <span>1 huruf kapital (A-Z)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
+                      {passwordValidation.number ? '✓' : '✗'}
+                    </span>
+                    <span>1 angka (0-9)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
+                      {passwordValidation.symbol ? '✓' : '✗'}
+                    </span>
+                    <span>1 simbol (!@#$%^&*)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={passwordValidation.match ? 'text-green-500' : 'text-red-500'}>
+                      {passwordValidation.match ? '✓' : '✗'}
+                    </span>
+                    <span>Password dan konfirmasi cocok</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-2 justify-center">
+              <Button
+                onClick={handleChangePassword}
+                disabled={!passwordValidation.isValid || isChangingPassword}
+                color="success"
+                className="px-8"
+                isLoading={isChangingPassword}
+              >
+                {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowChangePasswordModal(false);
+                  setPasswordData({ newPassword: "", confirmPassword: "" });
+                }}
+                variant="ghost"
+                className="text-gray-400 px-8"
+              >
+                Batal
+              </Button>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       {/* Crop Modal */}
       <Modal

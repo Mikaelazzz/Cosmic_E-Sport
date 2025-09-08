@@ -12,7 +12,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@herou
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
 import { User } from "@/types/type";
-import { getUserAvatarUrl, generateInitials, generateConsistentAvatarUrl } from "@/lib/avatar";
+import { getUserAvatarUrl, generateConsistentAvatarUrl } from "@/lib/avatar";
 
 // Simple crop editor component
 const CropEditor = ({ imageSrc, onCrop, onCancel }: {
@@ -224,7 +224,7 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
 };
 
 export default function AdminProfilePage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -400,7 +400,9 @@ export default function AdminProfilePage() {
         // Force re-render of avatar by updating key
         setAvatarKey(prev => prev + 1);
         
-        // Remove the forced reload - let the component handle the update
+        // Refresh user data to update navbar and other components
+        await refreshUser();
+        
         console.log('Avatar removal completed successfully');
       } else {
         setMessage(result.message || "Failed to remove avatar");
@@ -590,17 +592,17 @@ export default function AdminProfilePage() {
             {/* Right side - Profile picture */}
             <div className="flex flex-col items-center justify-start space-y-4">
               <div className="relative">
-                <Avatar
-                  key={avatarKey} // Force re-render when avatar changes
-                  src={getUserAvatarUrl(user, 200, true)} // Use cache busting
-                  name={generateInitials(user.nama_lengkap || user.email || 'Admin')}
-                  className="w-48 h-48 border-4 border-yellow-400 text-4xl font-bold"
-                  showFallback={true}
-                  classNames={{
-                    base: "bg-gradient-to-br from-blue-500 to-purple-600",
-                    fallback: "text-white text-4xl font-bold"
-                  }}
-                />
+                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    key={avatarKey} // Force re-render when avatar changes
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-48 h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
                 <Button
                   size="sm"
                   className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"

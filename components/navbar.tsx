@@ -21,7 +21,7 @@ import { useState, useEffect } from "react";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useAuth } from "@/context/AuthContext";
-import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
+import { getUserAvatarUrl } from "@/lib/avatar";
 import {
   TwitterIcon,
   GithubIcon,
@@ -302,21 +302,19 @@ export const Navbar = () => {
             {isAuthenticated && user ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
-                  <Avatar
-                    key={`desktop-${avatarKey}`} // Force re-render when avatar changes
-                    isBordered
-                    as="button"
-                    className="transition-transform hover:scale-105"
-                    color="warning"
-                    name={generateInitials(user.nama_lengkap || user.email || 'User')}
-                    size="sm"
-                    src={getUserAvatarUrl(user, 40, true)} // Use cache busting
-                    showFallback={true}
-                    classNames={{
-                      base: "bg-gradient-to-br from-blue-500 to-purple-600",
-                      fallback: "text-white text-sm font-bold"
-                    }}
-                  />
+                  <button 
+                    key={`desktop-${avatarKey}`}
+                    className="w-8 h-8 rounded-full overflow-hidden border-2 border-yellow-400 transition-transform hover:scale-105 cursor-pointer focus:outline-none"
+                  >
+                    <img 
+                      src={getUserAvatarUrl(user, 40, true)} 
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/logc.png';
+                      }}
+                    />
+                  </button>
                 </DropdownTrigger>
                 <DropdownMenu 
                   aria-label="Profile Actions" 
@@ -393,21 +391,19 @@ export const Navbar = () => {
             {isAuthenticated && user ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
-                  <Avatar
-                    key={`mobile-${avatarKey}`} // Force re-render when avatar changes
-                    isBordered
-                    as="button"
-                    className="transition-transform hover:scale-105"
-                    color="warning"
-                    name={generateInitials(user.nama_lengkap || user.email || 'User')}
-                    size="sm"
-                    src={getUserAvatarUrl(user, 40, true)} // Use cache busting
-                    showFallback={true}
-                    classNames={{
-                      base: "bg-gradient-to-br from-blue-500 to-purple-600",
-                      fallback: "text-white text-sm font-bold"
-                    }}
-                  />
+                  <button 
+                    key={`mobile-${avatarKey}`}
+                    className="w-8 h-8 rounded-full overflow-hidden border-2 border-yellow-400 transition-transform hover:scale-105 cursor-pointer focus:outline-none"
+                  >
+                    <img 
+                      src={getUserAvatarUrl(user, 40, true)} 
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/logo.png';
+                      }}
+                    />
+                  </button>
                 </DropdownTrigger>
                 <DropdownMenu 
                   aria-label="Profile Actions" 

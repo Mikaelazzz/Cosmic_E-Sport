@@ -325,17 +325,28 @@ export default function TeamPage() {
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-300 mb-2">Team Members</h3>
                   <div className="flex items-center gap-2">
-                    <AvatarGroup max={6} className="flex">
-                      {team.participants.map((participant) => (
-                        <Avatar
+                    <div className="flex -space-x-2">
+                      {team.participants.slice(0, 6).map((participant) => (
+                        <div
                           key={participant.id}
-                          src={getUserAvatarUrl(participant, 200, true)}
-                          name={participant.nama_lengkap}
-                          size="sm"
-                          className="border-2 border-[#FFD700]"
-                        />
+                          className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#FFD700]"
+                        >
+                          <img 
+                            src={getUserAvatarUrl(participant, 32, true)}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = '/logo.png';
+                            }}
+                          />
+                        </div>
                       ))}
-                    </AvatarGroup>
+                      {team.participants.length > 6 && (
+                        <div className="w-8 h-8 rounded-full bg-gray-600 border-2 border-[#FFD700] flex items-center justify-center text-xs text-white">
+                          +{team.participants.length - 6}
+                        </div>
+                      )}
+                    </div>
                     {team.current_participants < team.max_participants && (
                       <div className="w-8 h-8 rounded-full border-2 border-[#FFD700] border-dashed flex items-center justify-center">
                         <PlusIcon className="w-4 h-4 text-[#FFD700]" />

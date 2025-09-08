@@ -14,7 +14,7 @@ import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
+import { getUserAvatarUrl } from "@/lib/avatar";
 // Using lucide-react icons instead of heroicons
 import { 
   Star as StarIcon, 
