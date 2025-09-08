@@ -38,6 +38,7 @@ export const Navbar = () => {
 
   // Debug logging
   console.log('Navbar render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.email);
+  console.log('Current pathname:', pathname);
 
   // Force avatar refresh when user changes
   useEffect(() => {
@@ -46,13 +47,26 @@ export const Navbar = () => {
     }
   }, [user?.id, user?.nama_lengkap]);
 
-  // Dynamic navigation items based on user role
+  // Get current role context based on pathname
+  const getCurrentRoleContext = () => {
+    console.log('getCurrentRoleContext - pathname:', pathname);
+    if (pathname.startsWith('/admin')) return 'admin';
+    if (pathname.startsWith('/moderator')) return 'moderator';
+    if (pathname.startsWith('/user')) return 'user';
+    return user?.role || 'user';
+  };
+
+  // Dynamic navigation items based on user role and current path
   const getNavItems = () => {
     if (!isAuthenticated || !user) {
       return siteConfig.navItems; // Default items for non-authenticated users
     }
 
-    switch (user.role) {
+    // Determine current role context from pathname
+    const currentRoleContext = getCurrentRoleContext();
+    console.log('getNavItems - currentRoleContext:', currentRoleContext);
+
+    switch (currentRoleContext) {
       case 'admin':
         return [
           { label: "Dashboard", href: "/admin" },
@@ -72,7 +86,19 @@ export const Navbar = () => {
         return [
           { label: "Dashboard", href: "/user" },
           { label: "Event", href: "/user/events" },
-          { label: "Team", href: "/user/team" }
+          { label: "Team", href: "/user/team" },
+          { 
+            label: "Games", 
+            href: "/user/games",
+            isDropdown: true,
+            dropdownItems: [
+              { label: "Shuffle", href: "/user/games/shuffle" },
+              { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
+              { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
+              { label: "Cek Region", href: "/user/games/cek-region" },
+              { label: "First Purchase", href: "/user/games/fp" }
+            ]
+          }
         ];
       default:
         return siteConfig.navItems;
@@ -85,7 +111,10 @@ export const Navbar = () => {
       return siteConfig.navMenuItems; // Default items for non-authenticated users
     }
 
-    switch (user.role) {
+    // Determine current role context from pathname
+    const currentRoleContext = getCurrentRoleContext();
+
+    switch (currentRoleContext) {
       case 'admin':
         return [
           { label: "Dashboard", href: "/admin" },
@@ -105,7 +134,12 @@ export const Navbar = () => {
         return [
           { label: "Dashboard", href: "/user" },
           { label: "Event", href: "/user/events" },
-          { label: "Team", href: "/user/team" }
+          { label: "Team", href: "/user/team" },
+          { label: "Shuffle", href: "/user/games/shuffle" },
+          { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
+          { label: "Kuis Gambar", href: "/user/games/tebak-gambar-2" },
+          { label: "Cek Region", href: "/user/games/cek-region" },
+          { label: "Free Fire", href: "/user/games/fp" }
         ];
       default:
         return siteConfig.navMenuItems;
@@ -130,13 +164,17 @@ export const Navbar = () => {
         // These are header items, don't perform any action
         return;
       case 'profile':
-        if (user?.role === 'admin') {
+        const currentRoleContext = getCurrentRoleContext();
+        if (currentRoleContext === 'admin') {
           router.push('/admin/profile');
-        } else if (user?.role === 'moderator') {
+        } else if (currentRoleContext === 'moderator') {
           router.push('/moderator/profile');
         } else {
           router.push('/user/profile');
         }
+        break;
+      case 'switch-to-admin':
+        router.push('/admin');
         break;
       case 'switch-to-moderator':
         router.push('/moderator');
@@ -150,6 +188,47 @@ export const Navbar = () => {
       default:
         break;
     }
+  };
+
+  // Get role switching options based on current context and user role
+  const getRoleSwitchingOptions = () => {
+    const currentRoleContext = getCurrentRoleContext();
+    const userRole = user?.role;
+
+    console.log('getRoleSwitchingOptions - currentRoleContext:', currentRoleContext, 'userRole:', userRole);
+
+    if (!userRole) return [];
+
+    const options = [];
+
+    if (userRole === 'admin') {
+      if (currentRoleContext === 'admin') {
+        options.push(
+          { key: 'switch-to-moderator', label: 'Beralih ke Moderator' },
+          { key: 'switch-to-user', label: 'Beralih ke User' }
+        );
+      } else if (currentRoleContext === 'moderator') {
+        options.push(
+          { key: 'switch-to-admin', label: 'Beralih ke Admin' },
+          { key: 'switch-to-user', label: 'Beralih ke User' }
+        );
+      } else if (currentRoleContext === 'user') {
+        options.push(
+          { key: 'switch-to-admin', label: 'Beralih ke Admin' },
+          { key: 'switch-to-moderator', label: 'Beralih ke Moderator' }
+        );
+      }
+    } else if (userRole === 'moderator') {
+      if (currentRoleContext === 'moderator') {
+        options.push({ key: 'switch-to-user', label: 'Beralih ke User' });
+      } else if (currentRoleContext === 'user') {
+        options.push({ key: 'switch-to-moderator', label: 'Beralih ke Moderator' });
+      }
+    }
+    // User role has no switching options
+
+    console.log('getRoleSwitchingOptions - options:', options);
+    return options;
   };
 
   return (
@@ -169,16 +248,42 @@ export const Navbar = () => {
         <ul className="hidden lg:flex gap-8">
           {getNavItems().map((item) => (
             <NavbarItem key={item.href}>
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                color="foreground"
-                href={item.href}
-              >
-                {item.label}
-              </NextLink>
+              {item.isDropdown ? (
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Button
+                      variant="light"
+                      className={clsx(
+                        linkStyles({ color: "foreground" }),
+                        "data-[active=true]:text-primary data-[active=true]:font-medium p-0 h-auto bg-transparent",
+                        pathname.startsWith(item.href) && "text-primary font-medium"
+                      )}
+                    >
+                      {item.label}
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label={`${item.label} menu`}>
+                    {item.dropdownItems?.map((dropdownItem) => (
+                      <DropdownItem key={dropdownItem.href}>
+                        <NextLink href={dropdownItem.href} className="w-full block">
+                          {dropdownItem.label}
+                        </NextLink>
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+              ) : (
+                <NextLink
+                  className={clsx(
+                    linkStyles({ color: "foreground" }),
+                    "data-[active=true]:text-primary data-[active=true]:font-medium",
+                  )}
+                  color="foreground"
+                  href={item.href}
+                >
+                  {item.label}
+                </NextLink>
+              )}
             </NavbarItem>
           ))}
         </ul>
@@ -225,20 +330,13 @@ export const Navbar = () => {
                   <DropdownItem key="profile">
                     Profile
                   </DropdownItem>
-                  {user.role === 'admin' ? (
-                    <>
-                      <DropdownItem key="switch-to-moderator">
-                        Beralih ke Moderator
+                  <>
+                    {getRoleSwitchingOptions().map((option) => (
+                      <DropdownItem key={option.key}>
+                        {option.label}
                       </DropdownItem>
-                      <DropdownItem key="switch-to-user">
-                        Beralih ke User
-                      </DropdownItem>
-                    </>
-                  ) : user.role === 'moderator' ? (
-                    <DropdownItem key="switch-to-user">
-                      Beralih ke User
-                    </DropdownItem>
-                  ) : null}
+                    ))}
+                  </>
                   <DropdownItem key="logout" color="danger">
                     Log Out
                   </DropdownItem>
@@ -323,20 +421,13 @@ export const Navbar = () => {
                   <DropdownItem key="profile">
                     Profile
                   </DropdownItem>
-                  {user.role === 'admin' ? (
-                    <>
-                      <DropdownItem key="switch-to-moderator">
-                        Beralih ke Moderator
-                      </DropdownItem>
-                      <DropdownItem key="switch-to-user">
-                        Beralih ke User
-                      </DropdownItem>
-                    </>
-                  ) : user.role === 'moderator' ? (
-                    <DropdownItem key="switch-to-user">
-                      Beralih ke User
+                  <>
+                  {getRoleSwitchingOptions().map((option) => (
+                    <DropdownItem key={option.key}>
+                      {option.label}
                     </DropdownItem>
-                  ) : null}
+                  ))}
+                  </>
                   <DropdownItem key="logout" color="danger">
                     Log Out
                   </DropdownItem>
