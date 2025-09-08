@@ -87,19 +87,19 @@ export async function POST(request: Request) {
       await transporter.sendMail({
         from: `${process.env.EMAIL_FROM_NAME || 'Cosmic E-Sport'} <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Kode Reset Password - Cosmic E-Sport',
+        subject: 'Kode Reset Password',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333; text-align: center;">Reset Password Anda</h2>
             <p>Halo ${existingUser.nama_lengkap},</p>
             <p>Kami menerima permintaan untuk reset password akun Anda. Gunakan kode berikut untuk melanjutkan proses reset password:</p>
             <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
-              <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${resetCode}</h1>
+              <h1 style="color: #FFD700; margin: 0; font-size: 32px; letter-spacing: 5px;">${resetCode}</h1>
             </div>
             <p><strong>Kode ini akan kedaluwarsa dalam 15 menit.</strong></p>
             <p>Jika Anda tidak melakukan permintaan reset password, abaikan email ini. Password Anda akan tetap aman.</p>
             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0; color: #856404;"><strong>Catatan Keamanan:</strong></p>
+              <p style="margin: 0; color: #856404;"><strong>Catatan :</strong></p>
               <p style="margin: 5px 0 0 0; color: #856404;">Jangan bagikan kode ini kepada siapapun. Tim Cosmic E-Sport tidak akan pernah meminta kode reset password Anda.</p>
             </div>
             <hr style="margin: 30px 0;">
