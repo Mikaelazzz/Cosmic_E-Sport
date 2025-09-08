@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest) {
       nim,
       nama_lengkap,
       jabatan: jabatan || '',
-      updated_at: new Date().toISOString()
+      update_at: new Date().toISOString()
     };
 
     // Check if NIM is being changed and if it's already taken by another user

@@ -359,7 +359,7 @@ export async function POST(request: NextRequest) {
             jam: jamFormatted,
             hari: hariFormatted,
             qr_code: qr_data,
-            updated_at: now.toISOString()
+            update_at: now.toISOString()
           })
           .eq('id', existingAbsen.id)
           .select()
@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
           hari: hariFormatted,
           qr_code: qr_data,
           created_at: now.toISOString(),
-          updated_at: now.toISOString()
+          update_at: now.toISOString()
         })
         .select()
         .single();
@@ -487,7 +487,7 @@ export async function POST(request: NextRequest) {
         status: absenData.status,
         waktu_absen: absenData.jam,
         created_at: absenData.created_at,
-        updated_at: absenData.updated_at
+        updated_at: absenData.update_at || absenData.updated_at
       }
     });
 
