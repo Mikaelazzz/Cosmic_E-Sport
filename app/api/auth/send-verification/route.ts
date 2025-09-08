@@ -116,14 +116,14 @@ export async function POST(request: Request) {
       await transporter.sendMail({
         from: `${process.env.EMAIL_FROM_NAME || 'Cosmic E-Sport'} <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Kode Verifikasi Email - Cosmic E-Sport',
+        subject: 'Kode Verifikasi Email',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333; text-align: center;">Verifikasi Email Anda</h2>
-            <p>Halo,</p>
+            <p>Halo, Cosmic Family</p>
             <p>Terima kasih telah mendaftar di Cosmic E-Sport. Gunakan kode verifikasi berikut untuk melengkapi pendaftaran Anda:</p>
             <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
-              <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
+              <h1 style="color: #FFD700; margin: 0; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
             </div>
             <p><strong>Kode ini akan kedaluwarsa dalam 15 menit.</strong></p>
             <p>Jika Anda tidak melakukan pendaftaran ini, abaikan email ini.</p>
