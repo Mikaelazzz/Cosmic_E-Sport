@@ -23,28 +23,73 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !user) {
+      console.log('Login attempt failed - User not found:', nim);
       return NextResponse.json({
         success: false,
         message: 'NIM tidak ditemukan'
       }, { status: 401 });
     }
 
-    // Verify password
+    console.log('Login attempt for user:', nim, 'Role:', user.role);
+
+    // Verify password and handle unhashed passwords
     let isValidPassword = false;
+    let needsPasswordUpdate = false;
     
     if (user.password) {
-      // If password is hashed, verify it
-      isValidPassword = await bcrypt.compare(password, user.password);
+      try {
+        // First, try to verify as hashed password
+        isValidPassword = await bcrypt.compare(password, user.password);
+      } catch (error) {
+        // If bcrypt comparison fails, it might be an unhashed password
+        console.log('bcrypt comparison failed, checking plaintext password');
+        isValidPassword = false;
+      }
+      
+      // If hashed comparison failed, check if it's a plaintext password
+      if (!isValidPassword && password === user.password) {
+        console.log('Plaintext password match detected, will hash after login');
+        isValidPassword = true;
+        needsPasswordUpdate = true;
+      }
     } else {
       // For legacy users without password, use demo password
       isValidPassword = password === 'password123';
+      if (isValidPassword) {
+        needsPasswordUpdate = true;
+      }
     }
     
     if (!isValidPassword) {
+      console.log('Login failed - Invalid password for user:', nim);
       return NextResponse.json({
         success: false,
         message: 'Password salah'
       }, { status: 401 });
+    }
+    
+    console.log('Login successful for user:', nim, needsPasswordUpdate ? '(password will be hashed)' : '(password already hashed)');
+    
+    // If password needs to be hashed, update it in database
+    if (needsPasswordUpdate) {
+      try {
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ 
+            password: hashedPassword,
+            update_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+          
+        if (updateError) {
+          console.error('Error updating password hash:', updateError);
+        } else {
+          console.log('Password successfully hashed for user:', user.nim);
+        }
+      } catch (hashError) {
+        console.error('Error hashing password:', hashError);
+      }
     }
     
     // Create user session
