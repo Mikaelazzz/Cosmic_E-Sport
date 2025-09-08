@@ -13,7 +13,7 @@ import { Spinner } from '@heroui/spinner';
 import { Selection, SortDescriptor } from '@heroui/table';
 import { IconSearch, IconPlus } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
-import { getUserAvatarUrl, generateInitials } from '@/lib/avatar';
+import { getUserAvatarUrl } from '@/lib/avatar';
 
 // Custom icons
 const IconChevronDown = ({ className }: { className?: string }) => (
@@ -34,7 +34,7 @@ interface UserData {
   nama_lengkap: string;
   email: string;
   nim?: string;
-  role: 'anggota' | 'pengurus' | 'moderator' | 'admin';
+  role: 'user' | 'moderator' | 'admin';
   jabatan?: string;
   profile_image?: string;
   created_at: string;
@@ -45,6 +45,14 @@ interface FormData {
   email: string;
   nim: string;
   password: string;
+}
+
+interface PasswordValidation {
+  length: boolean;
+  uppercase: boolean;
+  number: boolean;
+  symbol: boolean;
+  isValid: boolean;
 }
 
 // Constants
@@ -59,16 +67,15 @@ const columns = [
 ];
 
 const roleOptions = [
-  {name: "Anggota", uid: "anggota"},
-  {name: "Pengurus", uid: "pengurus"},
+  {name: "User", uid: "user"},
   {name: "Moderator", uid: "moderator"},
+  {name: "Admin", uid: "admin"},
 ];
 
 const INITIAL_VISIBLE_COLUMNS = ["name", "email", "nim", "role", "jabatan", "actions"];
 
 const roleColorMap = {
-  anggota: "default" as const,
-  pengurus: "primary" as const,
+  user: "default" as const,
   moderator: "secondary" as const,
   admin: "danger" as const,
 };
@@ -102,13 +109,23 @@ export default function UsersPage() {
     nim: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
+    length: false,
+    uppercase: false,
+    number: false,
+    symbol: false,
+    isValid: false
+  });
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
-  // Memoized fetch function
-  const fetchUsers = useCallback(async () => {
-    if (hasFetched.current) return; // Prevent multiple calls
-    hasFetched.current = true;
+  // Fetch function
+  const fetchUsers = useCallback(async (force = false) => {
+    if (!force && hasFetched.current) return; // Prevent multiple calls unless forced
+    if (!hasFetched.current) hasFetched.current = true;
     
     try {
       const response = await fetch('/api/moderator/users');
@@ -133,59 +150,198 @@ export default function UsersPage() {
     }
   }, []);
 
-  // Set current user once (no useEffect needed)
-  React.useLayoutEffect(() => {
-    if (user && !currentUser) {
+  // Set current user (Update whenever user changes)
+  React.useEffect(() => {
+    if (user) {
       // Convert User to UserData type with proper role mapping
       const userData: UserData = {
         id: user.id,
         nama_lengkap: user.nama_lengkap,
         email: user.email,
         nim: user.nim || 'N/A',
-        role: user.role === 'user' ? 'anggota' : user.role as 'anggota' | 'pengurus' | 'moderator' | 'admin',
+        role: user.role as 'user' | 'moderator' | 'admin',
         jabatan: user.jabatan || user.role,
         created_at: user.created_at || new Date().toISOString()
       };
+      
+      // Enhanced debug logging untuk melihat semua detail user
+      console.log('=== USER DATA DEBUG ===');
+      console.log('AuthContext user:', user);
+      console.log('Processed userData:', userData);
+      console.log('Jabatan check:', {
+        originalJabatan: user.jabatan,
+        processedJabatan: userData.jabatan,
+        isKetuaOrWakil: isKetuaOrWakilKetua(userData.jabatan),
+        canCreate: userData.role === 'admin' || (userData.role === 'moderator' && isKetuaOrWakilKetua(userData.jabatan))
+      });
+      console.log('========================');
+      
       setCurrentUser(userData);
+    } else {
+      setCurrentUser(null);
     }
-  }, []);
+  }, [user]); // Depend on user changes
 
   // Fetch users only once when component mounts
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // Helper function to check if jabatan is ketua or wakil ketua
+  const isKetuaOrWakilKetua = (jabatan: string | undefined) => {
+    console.log('=== isKetuaOrWakilKetua CALLED ===');
+    console.log('Input jabatan:', jabatan);
+    
+    if (!jabatan) {
+      console.log('No jabatan provided, returning false');
+      return false;
+    }
+    
+    const normalizedJabatan = jabatan.toLowerCase().trim();
+    console.log('Normalized jabatan:', normalizedJabatan);
+    
+    // Check for various formats of ketua and wakil ketua
+    const isKetua = normalizedJabatan.includes('ketua') && !normalizedJabatan.includes('wakil');
+    const isWakilKetua = normalizedJabatan.includes('wakil') && normalizedJabatan.includes('ketua');
+    const isChairman = normalizedJabatan.includes('chairman') && !normalizedJabatan.includes('vice');
+    const isViceChairman = normalizedJabatan.includes('vice') && normalizedJabatan.includes('chairman');
+    
+    const result = isKetua || isWakilKetua || isChairman || isViceChairman;
+    
+    console.log('Jabatan analysis:', {
+      originalJabatan: jabatan,
+      normalizedJabatan,
+      isKetua,
+      isWakilKetua,
+      isChairman,
+      isViceChairman,
+      finalResult: result
+    });
+    console.log('====================================');
+    
+    return result;
+  };
+
   // Permission check
   const canEditUser = (targetUser: UserData) => {
     if (!currentUser) return false;
     
-    // Ketua dan Wakil Ketua dapat edit semua user
-    if (currentUser.jabatan === 'ketua' || currentUser.jabatan === 'wakil_ketua') {
+    // Debug log for troubleshooting
+    console.log('canEditUser check:', {
+      currentUserRole: currentUser.role,
+      currentUserJabatan: currentUser.jabatan,
+      targetUserRole: targetUser.role,
+      targetUserJabatan: targetUser.jabatan,
+      isCurrentUserKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan),
+      isTargetUserKetuaOrWakil: isKetuaOrWakilKetua(targetUser.jabatan)
+    });
+    
+    // Admin always has full access except to other admins
+    if (currentUser.role === 'admin') {
+      return targetUser.role !== 'admin' || targetUser.id === currentUser.id;
+    }
+    
+    // Moderator with ketua or wakil_ketua position has extensive access
+    if (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan)) {
+      // Cannot edit admin users
+      if (targetUser.role === 'admin') return false;
+      
+      // Can edit other ketua/wakil_ketua only if it's themselves
+      if (isKetuaOrWakilKetua(targetUser.jabatan)) {
+        return targetUser.id === currentUser.id;
+      }
+      
+      // Can edit all other users (regular moderators and users)
       return true;
     }
     
-    // User lain hanya bisa edit anggota, tidak bisa edit pengurus
-    if (targetUser.role === 'pengurus') {
-      return false;
-    }
-    
-    return true;
+    // Regular moderator without ketua/wakil_ketua position has no edit access
+    return false;
   };
 
   const canDeleteUser = (targetUser: UserData) => {
     if (!currentUser) return false;
     
-    // Ketua dan Wakil Ketua dapat delete user (kecuali sesama ketua/wakil)
-    if (currentUser.jabatan === 'ketua' || currentUser.jabatan === 'wakil_ketua') {
-      return !(targetUser.jabatan === 'ketua' || targetUser.jabatan === 'wakil_ketua');
-    }
-    
-    // User lain hanya bisa delete anggota
-    if (targetUser.role === 'pengurus') {
+    // Cannot delete yourself
+    if (targetUser.id === currentUser.id) {
       return false;
     }
     
-    return true;
+    console.log('canDeleteUser check:', {
+      currentUserRole: currentUser.role,
+      currentUserJabatan: currentUser.jabatan,
+      targetUserRole: targetUser.role,
+      targetUserJabatan: targetUser.jabatan,
+      isCurrentUserKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan)
+    });
+    
+    // Admin can delete everyone except other admins
+    if (currentUser.role === 'admin') {
+      return targetUser.role !== 'admin';
+    }
+    
+    // Moderator with ketua or wakil_ketua position can delete users
+    if (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan)) {
+      // Cannot delete admin users
+      if (targetUser.role === 'admin') return false;
+      
+      // Cannot delete other ketua/wakil_ketua
+      if (isKetuaOrWakilKetua(targetUser.jabatan)) return false;
+      
+      // Can delete regular moderators and users
+      return true;
+    }
+    
+    // Regular moderator without ketua/wakil_ketua position cannot delete users
+    return false;
+  };
+
+  const canCreateUser = () => {
+    console.log('=== canCreateUser CALLED ===');
+    console.log('currentUser:', currentUser);
+    
+    if (!currentUser) {
+      console.log('No currentUser, returning false');
+      return false;
+    }
+    
+    const isKetuaWakil = isKetuaOrWakilKetua(currentUser.jabatan);
+    const isAdmin = currentUser.role === 'admin';
+    const isModerator = currentUser.role === 'moderator';
+    const canCreate = isAdmin || (isModerator && isKetuaWakil);
+    
+    console.log('canCreateUser detailed check:', {
+      currentUserRole: currentUser.role,
+      currentUserJabatan: currentUser.jabatan,
+      isAdmin,
+      isModerator,
+      isKetuaWakil,
+      finalResult: canCreate
+    });
+    console.log('=============================');
+    
+    return canCreate;
+  };
+
+  const canUpdatePassword = () => {
+    if (!currentUser) return false;
+    
+    console.log('canUpdatePassword check:', {
+      currentUserRole: currentUser.role,
+      currentUserJabatan: currentUser.jabatan,
+      isKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan)
+    });
+    
+    // Admin always can update passwords
+    if (currentUser.role === 'admin') return true;
+    
+    // Moderator with ketua or wakil_ketua position can update passwords
+    if (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan)) {
+      return true;
+    }
+    
+    // Regular moderator without ketua/wakil_ketua position cannot update passwords
+    return false;
   };
 
   // Pagination
@@ -233,21 +389,48 @@ export default function UsersPage() {
     });
   }, [sortDescriptor, items]);
 
-  // Event handlers
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Password validation function
+  const validatePassword = (password: string) => {
+    const validation = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      symbol: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      isValid: false
+    };
+    
+    validation.isValid = validation.length && validation.uppercase && validation.number && validation.symbol;
+    setPasswordValidation(validation);
+    return validation.isValid;
+  };
+
+  // Submit handler untuk form submission
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await handleUserSubmit();
+  };
+
+  // Submit handler untuk button click
+  const handleUserSubmit = async () => {
     setIsSubmitting(true);
 
     try {
+      // Validate password if provided
+      if (formData.password && !validatePassword(formData.password)) {
+        alert('Password harus memiliki minimal 8 karakter, 1 huruf kapital, 1 angka, dan 1 simbol');
+        setIsSubmitting(false);
+        return;
+      }
+
       const url = editingUser ? `/api/moderator/users/${editingUser.id}` : '/api/moderator/users';
       const method = editingUser ? 'PATCH' : 'POST';
 
-      // For moderator, can only create/edit anggota
+      // For moderator, can only create/edit user
       const userData = {
         name: formData.name,
         email: formData.email,
         nim: formData.nim,
-        role: 'anggota', // Force role to anggota
+        role: 'user', // Force role to user (sesuai database schema)
         ...(formData.password && { password: formData.password }), // Only include password if provided
       };
 
@@ -260,14 +443,16 @@ export default function UsersPage() {
       });
 
       if (response.ok) {
-        await fetchUsers();
+        await fetchUsers(true); // Force refresh
         onClose();
         resetForm();
       } else {
-        console.error('Failed to save user');
+        const result = await response.json();
+        alert(result.message || 'Failed to save user');
       }
     } catch (error) {
       console.error('Error saving user:', error);
+      alert('Error saving user');
     } finally {
       setIsSubmitting(false);
     }
@@ -279,6 +464,11 @@ export default function UsersPage() {
       ...prev,
       [name]: value
     }));
+
+    // Validate password in real-time
+    if (name === 'password') {
+      setTimeout(() => validatePassword(value), 500); // Debounce 500ms
+    }
   };
 
   const handleEdit = (user: UserData) => {
@@ -292,19 +482,30 @@ export default function UsersPage() {
     onOpen();
   };
 
-  const handleDelete = async (userId: string) => {
+  const handleDeleteConfirm = (userId: string) => {
+    setDeleteUserId(userId);
+    onDeleteOpen();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteUserId) return;
+
     try {
-      const response = await fetch(`/api/moderator/users/${userId}`, {
+      const response = await fetch(`/api/moderator/users/${deleteUserId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        await fetchUsers();
+        await fetchUsers(true); // Force refresh
+        onDeleteClose();
+        setDeleteUserId(null);
       } else {
-        console.error('Failed to delete user');
+        const result = await response.json();
+        alert(result.message || 'Failed to delete user');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
+      alert('Error deleting user');
     }
   };
 
@@ -316,6 +517,14 @@ export default function UsersPage() {
       password: '',
     });
     setEditingUser(null);
+    setShowPassword(false);
+    setPasswordValidation({
+      length: false,
+      uppercase: false,
+      number: false,
+      symbol: false,
+      isValid: false
+    });
   };
 
   const onRowsPerPageChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -337,27 +546,56 @@ export default function UsersPage() {
     setPage(1)
   }, [])
 
+  // Eye icon component for password visibility toggle
+  const EyeIcon = () => (
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="text-gray-400 hover:text-gray-200 transition-colors p-1"
+      tabIndex={-1}
+    >
+      {showPassword ? (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  );
+
   // Render cell
   const renderCell = useCallback((user: UserData, columnKey: React.Key) => {
     switch (columnKey) {
       case "name":
         return (
-          <User
-            avatarProps={{
-              radius: "full", 
-              size: "sm",
-              src: getUserAvatarUrl(user, 32),
-              name: generateInitials(user.nama_lengkap),
-              isBordered: true
-            }}
-            classNames={{
-              description: "text-default-500",
-            }}
-            description={user.email}
-            name={user.nama_lengkap}
-          >
-            {user.email}
-          </User>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-300">
+              {user.profile_image || (user.nim && user.role) ? (
+                <img 
+                  src={getUserAvatarUrl(user, 32)}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/logo.png';
+                  }}
+                />
+              ) : (
+                <img 
+                  src="/logo.png"
+                  alt="COSMIC Logo"
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+            <div className="flex flex-col">
+              <p className="text-sm font-medium">{user.nama_lengkap}</p>
+              <p className="text-xs text-default-500">{user.email}</p>
+            </div>
+          </div>
         );
       case "email":
         return (
@@ -379,7 +617,7 @@ export default function UsersPage() {
             size="sm"
             variant="dot"
           >
-            {user.role}
+            {user.role === 'user' ? 'User' : user.role === 'moderator' ? 'Moderator' : 'Admin'}
           </Chip>
         );
       case "jabatan":
@@ -411,7 +649,7 @@ export default function UsersPage() {
                   key="delete"
                   className="text-danger"
                   color="danger"
-                  onPress={() => handleDelete(user.id)}
+                  onPress={() => handleDeleteConfirm(user.id)}
                   isDisabled={!canDeleteUser(user)}
                 >
                   Delete
@@ -497,17 +735,45 @@ export default function UsersPage() {
               </DropdownMenu>
             </Dropdown>
             
-            <Button
-              color="primary"
-              endContent={<IconPlus />}
-              size="sm"
-              onPress={() => {
-                resetForm();
-                onOpen();
-              }}
-            >
-              Add New
-            </Button>
+            {(() => {
+              if (!currentUser) return false;
+              
+              // Explicit condition for troubleshooting
+              const isAdmin = currentUser.role === 'admin';
+              const isModerator = currentUser.role === 'moderator';
+              const jabatan = currentUser.jabatan?.toLowerCase().trim() || '';
+              const isKetua = jabatan.includes('ketua') && !jabatan.includes('wakil');
+              const isWakilKetua = jabatan.includes('wakil') && jabatan.includes('ketua');
+              const isLeadership = isKetua || isWakilKetua;
+              
+              const shouldShowButton = isAdmin || (isModerator && isLeadership);
+              
+              console.log('=== ADD NEW BUTTON RENDER ===');
+              console.log('currentUser.role:', currentUser.role);
+              console.log('currentUser.jabatan:', currentUser.jabatan);
+              console.log('Processed jabatan:', jabatan);
+              console.log('isAdmin:', isAdmin);
+              console.log('isModerator:', isModerator);
+              console.log('isKetua:', isKetua);
+              console.log('isWakilKetua:', isWakilKetua);
+              console.log('isLeadership:', isLeadership);
+              console.log('shouldShowButton:', shouldShowButton);
+              console.log('==============================');
+              
+              return shouldShowButton;
+            })() && (
+              <Button
+                color="primary"
+                endContent={<IconPlus />}
+                size="sm"
+                onPress={() => {
+                  resetForm();
+                  onOpen();
+                }}
+              >
+                Add New
+              </Button>
+            )}
           </div>
         </div>
         <div className="flex justify-between items-center">
@@ -533,6 +799,7 @@ export default function UsersPage() {
     onSearchChange,
     onRowsPerPageChange,
     users.length,
+    currentUser, // Add currentUser as dependency
   ]);
 
   // Bottom content
@@ -568,12 +835,90 @@ export default function UsersPage() {
     );
   }
 
+  // Check if user has any access to the page
+  const hasPageAccess = () => {
+    if (!currentUser) return false;
+    
+    console.log('hasPageAccess check:', {
+      currentUserRole: currentUser.role,
+      currentUserJabatan: currentUser.jabatan,
+      isKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan),
+      result: currentUser.role === 'admin' || (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan))
+    });
+    
+    // Admin always has access
+    if (currentUser.role === 'admin') return true;
+    
+    // Moderator with ketua or wakil_ketua position has access
+    if (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan)) {
+      return true;
+    }
+    
+    // Regular moderator without ketua/wakil_ketua position has no access
+    return false;
+  };
+
+  // Show access denied message for users without permission  
+  if (!loading && currentUser && !hasPageAccess()) {
+    return (
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+                Akses Ditolak
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Anda tidak memiliki akses untuk mengelola user.
+              </p>
+            </div>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+              <div className="flex items-center justify-center mb-4">
+                <svg className="w-12 h-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                Akses Terbatas
+              </h3>
+              <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                Hanya <strong>Admin</strong> dan <strong>Moderator dengan jabatan Ketua atau Wakil Ketua</strong> yang dapat mengakses halaman manajemen user.
+              </p>
+              <div className="mt-4">
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  Role Anda: <strong>{currentUser.role}</strong> | 
+                  Jabatan: <strong>{currentUser.jabatan || 'Tidak ada'}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Manajemen User</h1>
           <p className="text-gray-600 mt-2">Kelola data anggota UKM</p>
+          {currentUser && (
+            <div className="mt-2">
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Selamat datang, {currentUser.nama_lengkap} ({currentUser.role}) - {currentUser.jabatan}
+              </p>
+              {/* Debug info untuk troubleshooting */}
+              <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                <strong>DEBUG INFO:</strong><br/>
+                Role: {currentUser.role}<br/>
+                Jabatan: "{currentUser.jabatan}"<br/>
+                Is Ketua/Wakil: {isKetuaOrWakilKetua(currentUser.jabatan) ? 'YES' : 'NO'}<br/>
+                Can Create: {canCreateUser() ? 'YES' : 'NO'}<br/>
+                Has Access: {(currentUser.role === 'admin' || (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan))) ? 'YES' : 'NO'}
+              </div>
+            </div>
+          )}
         </div>
 
         <Table
@@ -629,7 +974,7 @@ export default function UsersPage() {
                   {editingUser ? 'Edit User' : 'Tambah User Baru'}
                 </ModalHeader>
                 <ModalBody>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form id="user-form" onSubmit={handleFormSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4">
                       <Input
                         name="name"
@@ -664,22 +1009,67 @@ export default function UsersPage() {
                         variant="bordered"
                       />
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
-                      <Input
-                        name="password"
-                        type="password"
-                        label="Password"
-                        placeholder={editingUser ? "Kosongkan jika tidak ingin mengubah password" : "Masukkan password"}
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        isRequired={!editingUser}
-                        variant="bordered"
-                      />
-                    </div>
+                    {canUpdatePassword() && (
+                      <div className="grid grid-cols-1 gap-4">
+                        <Input
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          label="Password"
+                          placeholder={editingUser ? "Kosongkan jika tidak ingin mengubah password" : "Masukkan password"}
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          isRequired={!editingUser}
+                          variant="bordered"
+                          endContent={<EyeIcon />}
+                        />
+                        
+                        {/* Password validation indicators */}
+                        {formData.password && (
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Syarat password:</p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
+                                  {passwordValidation.length ? '✓' : '✗'}
+                                </span>
+                                <span>Minimal 8 karakter</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
+                                  {passwordValidation.uppercase ? '✓' : '✗'}
+                                </span>
+                                <span>1 huruf kapital</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
+                                  {passwordValidation.number ? '✓' : '✗'}
+                                </span>
+                                <span>1 angka</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
+                                  {passwordValidation.symbol ? '✓' : '✗'}
+                                </span>
+                                <span>1 simbol</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="bg-default-100 p-3 rounded-lg">
                       <p className="text-small text-default-600">
-                        <strong>Info:</strong> User yang dibuat akan memiliki role "anggota" secara otomatis. Data akan ditampilkan untuk semua pengguna yang telah mendaftar kecuali admin.
+                        <strong>Info:</strong> {(() => {
+                          if (currentUser?.role === 'admin') {
+                            return "User yang dibuat akan memiliki role \"user\" secara otomatis. Anda memiliki akses penuh sebagai admin.";
+                          } else if (currentUser?.role === 'moderator' && isKetuaOrWakilKetua(currentUser?.jabatan)) {
+                            return "User yang dibuat akan memiliki role \"user\" secara otomatis. Anda memiliki akses penuh sebagai " + 
+                                   (currentUser.jabatan || 'Moderator') + ".";
+                          } else {
+                            return "Anda tidak memiliki akses untuk mengelola user. Hanya admin dan moderator dengan jabatan Ketua/Wakil Ketua yang dapat mengelola user.";
+                          }
+                        })()}
                       </p>
                     </div>
                   </form>
@@ -690,10 +1080,52 @@ export default function UsersPage() {
                   </Button>
                   <Button 
                     color="primary" 
-                    onPress={() => handleSubmit({} as React.FormEvent)}
+                    onPress={handleUserSubmit}
                     isLoading={isSubmitting}
+                    isDisabled={!!(formData.password && !passwordValidation.isValid)}
                   >
                     {editingUser ? 'Update' : 'Create'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={isDeleteOpen}
+          onClose={() => {
+            onDeleteClose();
+            setDeleteUserId(null);
+          }}
+          placement="top-center"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  Konfirmasi Hapus User
+                </ModalHeader>
+                <ModalBody>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Apakah Anda yakin ingin menghapus user ini? Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </ModalBody>
+                <ModalFooter>
+                  <Button 
+                    color="default" 
+                    variant="flat" 
+                    onPress={onClose}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    color="danger" 
+                    onPress={handleDelete}
+                    isLoading={isSubmitting}
+                  >
+                    Ya, Hapus
                   </Button>
                 </ModalFooter>
               </>
