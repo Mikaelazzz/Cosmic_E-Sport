@@ -49,16 +49,20 @@ export async function POST(request: Request) {
     // Check if email is already registered
     const { data: existingUser } = await supabase
       .from('users')
-      .select('email')
+      .select('email, email_verified')
       .eq('email', email)
       .single();
 
-    if (existingUser) {
+    // If user exists and email is already verified, reject
+    if (existingUser && existingUser.email_verified) {
       return NextResponse.json(
-        { success: false, message: 'Email sudah terdaftar' },
+        { success: false, message: 'Email sudah terdaftar dan terverifikasi' },
         { status: 400 }
       );
     }
+
+    // If user exists but email not verified, allow sending verification
+    // (This handles both new registrations and existing users who need to verify)
 
     // Check if email already verified within last 24 hours
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
