@@ -68,7 +68,8 @@ export async function PUT(
       .update({ 
         nim, 
         role, 
-        jabatan
+        jabatan,
+        update_at: new Date().toISOString()
       })
       .eq('id', id);
 
@@ -83,7 +84,11 @@ export async function PUT(
     // Update user role in users table
     const { error: userUpdateError } = await supabase
       .from('users')
-      .update({ role, jabatan })
+      .update({ 
+        role, 
+        jabatan,
+        update_at: new Date().toISOString()
+      })
       .eq('nim', nim);
 
     if (userUpdateError) {
@@ -144,7 +149,11 @@ export async function DELETE(
     // Reset user role to default in users table
     const { error: userUpdateError } = await supabase
       .from('users')
-      .update({ role: 'user', jabatan: null })
+      .update({ 
+        role: 'user', 
+        jabatan: 'Anggota',
+        update_at: new Date().toISOString()
+      })
       .eq('nim', pengurus.nim);
 
     if (userUpdateError) {
