@@ -106,7 +106,7 @@ const CekRegion = () => {
         <div className='flex flex-col gap-4 sm:gap-5 mb-6 sm:mb-8'>
           <Input
             label="User ID"
-            placeholder="Contoh: 287927883"
+            placeholder="Contoh: 12345678"
             value={idAkun}
             onChange={(e) => setIdAkun(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -123,7 +123,7 @@ const CekRegion = () => {
           
           <Input
             label="Zone ID"
-            placeholder="Contoh: 9496"
+            placeholder="Contoh: 1234"
             value={serverAkun}
             onChange={(e) => setServerAkun(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -183,22 +183,22 @@ const CekRegion = () => {
                 
                 <div className='grid gap-4 sm:gap-5'>
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
-                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Id:</span>
+                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>ID :</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.id}</span>
                   </div>
-                  
+{/*                   
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                     <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Server:</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.server}</span>
-                  </div>
+                  </div> */}
                   
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
-                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>NickName:</span>
+                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>NickName :</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.nickname}</span>
                   </div>
                   
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
-                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Country / Negara:</span>
+                    <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Region :</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.country}</span>
                   </div>
                 </div>

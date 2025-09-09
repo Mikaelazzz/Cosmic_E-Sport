@@ -104,7 +104,7 @@ const FirstPurchase = () => {
         <div className='flex flex-col gap-4 sm:gap-5 mb-6 sm:mb-8'>
           <Input
             label="User ID"
-            placeholder="Contoh: 287927883"
+            placeholder="Contoh: 12345678"
             value={idAkun}
             onChange={(e) => setIdAkun(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -121,7 +121,7 @@ const FirstPurchase = () => {
           
           <Input
             label="Zone ID"
-            placeholder="Contoh: 9496"
+            placeholder="Contoh: 1234"
             value={serverAkun}
             onChange={(e) => setServerAkun(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -193,7 +193,7 @@ const FirstPurchase = () => {
                       <span className='text-yellow-300 font-bold text-lg'>{result.data.game_info.id_game}</span>
                     </div>
                     
-                    <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
+                    {/* <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Nickname:</span>
                       <span className='text-yellow-300 font-bold text-lg'>{result.data.game_info.nickname}</span>
                     </div>
@@ -201,7 +201,7 @@ const FirstPurchase = () => {
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Region:</span>
                       <span className='text-yellow-300 font-bold text-lg'>{result.data.game_info.region}</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
                 

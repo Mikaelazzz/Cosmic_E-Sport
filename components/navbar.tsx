@@ -137,9 +137,9 @@ export const Navbar = () => {
           { label: "Team", href: "/user/team" },
           { label: "Shuffle", href: "/user/games/shuffle" },
           { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
-          { label: "Kuis Gambar", href: "/user/games/tebak-gambar-2" },
+          { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
           { label: "Cek Region", href: "/user/games/cek-region" },
-          { label: "Free Fire", href: "/user/games/fp" }
+          { label: "First Purchase", href: "/user/games/fp" }
         ];
       default:
         return siteConfig.navMenuItems;
