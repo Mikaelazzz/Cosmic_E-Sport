@@ -22,6 +22,7 @@ interface AdminStats {
   totalEvents: number;
   totalPengurus: number;
   totalPrestasi: number;
+  totalTeams: number;
   pengurusBreakdown?: {
     active: number;
     notRegistered: number;
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
       title="Admin Dashboard"
       description="Kelola dan pantau seluruh aktivitas organisasi dari satu tempat."
     >
-      <div className="flex justify-end mb-4">
+      {/* <div className="flex justify-end mb-4">
         <Button 
           color="danger" 
           variant="ghost"
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
         >
           Logout
         </Button>
-      </div>
+      </div> */}
 
       {/* Loading State */}
       {loading && (
@@ -108,7 +109,7 @@ export default function AdminDashboard() {
       {stats && !loading && (
         <>
           {/* Statistics Cards */}
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6 md:mb-8">
             {/* Total Members */}
             <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
               <CardHeader className="pb-2">
@@ -159,6 +160,17 @@ export default function AdminDashboard() {
               <CardBody className="pt-0">
                 <p className="text-3xl font-bold text-orange-800 dark:text-orange-200">{stats.totalPrestasi}</p>
                 <p className="text-sm text-orange-600 dark:text-orange-400">Prestasi dicapai</p>
+              </CardBody>
+            </Card>
+
+            {/* Total Teams */}
+            <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20">
+              <CardHeader className="pb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-cyan-700 dark:text-cyan-300">Total Team</h3>
+              </CardHeader>
+              <CardBody className="pt-0">
+                <p className="text-2xl sm:text-3xl font-bold text-cyan-800 dark:text-cyan-200">{stats.totalTeams || 0}</p>
+                <p className="text-xs sm:text-sm text-cyan-600 dark:text-cyan-400">Team terdaftar</p>
               </CardBody>
             </Card>
           </div>

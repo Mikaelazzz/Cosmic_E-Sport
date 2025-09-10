@@ -17,43 +17,72 @@ import Preloader from "@/components/Preloader";
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 
+interface PrestasiItem {
+  id: number;
+  title: string;
+  level: string;
+  date: string;
+  players: string;
+  img: string;
+  badge: string;
+  description?: string;
+  rawDate?: string;
+}
+
 
 export default function Home() {
   const [showPreloader, setShowPreloader] = useState(true);
-  useEffect(() => {
-    setShowPreloader(true);
-  }, []);
-
-  // Dummy data prestasi (replace with real data if available)
-  const prestasiList = [
-    {
-      title: "Nama Tournament",
-      level: "Tingkat Acara",
-      date: "Tanggal",
-      players: "5-7 Player",
-      img: "/pengurus/download.jpg",
-      badge: "1st"
-    },
-    {
-      title: "Nama Tournament",
-      level: "Tingkat Acara",
-      date: "Tanggal",
-      players: "5-7 Player",
-      img: "/pengurus/download.jpg",
-      badge: "1st"
-    },
-    {
-      title: "Tournament Lainnya",
-      level: "Nasional",
-      date: "2025-08-01",
-      players: "6 Player",
-      img: "/pengurus/download.jpg",
-      badge: "2nd"
-    },
-    // Tambah data lain jika perlu
-  ];
+  const [prestasiList, setPrestasiList] = useState<PrestasiItem[]>([]);
   const [showCount, setShowCount] = useState(2);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingPrestasi, setLoadingPrestasi] = useState(true);
+  
+  useEffect(() => {
+    setShowPreloader(true);
+    fetchPrestasiData();
+  }, []);
+
+  const fetchPrestasiData = async () => {
+    try {
+      setLoadingPrestasi(true);
+      const response = await fetch('/api/prestasi');
+      const result = await response.json();
+      
+      if (result.success) {
+        setPrestasiList(result.data);
+      } else {
+        console.error('Failed to fetch prestasi:', result.error);
+        // Fallback to dummy data if API fails
+        setPrestasiList([
+          {
+            id: 1,
+            title: "Tournament Sample",
+            level: "Regional",
+            date: "1 Januari 2025",
+            players: "5 Players",
+            img: "/pengurus/download.jpg",
+            badge: "1st"
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching prestasi:', error);
+      // Fallback to dummy data if fetch fails
+      setPrestasiList([
+        {
+          id: 1,
+          title: "Tournament Sample",
+          level: "Regional", 
+          date: "1 Januari 2025",
+          players: "5 Players",
+          img: "/pengurus/download.jpg",
+          badge: "1st"
+        }
+      ]);
+    } finally {
+      setLoadingPrestasi(false);
+    }
+  };
 
   // Logic: 2, 6, 10, 14, ...
   const handleShowMore = () => {
@@ -370,55 +399,77 @@ export default function Home() {
     {/* Halaman Keempat */}
   <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8">
       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
-      <CardScrollAnimation
-        className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
-        animationDuration={0.8}
-        ease="back.out(1.7)"
-        scrollStart="top bottom-=150px"
-        scrollEnd="bottom top+=50px"
-        stagger={0.15}
-      >
-        {prestasiList.slice(0, showCount).map((item, idx) => (
-          <div key={idx} className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
-            <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
-            {/* Shine effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-            {/* Yellow badge */}
-            <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
-              {item.badge}
-            </div>
-            {/* Profile image */}
-            <div className="mb-4">
-              <img
-                src={item.img}
-                alt={item.title}
-                className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
-              />
-            </div>
-            {/* Name */}
-            <div className="text-start text-white font-[orbitron]">
-              <h1 className="text-lg font-bold" >
-                {item.title}
-              </h1>
-              <h2 className="text-[13px]">{item.level}</h2>
-              <h2 className="text-[13px]">{item.date}</h2>
-              <br />
-              <small className="text-[10px] mt-4">{item.players}</small>
-            </div>
-          </div>
-        ))}
-      </CardScrollAnimation>
-      {showCount < prestasiList.length && (
-        <Button
-          className="mt-8 flex items-center gap-2"
-          color="warning"
-          variant="ghost"
-          onClick={handleShowMore}
-          disabled={loadingMore}
-        >
-          {loadingMore && <Spinner size={18} className="mr-2" />}
-          {loadingMore ? "Memuat..." : "Tampilkan Lainnya"}
-        </Button>
+      
+      {loadingPrestasi ? (
+        <div className="flex flex-col items-center justify-center">
+          <Spinner size={48} />
+          <p className="mt-4 text-white/70">Memuat prestasi...</p>
+        </div>
+      ) : prestasiList.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center">
+          <div className="text-6xl mb-4">🏆</div>
+          <h3 className="text-xl font-bold text-white mb-2">Belum Ada Prestasi</h3>
+          <p className="text-white/70">Prestasi akan ditampilkan di sini ketika sudah tersedia</p>
+        </div>
+      ) : (
+        <>
+          <CardScrollAnimation
+            className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
+            animationDuration={0.8}
+            ease="back.out(1.7)"
+            scrollStart="top bottom-=150px"
+            scrollEnd="bottom top+=50px"
+            stagger={0.15}
+          >
+            {prestasiList.slice(0, showCount).map((item, idx) => (
+              <div key={item.id || idx} className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
+                <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                {/* Yellow badge */}
+                <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
+                  {item.badge}
+                </div>
+                {/* Profile image */}
+                <div className="mb-4">
+                  <img
+                    src={item.img}
+                    alt={item.title}
+                    className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
+                    onError={(e) => {
+                      e.currentTarget.src = '/pengurus/download.jpg'; // fallback image
+                    }}
+                  />
+                </div>
+                {/* Name */}
+                <div className="text-start text-white font-[orbitron]">
+                  <h1 className="text-lg font-bold" >
+                    {item.title}
+                  </h1>
+                  <h2 className="text-[13px]">{item.level}</h2>
+                  <h2 className="text-[13px]">{item.date}</h2>
+                  <br />
+                  <small className="text-[10px] mt-4">{item.players}</small>
+                  {item.description && (
+                    <p className="text-xs text-white/80 mt-2 line-clamp-2">{item.description}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardScrollAnimation>
+          {showCount < prestasiList.length && (
+            <Button
+              className="mt-8 flex items-center gap-2"
+              color="warning"
+              variant="ghost"
+              onClick={handleShowMore}
+              disabled={loadingMore}
+            >
+              {loadingMore && <Spinner size={18} className="mr-2" />}
+              {loadingMore ? "Memuat..." : "Tampilkan Lainnya"}
+            </Button>
+          )}
+        </>
       )}
     </section>
 
