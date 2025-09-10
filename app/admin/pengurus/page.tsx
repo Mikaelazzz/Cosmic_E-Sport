@@ -31,6 +31,7 @@ import {
 import { Select, SelectItem } from '@heroui/select';
 import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Alert } from '@heroui/alert';
+import { getUserAvatarUrl } from '@/lib/avatar';
 
 interface PengurusData {
   id: number;
@@ -46,6 +47,8 @@ interface PengurusData {
 
 interface FormData {
   nim: string;
+  nama_lengkap: string;
+  email: string;
   role: string;
   jabatan: string;
   customJabatan: string;
@@ -184,7 +187,7 @@ const statusColorMap: Record<string, "success" | "danger" | "warning" | "default
   not_registered: "warning",
 };
 
-const INITIAL_VISIBLE_COLUMNS = ["nim", "name", "role", "jabatan", "status", "actions"];
+const INITIAL_VISIBLE_COLUMNS = ["nim", "name","email", "role", "jabatan", "status", "actions"];
 
 function capitalize(s: string) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
@@ -211,11 +214,14 @@ export default function AdminPengurusPage() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [formData, setFormData] = useState<FormData>({
     nim: '',
+    nama_lengkap: '',
+    email: '',
     role: 'moderator',
     jabatan: 'Ketua',
     customJabatan: '',
   });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [avatarKey, setAvatarKey] = useState(0);
 
   const pages = Math.ceil(pengurus.length / rowsPerPage);
   const hasSearchFilter = Boolean(filterValue);
@@ -243,10 +249,15 @@ export default function AdminPengurusPage() {
   const loadPengurus = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/pengurus');
+      const response = await fetch('/api/admin/pengurus?type=active');
       if (response.ok) {
         const data = await response.json();
-        setPengurus(data);
+        if (data.success) {
+          setPengurus(data.pengurus || []);
+          setAvatarKey(prev => prev + 1); // Force avatar refresh
+        } else {
+          setAlert({ type: 'error', message: data.message || 'Failed to load pengurus data' });
+        }
       } else {
         throw new Error('Failed to load pengurus data');
       }
@@ -311,6 +322,8 @@ export default function AdminPengurusPage() {
   const handleAdd = () => {
     setFormData({
       nim: '',
+      nama_lengkap: '',
+      email: '',
       role: 'moderator',
       jabatan: 'Ketua',
       customJabatan: '',
@@ -322,6 +335,8 @@ export default function AdminPengurusPage() {
   const handleEdit = (pengurus: PengurusData) => {
     setFormData({
       nim: pengurus.nim,
+      nama_lengkap: pengurus.name,
+      email: pengurus.email,
       role: pengurus.role,
       jabatan: jabatanOptions.includes(pengurus.jabatan) ? pengurus.jabatan : 'Lainnya',
       customJabatan: jabatanOptions.includes(pengurus.jabatan) ? '' : pengurus.jabatan,
@@ -365,6 +380,23 @@ export default function AdminPengurusPage() {
         setAlert({ type: 'error', message: 'Jabatan custom harus diisi' });
         return;
       }
+
+      // For new pengurus registration (not editing), validate nama_lengkap and email
+      if (!editingId && formData.nama_lengkap && !formData.nama_lengkap.trim()) {
+        setAlert({ type: 'error', message: 'Nama lengkap harus diisi jika disediakan' });
+        return;
+      }
+
+      if (!editingId && formData.email && (!formData.email.includes('@') || !formData.email.trim())) {
+        setAlert({ type: 'error', message: 'Email harus valid jika disediakan' });
+        return;
+      }
+      
+      // Check if there's an active periode
+      if (!currentPeriod || currentPeriod.status !== 'berlangsung') {
+        setAlert({ type: 'error', message: 'Tidak ada periode aktif. Silakan buat periode baru terlebih dahulu.' });
+        return;
+      }
       
       const url = editingId 
         ? `/api/admin/pengurus/${editingId}` 
@@ -375,28 +407,42 @@ export default function AdminPengurusPage() {
       // Use custom jabatan if "Lainnya" is selected
       const finalJabatan = formData.jabatan === 'Lainnya' ? formData.customJabatan : formData.jabatan;
       
+      // Prepare request body
+      const requestBody: any = {
+        nim: formData.nim,
+        role: formData.role,
+        jabatan: finalJabatan,
+      };
+
+      // Include nama_lengkap and email for new registrations if provided
+      if (!editingId) {
+        if (formData.nama_lengkap && formData.nama_lengkap.trim()) {
+          requestBody.nama_lengkap = formData.nama_lengkap.trim();
+        }
+        if (formData.email && formData.email.trim()) {
+          requestBody.email = formData.email.trim();
+        }
+      }
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          nim: formData.nim,
-          role: formData.role,
-          jabatan: finalJabatan,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (data.success) {
         setAlert({ 
           type: 'success', 
-          message: editingId ? 'Pengurus berhasil diupdate' : 'Pengurus berhasil ditambahkan' 
+          message: data.message || (editingId ? 'Pengurus berhasil diupdate' : 'Pengurus berhasil ditambahkan')
         });
         loadPengurus();
         onOpenChange();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Operasi gagal');
+        throw new Error(data.message || 'Operasi gagal');
       }
     } catch (error) {
       setAlert({ 
@@ -427,29 +473,32 @@ export default function AdminPengurusPage() {
 
     switch (columnKey) {
       case "name":
-        const avatarUrl = pengurus.email === 'Belum terdaftar' 
-          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(pengurus.nim)}&background=9ca3af&color=ffffff`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(pengurus.name)}&background=random`;
-          
         return (
-          <User
-            avatarProps={{
-              radius: "full",
-              size: "sm",
-              src: avatarUrl
-            }}
-            description={pengurus.email}
-            name={pengurus.name}
-            classNames={{
-              description: pengurus.email === 'Belum terdaftar' ? "text-warning" : "text-default-500"
-            }}
-          />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+              <img 
+                key={avatarKey} // Force re-render when avatar changes
+                src={getUserAvatarUrl(pengurus, 48, true)}
+                alt="Profile"
+                className="w-12 h-12 object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/logc.png';
+                }}
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-small font-medium">{pengurus.name}</span>
+              {/* <span className={`text-tiny ${pengurus.email === 'Belum terdaftar' ? 'text-warning' : 'text-default-500'}`}>
+                {pengurus.email}
+              </span> */}
+            </div>
+          </div>
         );
       case "role":
         return (
           <div className="flex flex-col">
             <p className="text-bold text-small capitalize">{cellValue}</p>
-            <p className="text-bold text-tiny capitalize text-default-500">{pengurus.jabatan}</p>
+            {/* <p className="text-bold text-tiny capitalize text-default-500">{pengurus.jabatan}</p> */}
           </div>
         );
       case "status":
@@ -572,14 +621,24 @@ export default function AdminPengurusPage() {
                 ))}
               </DropdownMenu>
             </Dropdown>
-            <Button 
-              className="bg-foreground text-background" 
-              endContent={<PlusIcon />} 
-              size="sm"
-              onPress={handleAdd}
-            >
-              Tambah Pengurus
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                color="warning"
+                variant="flat"
+                size="sm"
+                onPress={() => window.location.href = '/admin/pengurus/history'}
+              >
+                History Pengurus
+              </Button>
+              <Button 
+                className="bg-foreground text-background" 
+                endContent={<PlusIcon />} 
+                size="sm"
+                onPress={handleAdd}
+              >
+                Tambah Pengurus
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex justify-between items-center">
@@ -758,7 +817,7 @@ export default function AdminPengurusPage() {
                   </p>
                 </div>
               </div>
-              <Chip color="success" variant="flat">Berlangsung</Chip>
+              <Chip color="success" variant="flat" className="self-center">Berlangsung</Chip>
             </div>
           </CardHeader>
           <CardBody>
@@ -861,6 +920,27 @@ export default function AdminPengurusPage() {
                   value={formData.nim}
                   onValueChange={(value: string) => setFormData({ ...formData, nim: value })}
                 />
+                {!editingId && (
+                  <>
+                    <Input
+                      label="Nama Lengkap"
+                      placeholder="Masukkan nama lengkap (opsional)"
+                      variant="bordered"
+                      value={formData.nama_lengkap || ''}
+                      onValueChange={(value: string) => setFormData({ ...formData, nama_lengkap: value })}
+                      description="Isi jika pengurus belum terdaftar di website"
+                    />
+                    <Input
+                      label="Email"
+                      placeholder="Masukkan email (opsional)"
+                      type="email"
+                      variant="bordered"
+                      value={formData.email || ''}
+                      onValueChange={(value: string) => setFormData({ ...formData, email: value })}
+                      description="Isi jika pengurus belum terdaftar di website"
+                    />
+                  </>
+                )}
                 <div className="text-sm text-default-500 p-2 bg-default-100 rounded-lg">
                   Role akan otomatis diatur sebagai <strong>Moderator</strong>
                 </div>
