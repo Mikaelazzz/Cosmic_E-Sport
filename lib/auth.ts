@@ -97,7 +97,8 @@ export class AuthService {
 
       // Determine role and jabatan
       const userRole = pengurusData ? pengurusData.role : 'user';
-      const userJabatan = pengurusData ? pengurusData.jabatan : 'Member';
+      const userJabatan = pengurusData ? pengurusData.jabatan : 'Anggota';
+      const isPengurusPreAssigned = !!pengurusData;
 
       // Insert new user
       const { data: newUser, error } = await supabase
@@ -130,9 +131,14 @@ export class AuthService {
         .delete()
         .eq('email', data.email);
 
+      // Determine success message based on pengurus status
+      const successMessage = isPengurusPreAssigned 
+        ? `Pendaftaran berhasil! Selamat datang ${userJabatan}. Status kepengurusan Anda telah diaktifkan.`
+        : 'Pendaftaran berhasil!';
+
       return {
         success: true,
-        message: 'Pendaftaran berhasil!',
+        message: successMessage,
         user: newUser as User
       };
 
