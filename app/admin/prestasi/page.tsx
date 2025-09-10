@@ -578,7 +578,7 @@ export default function PrestasiPage() {
                     }}
                   >
                     {TINGKAT_ACARA.map((tingkat) => (
-                      <SelectItem key={tingkat.key} value={tingkat.key}>
+                      <SelectItem key={tingkat.key}>
                         {tingkat.label}
                       </SelectItem>
                     ))}
@@ -611,7 +611,7 @@ export default function PrestasiPage() {
                       }}
                     >
                       {JUARA_OPTIONS.map((option) => (
-                        <SelectItem key={option.key} value={option.key}>
+                        <SelectItem key={option.key}>
                           {option.label}
                         </SelectItem>
                       ))}

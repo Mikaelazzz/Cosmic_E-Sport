@@ -332,7 +332,7 @@ export default function HistoryPengurusPage() {
                   <>
                     <h2 className="text-xl font-bold">{selectedPeriode.nama}</h2>
                     <p className="text-sm text-gray-500">
-                      {selectedPeriode.tahun_akademik} - Semester {selectedPeriode.semester}
+                      {selectedPeriode.tahun_akademik} - Semester {selectedPeriode.semesters_completed?.join(' + ') || 'N/A'}
                     </p>
                   </>
                 )}
