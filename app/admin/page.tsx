@@ -271,6 +271,14 @@ export default function AdminDashboard() {
                   >
                     Kelola Periode
                   </Button>
+                  <Button 
+                    color="warning" 
+                    variant="flat"
+                    className="w-full"
+                    onPress={() => window.location.href = '/admin/pengurus/history'}
+                  >
+                    History Pengurus
+                  </Button>
                 </div>
               </CardBody>
             </Card>
