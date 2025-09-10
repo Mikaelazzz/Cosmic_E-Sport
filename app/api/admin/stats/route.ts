@@ -58,7 +58,7 @@ export async function GET() {
 
         if (!pengurusError && pengurusData) {
           // Count unique pengurus by NIM to avoid duplicates across semesters
-          const uniquePengurusNIMs = new Set(pengurusData.map(p => p.admin_nim.nim));
+          const uniquePengurusNIMs = new Set(pengurusData.map((p: any) => p.admin_nim?.nim).filter(nim => nim));
           totalPengurus = uniquePengurusNIMs.size;
 
           // Get breakdown of registered vs not registered pengurus
@@ -95,6 +95,15 @@ export async function GET() {
 
     if (prestasiError) {
       console.error('Error fetching prestasi count:', prestasiError);
+    }
+
+    // Get total teams count
+    const { count: totalTeams, error: teamsError } = await supabase
+      .from('teams')
+      .select('*', { count: 'exact', head: true });
+
+    if (teamsError) {
+      console.error('Error fetching teams count:', teamsError);
     }
 
     // Get daily new members for the last 30 days
@@ -162,6 +171,7 @@ export async function GET() {
         totalEvents: totalEvents || 0,
         totalPengurus: totalPengurus || 0,
         totalPrestasi: totalPrestasi || 0,
+        totalTeams: totalTeams || 0,
         pengurusBreakdown: pengurusBreakdown,
         chartData: chartData
       }
