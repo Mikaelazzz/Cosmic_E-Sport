@@ -11,6 +11,7 @@ import { Spinner } from "@heroui/spinner";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
+import AdminLayout from "@/components/AdminLayout";
 import { User } from "@/types/type";
 import { getUserAvatarUrl, generateConsistentAvatarUrl } from "@/lib/avatar";
 
@@ -589,8 +590,7 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-
+    <AdminLayout>
       {message && (
         <Alert 
           color={messageType === "success" ? "success" : "danger"} 
@@ -603,9 +603,79 @@ export default function AdminProfilePage() {
 
       <div className="shadow-lg">
         <div className="p-8">
-          <div className="flex gap-8">
-            {/* Left side - Form fields */}
-            <div className="flex-1 space-y-6">
+          {/* Mobile Layout: Avatar on top, Form below */}
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Avatar Section - Appears first on mobile, right on desktop */}
+            <div className="flex flex-col items-center justify-start space-y-4 lg:order-2">
+              <div className="relative">
+                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    key={avatarKey} // Force re-render when avatar changes
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-48 h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
+                  onPress={() => fileInputRef.current?.click()}
+                  onMouseEnter={() => {
+                    setIsHovering(true);
+                    if (lottieRef.current) {
+                      lottieRef.current.play();
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setIsHovering(false);
+                    if (lottieRef.current) {
+                      lottieRef.current.stop();
+                    }
+                  }}
+                >
+                  {editAnimation ? (
+                    <Lottie
+                      lottieRef={lottieRef}
+                      animationData={editAnimation}
+                      className="w-6 h-6"
+                      loop={true}
+                      autoplay={false}
+                    />
+                  ) : (
+                    // Fallback icon jika animasi belum load
+                    <svg 
+                      className="w-5 h-5 text-[#FF1744]" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  )}
+                </Button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <Button
+                color="danger"
+                variant="solid"
+                size="sm"
+                className="px-8"
+                onPress={handleRemoveAvatar}
+              >
+                Remove
+              </Button>
+            </div>
+
+            {/* Form Section - Appears second on mobile, left on desktop */}
+            <div className="flex-1 space-y-6 lg:order-1">
               <div>
                 <label className="block text-sm font-medium text-yellow-400 mb-2">Username</label>
                 <Input
@@ -688,75 +758,6 @@ export default function AdminProfilePage() {
                 />
               </div>
             </div>
-
-            {/* Right side - Profile picture */}
-            <div className="flex flex-col items-center justify-start space-y-4">
-              <div className="relative">
-                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
-                  <img 
-                    key={avatarKey} // Force re-render when avatar changes
-                    src={getUserAvatarUrl(user, 200, true)}
-                    alt="Profile"
-                    className="w-48 h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = '/logc.png';
-                    }}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
-                  onPress={() => fileInputRef.current?.click()}
-                  onMouseEnter={() => {
-                    setIsHovering(true);
-                    if (lottieRef.current) {
-                      lottieRef.current.play();
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    setIsHovering(false);
-                    if (lottieRef.current) {
-                      lottieRef.current.stop();
-                    }
-                  }}
-                >
-                  {editAnimation ? (
-                    <Lottie
-                      lottieRef={lottieRef}
-                      animationData={editAnimation}
-                      className="w-6 h-6"
-                      loop={true}
-                      autoplay={false}
-                    />
-                  ) : (
-                    // Fallback icon jika animasi belum load
-                    <svg 
-                      className="w-5 h-5 text-[#FF1744]" 
-                      fill="currentColor" 
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                  )}
-                </Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-              <Button
-                color="danger"
-                variant="solid"
-                size="sm"
-                className="px-8"
-                onPress={handleRemoveAvatar}
-              >
-                Remove
-              </Button>
-            </div>
           </div>
 
           {/* Edit/Save/Cancel buttons at the bottom */}
@@ -825,6 +826,6 @@ export default function AdminProfilePage() {
           </ModalBody>
         </ModalContent>
       </Modal>
-    </div>
+    </AdminLayout>
   );
 }

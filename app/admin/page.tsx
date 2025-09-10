@@ -15,12 +15,18 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
+import AdminLayout from '@/components/AdminLayout';
 
 interface AdminStats {
   totalMembers: number;
   totalEvents: number;
   totalPengurus: number;
   totalPrestasi: number;
+  pengurusBreakdown?: {
+    active: number;
+    notRegistered: number;
+    total: number;
+  };
   chartData: Array<{
     date: string;
     newMembers: number;
@@ -59,11 +65,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Admin Dashboard
-        </h1>
+    <AdminLayout
+      title="Admin Dashboard"
+      description="Kelola dan pantau seluruh aktivitas organisasi dari satu tempat."
+    >
+      <div className="flex justify-end mb-4">
         <Button 
           color="danger" 
           variant="ghost"
@@ -102,15 +108,15 @@ export default function AdminDashboard() {
       {stats && !loading && (
         <>
           {/* Statistics Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
             {/* Total Members */}
             <Card className="hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
               <CardHeader className="pb-2">
-                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300">Total Anggota</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-blue-700 dark:text-blue-300">Total Anggota</h3>
               </CardHeader>
               <CardBody className="pt-0">
-                <p className="text-3xl font-bold text-blue-800 dark:text-blue-200">{stats.totalMembers}</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">Anggota terdaftar</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-800 dark:text-blue-200">{stats.totalMembers}</p>
+                <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Anggota terdaftar</p>
               </CardBody>
             </Card>
 
@@ -132,7 +138,16 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardBody className="pt-0">
                 <p className="text-3xl font-bold text-purple-800 dark:text-purple-200">{stats.totalPengurus}</p>
-                <p className="text-sm text-purple-600 dark:text-purple-400">Pengurus aktif</p>
+                <div className="text-sm text-purple-600 dark:text-purple-400">
+                  {stats.pengurusBreakdown ? (
+                    <div className="space-y-1">
+                      <div>{stats.pengurusBreakdown.active} Aktif</div>
+                      <div>{stats.pengurusBreakdown.notRegistered} Belum Terdaftar</div>
+                    </div>
+                  ) : (
+                    <p>Pengurus aktif</p>
+                  )}
+                </div>
               </CardBody>
             </Card>
 
@@ -285,6 +300,6 @@ export default function AdminDashboard() {
           </div>
         </>
       )}
-    </div>
+    </AdminLayout>
   );
 }

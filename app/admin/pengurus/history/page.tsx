@@ -26,6 +26,7 @@ import {
   Divider
 } from "@heroui/react";
 import { CalendarIcon, UsersIcon, EyeIcon } from "lucide-react";
+import AdminLayout from "@/components/AdminLayout";
 
 interface Periode {
   id: string;
@@ -156,13 +157,12 @@ export default function HistoryPengurusPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">History Pengurus</h1>
-          <p className="text-gray-600 mt-2">Lihat riwayat pengurus dari periode sebelumnya</p>
-        </div>
-      </div>
+    <AdminLayout 
+      title="History Pengurus" 
+      description="Lihat riwayat pengurus dari periode sebelumnya untuk referensi dan dokumentasi organisasi."
+      subtitle="Lihat riwayat pengurus dari periode sebelumnya"
+    >
+      <div className="space-y-4 md:space-y-6">
 
       {/* Filter by Year */}
       <Card>
@@ -412,6 +412,7 @@ export default function HistoryPengurusPage() {
           )}
         </ModalContent>
       </Modal>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

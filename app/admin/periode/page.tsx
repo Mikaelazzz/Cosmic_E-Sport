@@ -15,6 +15,7 @@ import { Divider } from "@heroui/divider";
 import { Alert } from "@heroui/alert";
 import { IconPlus, IconEdit, IconTrash, IconCalendar, IconUsers, IconDownload, IconSearch } from '@/components/icons';
 import { Meeting } from '@/types/index';
+import AdminLayout from '@/components/AdminLayout';
 
 // Types sesuai database schema
 interface Periode {
@@ -559,39 +560,42 @@ export default function PeriodePage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Alert Notifications */}
-      {alertConfig.show && (
-        <Alert
-          hideIconWrapper
-          color={alertConfig.color}
-          description={alertConfig.description}
-          title={alertConfig.title}
-          variant="bordered"
-          onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
-          isClosable
-        />
-      )}
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Manajemen Periode</h1>
-          <p className="text-default-500">Kelola periode dan semester UKM</p>
-        </div>
-        {!currentPeriod && (
-          <Button
-            color="primary"
-            startContent={<IconPlus />}
-            onPress={openCreateModal}
-            isDisabled={!nextPeriodInfo}
-          >
-            {nextPeriodInfo ? 
-              `Mulai Periode ${nextPeriodInfo.nextSemester === 'genap' ? 'Genap' : 'Ganjil'}` : 
-              'Buat Periode'
-            }
-          </Button>
+    <AdminLayout
+      title="Manajemen Periode"
+      description="Kelola periode dan semester UKM untuk mengatur jadwal kegiatan organisasi."
+    >
+        {/* Alert Notifications */}
+        {alertConfig.show && (
+          <Alert
+            hideIconWrapper
+            color={alertConfig.color}
+            description={alertConfig.description}
+            title={alertConfig.title}
+            variant="bordered"
+            onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
+            isClosable
+          />
         )}
+
+        {/* Action Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold">Periode Aktif & Kontrol</h2>
+            <p className="text-default-500 text-sm">Kelola status periode dan buat periode baru</p>
+          </div>
+          {!currentPeriod && (
+            <Button
+              color="primary"
+              startContent={<IconPlus />}
+              onPress={openCreateModal}
+              isDisabled={!nextPeriodInfo}
+            >
+              {nextPeriodInfo ? 
+                `Mulai Periode ${nextPeriodInfo.nextSemester === 'genap' ? 'Genap' : 'Ganjil'}` : 
+                'Buat Periode'
+              }
+            </Button>
+          )}
       </div>
 
       {/* Current Period Card */}
@@ -739,51 +743,101 @@ export default function PeriodePage() {
                     Menampilkan {filteredMeetings.length} dari {meetings.length} pertemuan
                   </div>
                 )}
-                <Table aria-label="Daftar Pertemuan periode aktif">
-                  <TableHeader>
-                    <TableColumn>TOPIK</TableColumn>
-                    <TableColumn>TANGGAL</TableColumn>
-                    <TableColumn>WAKTU</TableColumn>
-                    <TableColumn>KELAS</TableColumn>
-                    <TableColumn>KEHADIRAN</TableColumn>
-                    <TableColumn>STATUS</TableColumn>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMeetings.map((meeting) => (
-                      <TableRow key={meeting.id}>
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <Table aria-label="Daftar Pertemuan periode aktif">
+                    <TableHeader>
+                      <TableColumn>TOPIK</TableColumn>
+                      <TableColumn>TANGGAL</TableColumn>
+                      <TableColumn>WAKTU</TableColumn>
+                      <TableColumn>KELAS</TableColumn>
+                      <TableColumn>KEHADIRAN</TableColumn>
+                      <TableColumn>STATUS</TableColumn>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredMeetings.map((meeting) => (
+                        <TableRow key={meeting.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{meeting.nama_topik}</p>
+                            </div>
+                        </TableCell>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{meeting.nama_topik}</p>
+                          {new Date(meeting.tanggal).toLocaleDateString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          {formatTime(meeting.jam_mulai)} - {formatTime(meeting.jam_akhir)}
+                        </TableCell>
+                        <TableCell>{meeting.kelas || '-'}</TableCell>
+                        <TableCell>
+                          <AttendanceSlider meeting={meeting} />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            color={getMeetingStatusColor(meeting.status)}
+                            variant="flat"
+                            size="sm"
+                          >
+                            {meeting.status}
+                          </Chip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="block md:hidden space-y-3">
+                  {filteredMeetings.map((meeting) => (
+                    <Card key={meeting.id} className="w-full">
+                      <CardBody className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-base">{meeting.nama_topik}</h4>
+                            <p className="text-sm text-default-600">
+                              {new Date(meeting.tanggal).toLocaleDateString('id-ID', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                              })}
+                            </p>
                           </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(meeting.tanggal).toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        {formatTime(meeting.jam_mulai)} - {formatTime(meeting.jam_akhir)}
-                      </TableCell>
-                      <TableCell>{meeting.kelas || '-'}</TableCell>
-                      <TableCell>
-                        <AttendanceSlider meeting={meeting} />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          color={getMeetingStatusColor(meeting.status)}
-                          variant="flat"
-                          size="sm"
-                        >
-                          {meeting.status}
-                        </Chip>
-                      </TableCell>
-                    </TableRow>
+                          <Chip
+                            color={getMeetingStatusColor(meeting.status)}
+                            variant="flat"
+                            size="sm"
+                          >
+                            {meeting.status}
+                          </Chip>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-default-500">Waktu:</span>
+                            <span className="text-sm">{formatTime(meeting.jam_mulai)} - {formatTime(meeting.jam_akhir)}</span>
+                          </div>
+                          {meeting.kelas && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-default-500">Kelas:</span>
+                              <span className="text-sm">{meeting.kelas}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-default-500">Kehadiran:</span>
+                            <AttendanceSlider meeting={meeting} />
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
@@ -813,47 +867,50 @@ export default function PeriodePage() {
         </CardHeader>
         <CardBody>
           {allPeriods.length > 0 ? (
-            <Table aria-label="Riwayat periode">
-              <TableHeader>
-                <TableColumn>NAMA PERIODE</TableColumn>
-                <TableColumn>TAHUN AKADEMIK</TableColumn>
-                <TableColumn>SEMESTER</TableColumn>
-                <TableColumn>TANGGAL</TableColumn>
-                <TableColumn>STATUS</TableColumn>
-                <TableColumn>AKSI</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {allPeriods.map((periode) => (
-                  <TableRow key={periode.id}>
-                    <TableCell>{periode.nama}</TableCell>
-                    <TableCell>{periode.tahun_akademik}</TableCell>
-                    <TableCell className="capitalize">{periode.semester}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {formatDate(periode.tanggal_mulai)} - {formatDate(periode.tanggal_akhir)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Chip color={getStatusColor(periode.status)} variant="flat" size="sm">
-                        {getStatusText(periode.status)}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {periode.status === 'belum_mulai' && (
-                          <Button
-                            size="sm"
-                            color="success"
-                            variant="flat"
-                            onPress={() => updatePeriodStatus(periode.id, 'berlangsung')}
-                          >
-                            Mulai
-                          </Button>
-                        )}
-                        {periode.status === 'berlangsung' && (
-                          <Button
-                            size="sm"
-                            color="danger"
+            <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table aria-label="Riwayat periode">
+                <TableHeader>
+                  <TableColumn>NAMA PERIODE</TableColumn>
+                  <TableColumn>TAHUN AKADEMIK</TableColumn>
+                  <TableColumn>SEMESTER</TableColumn>
+                  <TableColumn>TANGGAL</TableColumn>
+                  <TableColumn>STATUS</TableColumn>
+                  <TableColumn>AKSI</TableColumn>
+                </TableHeader>
+                <TableBody>
+                  {allPeriods.map((periode) => (
+                    <TableRow key={periode.id}>
+                      <TableCell>{periode.nama}</TableCell>
+                      <TableCell>{periode.tahun_akademik}</TableCell>
+                      <TableCell className="capitalize">{periode.semester}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDate(periode.tanggal_mulai)} - {formatDate(periode.tanggal_akhir)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Chip color={getStatusColor(periode.status)} variant="flat" size="sm">
+                          {getStatusText(periode.status)}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {periode.status === 'belum_mulai' && (
+                            <Button
+                              size="sm"
+                              color="success"
+                              variant="flat"
+                              onPress={() => updatePeriodStatus(periode.id, 'berlangsung')}
+                            >
+                              Mulai
+                            </Button>
+                          )}
+                          {periode.status === 'berlangsung' && (
+                            <Button
+                              size="sm"
+                              color="danger"
                             variant="flat"
                             onPress={() => updatePeriodStatus(periode.id, 'selesai')}
                           >
@@ -866,11 +923,72 @@ export default function PeriodePage() {
                 ))}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-default-500">Belum ada periode yang dibuat</p>
-            </div>
-          )}
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden">
+            {allPeriods.length > 0 ? (
+              <div className="space-y-3">
+                {allPeriods.map((periode) => (
+                  <Card key={periode.id} className="w-full">
+                    <CardBody className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-base">{periode.nama}</h4>
+                          <p className="text-sm text-default-600">{periode.tahun_akademik} • <span className="capitalize">{periode.semester}</span></p>
+                        </div>
+                        <Chip color={getStatusColor(periode.status)} variant="flat" size="sm">
+                          {getStatusText(periode.status)}
+                        </Chip>
+                      </div>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <IconCalendar className="h-4 w-4 text-default-400" />
+                          <span className="text-sm">{formatDate(periode.tanggal_mulai)} - {formatDate(periode.tanggal_akhir)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {periode.status === 'belum_mulai' && (
+                          <Button
+                            size="sm"
+                            color="success"
+                            variant="flat"
+                            onPress={() => updatePeriodStatus(periode.id, 'berlangsung')}
+                            className="flex-1 min-w-[80px]"
+                          >
+                            Mulai
+                          </Button>
+                        )}
+                        {periode.status === 'berlangsung' && (
+                          <Button
+                            size="sm"
+                            color="danger"
+                            variant="flat"
+                            onPress={() => updatePeriodStatus(periode.id, 'selesai')}
+                            className="flex-1 min-w-[80px]"
+                          >
+                            Akhiri
+                          </Button>
+                        )}
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-default-500">Belum ada periode yang dibuat</p>
+              </div>
+            )}
+          </div>
+            </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-default-500">Belum ada periode yang dibuat</p>
+          </div>
+        )}
         </CardBody>
       </Card>
 
@@ -1039,6 +1157,6 @@ export default function PeriodePage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </div>
+    </AdminLayout>
   );
 }

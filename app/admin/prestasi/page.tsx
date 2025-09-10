@@ -11,6 +11,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 import { Chip } from '@heroui/chip';
 import { Spinner } from '@heroui/spinner';
 import { IconTrophy, IconUpload, IconEdit, IconTrash, IconPlus, IconSearch } from '@/components/icons';
+import AdminLayout from '@/components/AdminLayout';
 
 interface Prestasi {
   id: number;
@@ -261,13 +262,12 @@ export default function PrestasiPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Manajemen Prestasi</h1>
-          <p className="text-foreground-600 mt-2">Kelola data prestasi dan pencapaian UKM</p>
-        </div>
-      </div>
+    <AdminLayout
+      title="Manajemen Prestasi"
+      description="Kelola data prestasi dan pencapaian UKM untuk merekam setiap keberhasilan organisasi."
+      subtitle="Daftar Prestasi"
+      subtitleDescription="Kelola data prestasi dan pencapaian UKM"
+    >
 
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative w-full sm:max-w-md">
@@ -307,14 +307,20 @@ export default function PrestasiPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardBody className="p-0">
-          {loading ? (
+      {loading ? (
+        <Card>
+          <CardBody>
             <div className="flex justify-center items-center py-8">
               <Spinner size="lg" />
             </div>
-          ) : (
-            <Table aria-label="Prestasi table" className="min-h-[400px]">
+          </CardBody>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop Table View */}
+          <Card className="hidden md:block">
+            <CardBody className="p-0">
+              <Table aria-label="Prestasi table" className="min-h-[400px]">
               <TableHeader>
                 <TableColumn>TOURNAMENT</TableColumn>
                 <TableColumn>TINGKAT</TableColumn>
@@ -415,9 +421,106 @@ export default function PrestasiPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardBody>
-      </Card>
+            </CardBody>
+          </Card>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {filteredPrestasi.length === 0 ? (
+              <Card>
+                <CardBody className="text-center py-8">
+                  <p className="text-default-500">
+                    {searchTerm 
+                      ? `Tidak ada prestasi yang ditemukan untuk "${searchTerm}"`
+                      : "Belum ada data prestasi"
+                    }
+                  </p>
+                </CardBody>
+              </Card>
+            ) : (
+              filteredPrestasi.map((item) => (
+                <Card key={item.id} className="shadow-sm">
+                  <CardBody className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-foreground">
+                          {searchTerm ? (
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: item.nama_tournament.replace(
+                                  new RegExp(`(${searchTerm})`, 'gi'),
+                                  '<mark class="bg-yellow-200 text-black rounded px-1">$1</mark>'
+                                )
+                              }}
+                            />
+                          ) : (
+                            item.nama_tournament
+                          )}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Chip
+                            size="sm"
+                            color={getTingkatColor(item.tingkat_acara)}
+                            variant="flat"
+                          >
+                            {item.tingkat_acara}
+                          </Chip>
+                          <Chip
+                            size="sm"
+                            color={getJuaraColor(item.juara)}
+                            variant="flat"
+                          >
+                            Juara {item.juara}
+                          </Chip>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                      <div>
+                        <p className="text-default-500 text-xs">Tanggal</p>
+                        <p className="font-medium">{new Date(item.tanggal_acara).toLocaleDateString('id-ID')}</p>
+                      </div>
+                      <div>
+                        <p className="text-default-500 text-xs">Peserta</p>
+                        <p className="font-medium">{item.jumlah_anggota} orang</p>
+                      </div>
+                    </div>
+
+                    {item.deskripsi && (
+                      <div className="mb-4">
+                        <p className="text-default-500 text-xs">Deskripsi</p>
+                        <p className="text-sm line-clamp-2">{item.deskripsi}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onPress={() => handleEdit(item)}
+                        startContent={<IconEdit size={14} />}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        onPress={() => handleDelete(item.id)}
+                        startContent={<IconTrash size={14} />}
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       <Modal 
         isOpen={isOpen} 
@@ -425,9 +528,9 @@ export default function PrestasiPage() {
         size="3xl"
         scrollBehavior="inside"
         classNames={{
-          wrapper: "items-center justify-center",
-          base: "mx-4 my-8 max-h-[90vh]",
-          body: "py-6",
+          wrapper: "items-center justify-center p-2 sm:p-4",
+          base: "mx-2 sm:mx-4 my-4 sm:my-8 max-h-[95vh] sm:max-h-[90vh] w-full max-w-[95vw] sm:max-w-3xl",
+          body: "py-4 sm:py-6",
           backdrop: "bg-black/60"
         }}
       >
@@ -627,6 +730,6 @@ export default function PrestasiPage() {
           </form>
         </ModalContent>
       </Modal>
-    </div>
+    </AdminLayout>
   );
 }

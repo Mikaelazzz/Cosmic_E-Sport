@@ -32,6 +32,7 @@ import { Select, SelectItem } from '@heroui/select';
 import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Alert } from '@heroui/alert';
 import { getUserAvatarUrl } from '@/lib/avatar';
+import AdminLayout from '@/components/AdminLayout';
 
 interface PengurusData {
   id: number;
@@ -89,6 +90,7 @@ const jabatanOptions = [
 ];
 
 const statusOptions = [
+  { name: "All", uid: "all" },
   { name: "Active", uid: "active" },
   { name: "Inactive", uid: "inactive" },
   { name: "Belum Terdaftar", uid: "not_registered" },
@@ -294,7 +296,8 @@ export default function AdminPengurusPage() {
       );
     }
     
-    if (!statusFilter.has("all") && statusFilter.size !== statusOptions.length) {
+    // Filter by status
+    if (statusFilter.size > 0 && !statusFilter.has("all")) {
       filteredPengurus = filteredPengurus.filter((item) =>
         statusFilter.has(item.status)
       );
@@ -381,17 +384,6 @@ export default function AdminPengurusPage() {
         return;
       }
 
-      // For new pengurus registration (not editing), validate nama_lengkap and email
-      if (!editingId && formData.nama_lengkap && !formData.nama_lengkap.trim()) {
-        setAlert({ type: 'error', message: 'Nama lengkap harus diisi jika disediakan' });
-        return;
-      }
-
-      if (!editingId && formData.email && (!formData.email.includes('@') || !formData.email.trim())) {
-        setAlert({ type: 'error', message: 'Email harus valid jika disediakan' });
-        return;
-      }
-      
       // Check if there's an active periode
       if (!currentPeriod || currentPeriod.status !== 'berlangsung') {
         setAlert({ type: 'error', message: 'Tidak ada periode aktif. Silakan buat periode baru terlebih dahulu.' });
@@ -407,21 +399,17 @@ export default function AdminPengurusPage() {
       // Use custom jabatan if "Lainnya" is selected
       const finalJabatan = formData.jabatan === 'Lainnya' ? formData.customJabatan : formData.jabatan;
       
-      // Prepare request body
+      // Prepare request body - only NIM, role, and jabatan for new pengurus
       const requestBody: any = {
         nim: formData.nim,
-        role: formData.role,
+        role: formData.role || 'moderator', // Default to moderator
         jabatan: finalJabatan,
       };
 
-      // Include nama_lengkap and email for new registrations if provided
-      if (!editingId) {
-        if (formData.nama_lengkap && formData.nama_lengkap.trim()) {
-          requestBody.nama_lengkap = formData.nama_lengkap.trim();
-        }
-        if (formData.email && formData.email.trim()) {
-          requestBody.email = formData.email.trim();
-        }
+      // For editing existing pengurus, include all necessary fields
+      if (editingId) {
+        // Add any other fields needed for editing
+        requestBody.id = editingId;
       }
       
       const response = await fetch(url, {
@@ -621,26 +609,26 @@ export default function AdminPengurusPage() {
                 ))}
               </DropdownMenu>
             </Dropdown>
-            <div className="flex gap-2">
-              <Button 
-                color="warning"
-                variant="flat"
-                size="sm"
-                onPress={() => window.location.href = '/admin/pengurus/history'}
-              >
-                History Pengurus
-              </Button>
-              <Button 
-                className="bg-foreground text-background" 
-                endContent={<PlusIcon />} 
-                size="sm"
-                onPress={handleAdd}
-              >
-                Tambah Pengurus
-              </Button>
-            </div>
           </div>
         </div>
+          <div className="flex justify-between">
+            <Button 
+              color="warning"
+              variant="flat"
+              size="sm"
+              onPress={() => window.location.href = '/admin/pengurus/history'}
+            >
+              History Pengurus
+            </Button>
+            <Button 
+              className="bg-foreground text-background" 
+              endContent={<PlusIcon />} 
+              size="sm"
+              onPress={handleAdd}
+            >
+              Tambah Pengurus
+            </Button>
+          </div>
         <div className="flex justify-between items-center">
           <span className="text-default-400 text-small">
             Total {pengurus.length} pengurus ({pengurus.filter(p => p.status === 'not_registered').length} belum terdaftar)
@@ -712,12 +700,10 @@ export default function AdminPengurusPage() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Manajemen Pengurus</h1>
-        <p className="text-default-500">Kelola data pengurus dan anggota organisasi untuk periode yang sedang berlangsung.</p>
-      </div>
+    <AdminLayout
+      title="Manajemen Pengurus"
+      description="Kelola data pengurus dan anggota organisasi untuk periode yang sedang berlangsung."
+    >
 
       {/* Period Status Check */}
       {isPeriodLoading ? (
@@ -811,21 +797,16 @@ export default function AdminPengurusPage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-success">Periode Aktif</h3>
-                  <p className="text-sm text-default-600">
-                    {currentPeriod.nama} ({currentPeriod.tahun_akademik} - {currentPeriod.semester.toUpperCase()})
-                  </p>
+                  <h3 className="text-lg font-semibold text-success">PERIODE {currentPeriod.semester.toUpperCase()} {currentPeriod.tahun_akademik}</h3>
+                  {/* <p className="text-sm text-default-600">
+                    {currentPeriod.nama} 
+                    PERIODE {currentPeriod.semester.toUpperCase()} {currentPeriod.tahun_akademik}
+                  </p> */}
                 </div>
               </div>
-              <Chip color="success" variant="flat" className="self-center">Berlangsung</Chip>
+              {/* <Chip color="success" variant="flat" className="self-center">Berlangsung</Chip> */}
             </div>
           </CardHeader>
-          <CardBody>
-            <p className="text-sm text-default-600">
-              💡 Pengurus dapat ditambahkan meskipun belum terdaftar di website. 
-              Ketika pengguna dengan NIM yang sudah ditambahkan mendaftar, mereka akan otomatis mendapat jabatan yang telah ditetapkan.
-            </p>
-          </CardBody>
         </Card>
       )}
 
@@ -847,53 +828,163 @@ export default function AdminPengurusPage() {
       {/* Show table only if period is active */}
       {currentPeriod && currentPeriod.status === 'berlangsung' && (
         <>
-          {/* Table */}
-          <Table
-            isCompact
-            removeWrapper
-            aria-label="Pengurus table with custom cells, pagination and sorting"
-            bottomContent={bottomContent}
-            bottomContentPlacement="outside"
-            checkboxesProps={{
-              classNames: {
-                wrapper: "after:bg-foreground after:text-background text-background",
-              },
-            }}
-            classNames={classNames}
-            selectedKeys={selectedKeys}
-            selectionMode="multiple"
-            sortDescriptor={sortDescriptor}
-            topContent={topContent}
-            topContentPlacement="outside"
-            onSelectionChange={(keys) => setSelectedKeys(new Set(Array.from(keys as any) as string[]))}
-            onSortChange={(descriptor) => setSortDescriptor({
-              column: descriptor.column as string,
-              direction: descriptor.direction as "ascending" | "descending"
-        })}
-      >
-        <TableHeader columns={headerColumns}>
-          {(column) => (
-            <TableColumn
-              key={column.uid}
-              align={column.uid === "actions" ? "center" : "start"}
-              allowsSorting={column.sortable}
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table
+              isCompact
+              removeWrapper
+              aria-label="Pengurus table with custom cells, pagination and sorting"
+              bottomContent={bottomContent}
+              bottomContentPlacement="outside"
+              checkboxesProps={{
+                classNames: {
+                  wrapper: "after:bg-foreground after:text-background text-background",
+                },
+              }}
+              classNames={classNames}
+              selectedKeys={selectedKeys}
+              selectionMode="multiple"
+              sortDescriptor={sortDescriptor}
+              topContent={topContent}
+              topContentPlacement="outside"
+              onSelectionChange={(keys) => setSelectedKeys(new Set(Array.from(keys as any) as string[]))}
+              onSortChange={(descriptor) => setSortDescriptor({
+                column: descriptor.column as string,
+                direction: descriptor.direction as "ascending" | "descending"
+          })}
             >
-              {column.name}
-            </TableColumn>
-          )}
-        </TableHeader>
-        <TableBody 
-          emptyContent={isLoading ? "Loading..." : "No pengurus found"} 
-          items={sortedItems}
-          isLoading={isLoading}
-        >
-          {(item) => (
-            <TableRow key={item.id}>
-              {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+              <TableHeader columns={headerColumns}>
+                {(column) => (
+                  <TableColumn
+                    key={column.uid}
+                    align={column.uid === "actions" ? "center" : "start"}
+                    allowsSorting={column.sortable}
+                  >
+                    {column.name}
+                  </TableColumn>
+                )}
+              </TableHeader>
+              <TableBody 
+                emptyContent={isLoading ? "Loading..." : "No pengurus found"} 
+                items={sortedItems}
+                isLoading={isLoading}
+              >
+                {(item) => (
+                  <TableRow key={item.id}>
+                    {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden">
+            {/* Top Content for Mobile */}
+            <div className="mb-4">
+              {topContent}
+            </div>
+
+            {/* Cards */}
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p>Loading...</p>
+              </div>
+            ) : sortedItems.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-default-500">No pengurus found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sortedItems.map((item) => (
+                  <Card key={item.id} className="w-full">
+                    <CardBody className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-12 h-12 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                            <img 
+                              src={getUserAvatarUrl(item, 40)}
+                              alt={item.name}
+                              className="w-full h-full rounded-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = `/logc.png`;
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-base truncate">{item.name}</h4>
+                            <p className="text-sm text-default-600">{item.nim}</p>
+                          </div>
+                        </div>
+                        <Chip 
+                          className="ml-2"
+                          color={
+                            item.status === "active" ? "success" :
+                            item.status === "inactive" ? "danger" : "default"
+                          }
+                          size="sm" 
+                          variant="flat"
+                        >
+                          {item.status}
+                        </Chip>
+                      </div>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-default-500">Email:</span>
+                          <span className="text-sm truncate ml-2">{item.email}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-default-500">Role:</span>
+                          <Chip size="sm" variant="dot" className="ml-2">
+                            {item.role}
+                          </Chip>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-default-500">Jabatan:</span>
+                          <Chip 
+                            size="sm" 
+                            variant="flat" 
+                            color="primary"
+                            className="ml-2"
+                          >
+                            {item.jabatan}
+                          </Chip>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          color="primary"
+                          variant="flat"
+                          onPress={() => handleEdit(item)}
+                          className="flex-1"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          color="danger"
+                          variant="flat"
+                          onPress={() => handleDelete(item.id)}
+                          className="flex-1"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Bottom Content for Mobile */}
+            <div className="mt-4">
+              {bottomContent}
+            </div>
+          </div>
 
       {/* Add/Edit Modal */}
       <Modal 
@@ -908,42 +999,44 @@ export default function AdminPengurusPage() {
                 {editingId ? 'Edit Pengurus' : 'Tambah Pengurus Baru'}
               </ModalHeader>
               <ModalBody>
-                <div className="text-sm text-default-500 p-3 bg-primary-50 rounded-lg border border-primary-200">
-                  <strong>Catatan:</strong> Anda dapat menambahkan pengurus meskipun mereka belum mendaftar di website. 
-                  Ketika mereka mendaftar dengan NIM ini, jabatan akan otomatis teraplikasi.
-                </div>
+                {!editingId && (
+                  <div className="text-sm text-default-500 p-3 bg-warning-50 rounded-lg border border-warning-200">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-warning-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <div>
+                        <strong>Informasi Penting:</strong>
+                        <ul className="mt-1 ml-4 list-disc text-xs space-y-1">
+                          <li>Pengurus akan ditambahkan dengan status <span className="font-semibold text-warning-700">"Belum Terdaftar"</span></li>
+                          <li>Ketika user dengan NIM ini mendaftar, jabatan akan <span className="font-semibold text-success-700">otomatis aktif</span></li>
+                          <li>Hanya perlu memasukkan NIM dan jabatan yang diinginkan</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <Input
                   autoFocus
                   label="NIM"
-                  placeholder="Masukkan NIM"
+                  placeholder="Masukkan NIM pengurus"
                   variant="bordered"
                   value={formData.nim}
                   onValueChange={(value: string) => setFormData({ ...formData, nim: value })}
+                  isDisabled={!!editingId}
+                  description={editingId ? "NIM tidak dapat diubah" : "NIM pengurus yang akan ditambahkan"}
                 />
-                {!editingId && (
-                  <>
-                    <Input
-                      label="Nama Lengkap"
-                      placeholder="Masukkan nama lengkap (opsional)"
-                      variant="bordered"
-                      value={formData.nama_lengkap || ''}
-                      onValueChange={(value: string) => setFormData({ ...formData, nama_lengkap: value })}
-                      description="Isi jika pengurus belum terdaftar di website"
-                    />
-                    <Input
-                      label="Email"
-                      placeholder="Masukkan email (opsional)"
-                      type="email"
-                      variant="bordered"
-                      value={formData.email || ''}
-                      onValueChange={(value: string) => setFormData({ ...formData, email: value })}
-                      description="Isi jika pengurus belum terdaftar di website"
-                    />
-                  </>
-                )}
-                <div className="text-sm text-default-500 p-2 bg-default-100 rounded-lg">
-                  Role akan otomatis diatur sebagai <strong>Moderator</strong>
+                
+                <div className="text-sm text-default-500 p-2 bg-default-50 rounded-lg border border-default-200">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-default-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Role akan otomatis diatur sebagai <strong>Moderator</strong>
+                  </div>
                 </div>
+                
                 <Select
                   label="Jabatan"
                   placeholder="Pilih jabatan"
@@ -959,6 +1052,7 @@ export default function AdminPengurusPage() {
                     </SelectItem>
                   ))}
                 </Select>
+                
                 {formData.jabatan === 'Lainnya' && (
                   <Input
                     label="Jabatan Lainnya"
@@ -983,6 +1077,6 @@ export default function AdminPengurusPage() {
       </Modal>
         </>
       )}
-    </div>
+    </AdminLayout>
   );
 }
