@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check if user exists (allow creation if not exists)
+    // Check if user exists (DO NOT create placeholder users)
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, nim, nama_lengkap, email')
@@ -306,36 +306,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     let userData = user;
-    let isNewUser = false;
-
-    // If user doesn't exist, create a placeholder user record
-    if (userError || !user) {
-      isNewUser = true;
-      const { data: newUser, error: createUserError } = await supabase
-        .from('users')
-        .insert({
-          nim: nim,
-          nama_lengkap: `Pengurus ${nim}`, // Placeholder name
-          email: `${nim}@placeholder.com`, // Placeholder email
-          role: role,
-          jabatan: jabatan,
-          email_verified: false, // Will be activated when they register properly
-          created_at: new Date().toISOString(),
-          update_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (createUserError) {
-        console.error('Error creating placeholder user:', createUserError);
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Failed to create placeholder user record' 
-        }, { status: 500 });
-      }
-
-      userData = newUser;
-    }
+    let isUserRegistered = !userError && !!user;
 
     // Check if user is already pengurus in current academic year (any semester)
     const { data: currentYearPeriods, error: yearPeriodesError } = await supabase
@@ -352,12 +323,13 @@ export async function POST(request: NextRequest) {
 
     const currentYearPeriodIds = currentYearPeriods?.map(p => p.id) || [];
 
+    // Check if pengurus already exists in current academic year
     const { data: existingPengurus, error: existingError } = await supabase
       .from('periode_pengurus')
       .select(`
         id,
-        admin_nim!inner (nim),
-        periode!inner (nama, semester)
+        admin_nim!inner (nim, jabatan),
+        periode!inner (id, nama, semester)
       `)
       .in('periode_id', currentYearPeriodIds)
       .eq('admin_nim.nim', nim);
@@ -370,15 +342,25 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    if (existingPengurus && existingPengurus.length > 0) {
-      const existingPeriodNames = existingPengurus.map((p: any) => 
+    // Check if already exists in the specific active periode
+    const existsInActivePeriode = existingPengurus?.find((p: any) => p.periode.id === activePeriode.id);
+    
+    if (existsInActivePeriode) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Pengurus dengan NIM ${nim} sudah terdaftar sebagai ${existsInActivePeriode.admin_nim.jabatan} untuk periode ${activePeriode.nama}. Gunakan fitur edit untuk mengubah jabatan.` 
+      }, { status: 400 });
+    }
+
+    // Check if exists in other periods of the same academic year (warn but allow)
+    const existsInOtherPeriods = existingPengurus?.filter((p: any) => p.periode.id !== activePeriode.id);
+    if (existsInOtherPeriods && existsInOtherPeriods.length > 0) {
+      const existingPeriodNames = existsInOtherPeriods.map((p: any) => 
         `${p.periode.nama} (${p.periode.semester})`
       ).join(', ');
       
-      return NextResponse.json({ 
-        success: false, 
-        message: `User is already pengurus in current academic year ${activePeriode.tahun_akademik}: ${existingPeriodNames}` 
-      }, { status: 400 });
+      console.log(`Note: User ${nim} is already pengurus in other periods of academic year ${activePeriode.tahun_akademik}: ${existingPeriodNames}`);
+      // Continue with adding to current periode (allowed to be pengurus in multiple semesters)
     }
 
     // Create or update admin_nim record
@@ -403,57 +385,89 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Add to periode_pengurus
-    const { data: periodePengurus, error: periodepengurusError } = await supabase
+    // Check if pengurus already exists in this specific periode
+    const { data: existingPeriodePengurus, error: checkError } = await supabase
       .from('periode_pengurus')
-      .insert({
-        periode_id: activePeriode.id,
-        pengurus_id: adminNim.id
-      })
-      .select()
+      .select('id')
+      .eq('periode_id', activePeriode.id)
+      .eq('pengurus_id', adminNim.id)
       .single();
 
-    if (periodepengurusError) {
-      console.error('Error adding to periode_pengurus:', periodepengurusError);
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking existing periode_pengurus:', checkError);
       return NextResponse.json({ 
         success: false, 
-        message: 'Failed to add pengurus to periode' 
+        message: 'Error checking existing pengurus in periode' 
       }, { status: 500 });
     }
 
-    // Update user role and jabatan
-    // Only set email_verified=true if user already exists (not placeholder)
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({
-        role: role,
-        jabatan: jabatan,
-        email_verified: !isNewUser, // Only verify if real user, keep false for placeholder
-        update_at: new Date().toISOString()
-      })
-      .eq('nim', nim);
+    let periodePengurus;
+    
+    if (existingPeriodePengurus) {
+      // Already exists in this periode, just return the existing record
+      periodePengurus = existingPeriodePengurus;
+    } else {
+      // Add to periode_pengurus
+      const { data: newPeriodePengurus, error: periodepengurusError } = await supabase
+        .from('periode_pengurus')
+        .insert({
+          periode_id: activePeriode.id,
+          pengurus_id: adminNim.id
+        })
+        .select()
+        .single();
 
-    if (userUpdateError) {
-      console.error('Error updating user:', userUpdateError);
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Failed to update user role' 
-      }, { status: 500 });
+      if (periodepengurusError) {
+        console.error('Error adding to periode_pengurus:', periodepengurusError);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Failed to add pengurus to periode' 
+        }, { status: 500 });
+      }
+      
+      periodePengurus = newPeriodePengurus;
     }
 
-    const responseMessage = isNewUser 
-      ? `Pengurus dengan NIM ${nim} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. User belum terdaftar - akan aktif setelah registrasi.`
-      : `${userData.nama_lengkap} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}`;
+    // Update user role and jabatan ONLY if user is already registered
+    if (isUserRegistered && userData) {
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update({
+          role: role,
+          jabatan: jabatan,
+          update_at: new Date().toISOString()
+        })
+        .eq('nim', nim);
+
+      if (userUpdateError) {
+        console.error('Error updating user:', userUpdateError);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Failed to update user role' 
+        }, { status: 500 });
+      }
+    }
+
+    const isNewPeriodePengurus = !existingPeriodePengurus;
+    
+    let responseMessage;
+    if (!isNewPeriodePengurus) {
+      responseMessage = `Pengurus dengan NIM ${nim} sudah terdaftar sebagai ${jabatan} untuk periode ${activePeriode.nama}.`;
+    } else if (!isUserRegistered) {
+      responseMessage = `Pengurus dengan NIM ${nim} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. Status: Belum terdaftar - akan otomatis aktif setelah registrasi.`;
+    } else {
+      responseMessage = `${userData.nama_lengkap} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. Status: Aktif.`;
+    }
 
     return NextResponse.json({ 
       success: true, 
       message: responseMessage,
-      is_new_user: isNewUser,
       data: {
         pengurus: periodePengurus,
         admin_nim: adminNim,
         periode: activePeriode,
-        user_status: isNewUser ? 'placeholder' : 'registered'
+        user_status: isUserRegistered ? 'registered' : 'not_registered',
+        is_new: isNewPeriodePengurus
       }
     });
 

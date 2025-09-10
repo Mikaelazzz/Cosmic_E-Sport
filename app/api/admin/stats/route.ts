@@ -22,13 +22,70 @@ export async function GET() {
       console.error('Error fetching events count:', eventsError);
     }
 
-    // Get total pengurus count
-    const { count: totalPengurus, error: pengurusError } = await supabase
-      .from('pengurus')
-      .select('*', { count: 'exact', head: true });
+    // Get total active pengurus count from current academic year
+    // First, get current active periods
+    const { data: activePeriods, error: activePeriodsError } = await supabase
+      .from('periode')
+      .select('id, tahun_akademik')
+      .in('status', ['aktif', 'berlangsung']);
 
-    if (pengurusError) {
-      console.error('Error fetching pengurus count:', pengurusError);
+    let totalPengurus = 0;
+    let pengurusBreakdown = null;
+    
+    if (!activePeriodsError && activePeriods && activePeriods.length > 0) {
+      // Get current academic year from active periods
+      const currentAcademicYear = activePeriods[0].tahun_akademik;
+      
+      // Get all periods from current academic year
+      const { data: currentYearPeriods, error: yearPeriodsError } = await supabase
+        .from('periode')
+        .select('id')
+        .eq('tahun_akademik', currentAcademicYear);
+
+      if (!yearPeriodsError && currentYearPeriods) {
+        const currentYearPeriodIds = currentYearPeriods.map(p => p.id);
+
+        // Get unique pengurus from current academic year periods
+        const { data: pengurusData, error: pengurusError } = await supabase
+          .from('periode_pengurus')
+          .select(`
+            admin_nim!inner (
+              nim,
+              id
+            )
+          `)
+          .in('periode_id', currentYearPeriodIds);
+
+        if (!pengurusError && pengurusData) {
+          // Count unique pengurus by NIM to avoid duplicates across semesters
+          const uniquePengurusNIMs = new Set(pengurusData.map(p => p.admin_nim.nim));
+          totalPengurus = uniquePengurusNIMs.size;
+
+          // Get breakdown of registered vs not registered pengurus
+          const nimList = Array.from(uniquePengurusNIMs);
+          const { data: registeredUsers, error: usersError } = await supabase
+            .from('users')
+            .select('nim')
+            .in('nim', nimList);
+
+          pengurusBreakdown = {
+            active: 0,
+            notRegistered: 0,
+            total: totalPengurus
+          };
+
+          if (!usersError && registeredUsers) {
+            pengurusBreakdown.active = registeredUsers.length;
+            pengurusBreakdown.notRegistered = totalPengurus - registeredUsers.length;
+          }
+        } else if (pengurusError) {
+          console.error('Error fetching pengurus count:', pengurusError);
+        }
+      } else if (yearPeriodsError) {
+        console.error('Error fetching current year periods:', yearPeriodsError);
+      }
+    } else if (activePeriodsError) {
+      console.error('Error fetching active periods:', activePeriodsError);
     }
 
     // Get total prestasi count
@@ -105,6 +162,7 @@ export async function GET() {
         totalEvents: totalEvents || 0,
         totalPengurus: totalPengurus || 0,
         totalPrestasi: totalPrestasi || 0,
+        pengurusBreakdown: pengurusBreakdown,
         chartData: chartData
       }
     });
