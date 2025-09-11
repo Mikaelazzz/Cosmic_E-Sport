@@ -62,9 +62,10 @@ const InformasiPage = () => {
 
   const statusList = [
     { key: 'all', label: 'Semua Status' },
-    { key: 'active', label: 'Active' },
-    { key: 'inactive', label: 'Inactive' },
-    { key: 'expired', label: 'Expired' }
+    { key: 'active', label: 'Aktif' },
+    { key: 'scheduled', label: 'Terjadwal' },
+    { key: 'expired', label: 'Kedaluwarsa' },
+    { key: 'inactive', label: 'Tidak Aktif' }
   ];
 
   const fetchInformasi = async () => {
@@ -130,10 +131,21 @@ const InformasiPage = () => {
   const getStatusColor = (status: string): "default" | "success" | "warning" | "primary" | "danger" | "secondary" => {
     const colors = {
       active: 'success' as const,
-      inactive: 'warning' as const,
-      expired: 'danger' as const
+      scheduled: 'primary' as const,
+      expired: 'danger' as const,
+      inactive: 'warning' as const
     };
     return colors[status as keyof typeof colors] || 'default';
+  };
+
+  const getStatusLabel = (status: string): string => {
+    const labels = {
+      active: 'Aktif',
+      scheduled: 'Terjadwal',
+      expired: 'Kedaluwarsa',
+      inactive: 'Tidak Aktif'
+    };
+    return labels[status as keyof typeof labels] || status;
   };
 
   return (
@@ -142,13 +154,54 @@ const InformasiPage = () => {
         <div>
           <h1 className="text-3xl font-bold text-white">Kelola Informasi</h1>
           <p className="text-gray-400 mt-2">Kelola informasi dan pengumuman untuk anggota</p>
+          <p className="text-sm text-gray-500 mt-1">Status otomatis diperbarui berdasarkan tanggal publish dan berakhir</p>
         </div>
-        <Button
-          color="primary"
-          onPress={() => router.push('/moderator/informasi/create')}
-        >
-          + Tambah Informasi
-        </Button>
+        <div className="flex gap-2">
+          {/* <Button
+            variant="bordered"
+            onPress={() => {
+              setCurrentPage(1);
+              fetchInformasi();
+            }}
+            isLoading={loading}
+          >
+            Refresh
+          </Button> */}
+          <Button
+            variant="bordered"
+            color="secondary"
+            onPress={async () => {
+              setLoading(true);
+              try {
+                const response = await fetch('/api/moderator/informasi/update-status', {
+                  method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                  console.log('Status update result:', result.data);
+                  // Refresh the list after updating
+                  fetchInformasi();
+                } else {
+                  console.error('Failed to update status:', result.message);
+                }
+              } catch (error) {
+                console.error('Error updating status:', error);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            isLoading={loading}
+          >
+            Update Status
+          </Button>
+          <Button
+            color="primary"
+            onPress={() => router.push('/moderator/informasi/create')}
+          >
+            + Tambah Informasi
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -205,7 +258,7 @@ const InformasiPage = () => {
                     color={getStatusColor(item.status)}
                     variant="flat"
                   >
-                    {item.status}
+                    {getStatusLabel(item.status)}
                   </Chip>
                 </TableCell>
                 <TableCell>
@@ -214,9 +267,24 @@ const InformasiPage = () => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="text-gray-300">
-                    {new Date(item.tanggal_berakhir).toLocaleDateString('id-ID')}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className={`text-sm ${
+                      new Date(item.tanggal_berakhir) < new Date() 
+                        ? 'text-red-400' 
+                        : new Date(item.tanggal_berakhir) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                          ? 'text-yellow-400'
+                          : 'text-gray-300'
+                    }`}>
+                      {new Date(item.tanggal_berakhir).toLocaleDateString('id-ID')}
+                    </span>
+                    {new Date(item.tanggal_berakhir) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && 
+                     new Date(item.tanggal_berakhir) >= new Date() && (
+                      <span className="text-xs text-yellow-400">Segera berakhir</span>
+                    )}
+                    {new Date(item.tanggal_berakhir) < new Date() && (
+                      <span className="text-xs text-red-400">Sudah berakhir</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">

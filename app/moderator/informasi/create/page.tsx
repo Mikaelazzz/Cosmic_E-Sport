@@ -36,15 +36,8 @@ const CreateInformasiPage = () => {
     tanggal_publish: new Date().toISOString().split('T')[0],
     tanggal_berakhir: '',
     deskripsi: '',
-    link: '',
-    status: 'active'
+    link: ''
   });
-
-  const statusList = [
-    { key: 'active', label: 'Active' },
-    { key: 'inactive', label: 'Inactive' },
-    { key: 'expired', label: 'Expired' }
-  ];
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -187,17 +180,16 @@ const CreateInformasiPage = () => {
                 <h3 className="text-lg font-semibold">Pengaturan Publikasi</h3>
               </CardHeader>
               <CardBody className="space-y-4">
-                <Select
-                  label="Status"
-                  selectedKeys={[formData.status]}
-                  onSelectionChange={(keys: any) => handleInputChange('status', Array.from(keys)[0])}
-                >
-                  {statusList.map((status) => (
-                    <SelectItem key={status.key}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Status Otomatis:</strong> Status akan ditentukan otomatis berdasarkan tanggal publish dan berakhir:
+                  </p>
+                  <ul className="text-xs text-blue-700 mt-2 space-y-1">
+                    <li>• <span className="font-medium">Terjadwal:</span> Belum mencapai tanggal publish</li>
+                    <li>• <span className="font-medium">Aktif:</span> Dalam periode publish hingga berakhir</li>
+                    <li>• <span className="font-medium">Kedaluwarsa:</span> Melewati tanggal berakhir</li>
+                  </ul>
+                </div>
               </CardBody>
             </Card>
 
