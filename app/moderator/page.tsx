@@ -9,6 +9,7 @@ import { Spinner } from '@heroui/spinner';
 import { Alert } from '@heroui/alert';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/modal';
 import { formatTimeForDisplay } from '@/lib/time-utils';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 // Custom icons
 const IconCalendar = ({ className }: { className?: string }) => (
@@ -242,27 +243,29 @@ export default function ModeratorDashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Alert */}
-        {alertConfig.show && (
-          <Alert
-            color={alertConfig.color}
-            title={alertConfig.title}
-            description={alertConfig.description}
-            className="mb-6"
-          />
-        )}
+    <ModeratorLayout
+      title="Dashboard Moderator"
+      description="Panel kontrol dan monitoring untuk moderator"
+    >
+      {/* Alert */}
+      {alertConfig.show && (
+        <Alert
+          color={alertConfig.color}
+          title={alertConfig.title}
+          description={alertConfig.description}
+          className="mb-6"
+        />
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <Spinner size="lg" />
-          </div>
-        )}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <Spinner size="lg" />
+        </div>
+      )}
 
-        {/* Dashboard Content */}
-        {!loading && (
+      {/* Dashboard Content */}
+      {!loading && (
           <>
             {/* Welcome Card */}
             <Card className="mb-8">
@@ -581,7 +584,6 @@ export default function ModeratorDashboard() {
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </div>
-    </div>
+    </ModeratorLayout>
   );
 }

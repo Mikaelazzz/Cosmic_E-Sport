@@ -1,16 +1,19 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
-import { Card, CardBody } from "@heroui/card";
+import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
 import { Avatar } from "@heroui/avatar";
+import { Divider } from "@heroui/divider";
 import { Alert } from "@heroui/alert";
 import { Spinner } from "@heroui/spinner";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
-import { getUserAvatarUrl } from "@/lib/avatar";
+import ModeratorLayout from "@/components/ModeratorLayout";
+import { User } from "@/types/type";
+import { getUserAvatarUrl, generateConsistentAvatarUrl } from "@/lib/avatar";
 import { VerificationCodeInput } from "@/components/VerificationCodeInput";
 
 // Eye Icon Component
@@ -350,7 +353,7 @@ export default function ModeratorProfilePage() {
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
-  const [avatarKey, setAvatarKey] = useState(0);
+  const [avatarKey, setAvatarKey] = useState(0); // Force re-render of avatar
   const [isHovering, setIsHovering] = useState(false);
   const [editAnimation, setEditAnimation] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -380,7 +383,7 @@ export default function ModeratorProfilePage() {
     isValid: false,
     match: false
   });
-
+  
   const [formData, setFormData] = useState({
     nim: "",
     nama_lengkap: "",
@@ -410,22 +413,29 @@ export default function ModeratorProfilePage() {
     loadAnimation();
   }, []);
 
-  // Fetch fresh user data
+  // Fetch fresh user data when component mounts
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         const response = await fetch('/api/user/profile', {
           method: 'GET',
-          credentials: 'include',
+          credentials: 'include'
         });
 
         if (response.ok) {
           const result = await response.json();
+          console.log('Fetched user profile:', result); // Debug log
           if (result.success && result.data) {
+            // Update form data with fresh data
             setFormData({
               nim: result.data.nim || "",
               nama_lengkap: result.data.nama_lengkap || "",
               jabatan: result.data.jabatan || "",
+            });
+            console.log('Updated form data:', { // Debug log
+              nim: result.data.nim,
+              nama_lengkap: result.data.nama_lengkap,
+              jabatan: result.data.jabatan
             });
           }
         }
@@ -435,9 +445,10 @@ export default function ModeratorProfilePage() {
     };
 
     if (isAuthenticated && user) {
+      console.log('Current user from context:', user); // Debug log
       fetchUserProfile();
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id]); // Depend on user.id to avoid infinite loop
 
   // Check email verification status
   useEffect(() => {
@@ -469,7 +480,7 @@ export default function ModeratorProfilePage() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }));
   };
 
@@ -488,29 +499,46 @@ export default function ModeratorProfilePage() {
   const handleCropSave = async (croppedBlob: Blob) => {
     if (!user) return;
 
+    console.log('Starting avatar upload...', { userRole: user.role, userNim: user.nim });
+
     const formData = new FormData();
     const fileName = `${user.role.toLowerCase()}-${user.nim}.jpg`;
     formData.append('avatar', croppedBlob, fileName);
     formData.append('nim', user.nim);
     formData.append('role', user.role);
 
+    console.log('Form data prepared:', { fileName, blobSize: croppedBlob.size, nim: user.nim, role: user.role });
+
     try {
+      console.log('Sending request to /api/user/avatar...');
       const response = await fetch('/api/user/avatar', {
         method: 'POST',
         credentials: 'include',
-        body: formData,
+        body: formData
       });
 
+      console.log('Response status:', response.status, response.statusText);
       const result = await response.json();
+      console.log('Response data:', result);
 
       if (result.success) {
         setMessage("Avatar updated successfully!");
         setMessageType("success");
         setShowCropModal(false);
         setSelectedImage("");
+        
+        // Force re-render of avatar by updating key
         setAvatarKey(prev => prev + 1);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        
+        // Remove the forced reload - let the component handle the update
+        console.log('Avatar upload completed successfully');
       } else {
+        console.error('Upload failed:', result.message);
         setMessage(result.message || "Failed to update avatar");
         setMessageType("error");
       }
@@ -528,8 +556,13 @@ export default function ModeratorProfilePage() {
       const response = await fetch('/api/user/avatar', {
         method: 'DELETE',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nim: user.nim, role: user.role }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nim: user.nim,
+          role: user.role
+        })
       });
 
       const result = await response.json();
@@ -537,10 +570,14 @@ export default function ModeratorProfilePage() {
       if (result.success) {
         setMessage("Avatar removed successfully!");
         setMessageType("success");
+        
+        // Force re-render of avatar by updating key
         setAvatarKey(prev => prev + 1);
         
         // Refresh user data to update navbar and other components
         await refreshUser();
+        
+        console.log('Avatar removal completed successfully');
       } else {
         setMessage(result.message || "Failed to remove avatar");
         setMessageType("error");
@@ -559,9 +596,11 @@ export default function ModeratorProfilePage() {
     try {
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData)
       });
 
       const result = await response.json();
@@ -596,12 +635,11 @@ export default function ModeratorProfilePage() {
   };
 
   const handleSendVerification = async () => {
-    if (!user?.email) return;
-
-    setIsSendingVerification(true);
-    setMessage("");
-
+    if (!user?.email || isSendingVerification) return;
+    
     try {
+      setIsSendingVerification(true);
+      
       const response = await fetch('/api/auth/send-verification', {
         method: 'POST',
         headers: {
@@ -611,11 +649,11 @@ export default function ModeratorProfilePage() {
       });
 
       const result = await response.json();
-
-      if (result.success) {
+      
+      if (response.ok) {
         setVerificationSent(true);
         setShowVerificationModal(true);
-        setMessage("Kode verifikasi telah dikirim ke email Anda.");
+        setMessage("Kode verifikasi telah dikirim ke email Anda!");
         setMessageType("success");
       } else {
         setMessage(result.message || "Gagal mengirim kode verifikasi");
@@ -627,94 +665,68 @@ export default function ModeratorProfilePage() {
       setMessageType("error");
     } finally {
       setIsSendingVerification(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
   const handleVerifyCode = async (code: string) => {
-    if (!user?.email) return;
-
-    setIsVerifyingCode(true);
-
+    if (!user?.email || isVerifyingCode) return;
+    
     try {
-      const response = await fetch('/api/auth/verify-code', {
+      setIsVerifyingCode(true);
+      
+      const response = await fetch('/api/auth/verify-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: user.email, code }),
+        body: JSON.stringify({ 
+          email: user.email,
+          verificationCode: code
+        }),
       });
 
       const result = await response.json();
-
-      if (result.success) {
+      
+      if (response.ok) {
         setIsEmailVerified(true);
         setShowVerificationModal(false);
         setMessage("Email berhasil diverifikasi!");
         setMessageType("success");
+        await refreshUser();
       } else {
         setMessage(result.message || "Kode verifikasi tidak valid");
         setMessageType("error");
       }
     } catch (error) {
       console.error('Error verifying code:', error);
-      setMessage("Terjadi kesalahan saat memverifikasi kode");
+      setMessage("Terjadi kesalahan saat memverifikasi email");
       setMessageType("error");
     } finally {
       setIsVerifyingCode(false);
-    }
-  };
-
-  const validatePassword = (password: string, confirmPassword: string = passwordData.confirmPassword) => {
-    const validation = {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      number: /\d/.test(password),
-      symbol: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-      isValid: false,
-      match: password === confirmPassword && password.length > 0
-    };
-    
-    validation.isValid = validation.length && validation.uppercase && validation.number && validation.symbol && validation.match;
-    setPasswordValidation(validation);
-    return validation.isValid;
-  };
-
-  const handlePasswordChange = (field: 'newPassword' | 'confirmPassword', value: string) => {
-    const newPasswordData = { ...passwordData, [field]: value };
-    setPasswordData(newPasswordData);
-    
-    if (field === 'newPassword') {
-      validatePassword(value, newPasswordData.confirmPassword);
-    } else {
-      validatePassword(newPasswordData.newPassword, value);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
   const handleChangePassword = async () => {
-    if (!passwordValidation.isValid) {
-      setMessage("Password tidak memenuhi kriteria yang diperlukan");
-      setMessageType("error");
-      return;
-    }
-
-    setIsChangingPassword(true);
-    setMessage("");
-
+    if (!passwordValidation.isValid || isChangingPassword) return;
+    
     try {
-      const response = await fetch('/api/user/change-password', {
+      setIsChangingPassword(true);
+      
+      const response = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           newPassword: passwordData.newPassword
         }),
       });
 
       const result = await response.json();
-
-      if (result.success) {
+      
+      if (response.ok) {
         setShowChangePasswordModal(false);
         setPasswordData({ newPassword: "", confirmPassword: "" });
         setMessage("Password berhasil diubah!");
@@ -729,6 +741,7 @@ export default function ModeratorProfilePage() {
       setMessageType("error");
     } finally {
       setIsChangingPassword(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
@@ -761,10 +774,13 @@ export default function ModeratorProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <ModeratorLayout
+      title="Profile Moderator"
+      description="Kelola informasi profil dan avatar moderator Anda"
+    >
       {message && (
-        <Alert
-          color={messageType === "success" ? "success" : "danger"}
+        <Alert 
+          color={messageType === "success" ? "success" : "danger"} 
           className="mb-6"
           title={messageType === "success" ? "Success" : "Error"}
         >
@@ -774,9 +790,79 @@ export default function ModeratorProfilePage() {
 
       <div className="shadow-lg">
         <div className="p-8">
-          <div className="flex gap-8">
-            {/* Left side - Form fields */}
-            <div className="flex-1 space-y-6">
+          {/* Mobile Layout: Avatar on top, Form below */}
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Avatar Section - Appears first on mobile, right on desktop */}
+            <div className="flex flex-col items-center justify-start space-y-4 lg:order-2">
+              <div className="relative">
+                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    key={avatarKey} // Force re-render when avatar changes
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-48 h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
+                  onPress={() => fileInputRef.current?.click()}
+                  onMouseEnter={() => {
+                    setIsHovering(true);
+                    if (lottieRef.current) {
+                      lottieRef.current.play();
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setIsHovering(false);
+                    if (lottieRef.current) {
+                      lottieRef.current.stop();
+                    }
+                  }}
+                >
+                  {editAnimation ? (
+                    <Lottie
+                      lottieRef={lottieRef}
+                      animationData={editAnimation}
+                      className="w-6 h-6"
+                      loop={true}
+                      autoplay={false}
+                    />
+                  ) : (
+                    // Fallback icon jika animasi belum load
+                    <svg 
+                      className="w-5 h-5 text-[#FF1744]" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  )}
+                </Button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <Button
+                color="danger"
+                variant="solid"
+                size="sm"
+                className="px-8"
+                onPress={handleRemoveAvatar}
+              >
+                Remove
+              </Button>
+            </div>
+
+            {/* Form Section - Appears second on mobile, left on desktop */}
+            <div className="flex-1 space-y-6 lg:order-1">
               <div>
                 <label className="block text-sm font-medium text-yellow-400 mb-2">Username</label>
                 <Input
@@ -788,7 +874,7 @@ export default function ModeratorProfilePage() {
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`,
+                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`
                   }}
                 />
               </div>
@@ -804,7 +890,7 @@ export default function ModeratorProfilePage() {
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`,
+                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`
                   }}
                 />
               </div>
@@ -823,12 +909,12 @@ export default function ModeratorProfilePage() {
                     value={user.email}
                     size="lg"
                     type="email"
-                    isReadOnly
+                    isReadOnly={true}
                     variant="flat"
                     className="bg-transparent flex-1"
                     classNames={{
                       input: "bg-transparent text-white placeholder-gray-400",
-                      inputWrapper: `bg-transparent border-2 border-gray-600 rounded-lg ${!isEmailVerified ? 'border-red-500/50' : 'border-green-500/50'}`,
+                      inputWrapper: `bg-transparent border-2 border-gray-600 rounded-lg ${!isEmailVerified ? 'border-red-500/50' : 'border-green-500/50'}`
                     }}
                   />
                   {!isEmailVerified && (
@@ -854,16 +940,16 @@ export default function ModeratorProfilePage() {
                 <Input
                   value={new Date(user.created_at).toLocaleDateString('id-ID', {
                     day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
+                    month: '2-digit', 
+                    year: 'numeric'
                   })}
                   size="lg"
-                  isReadOnly
+                  isReadOnly={true}
                   variant="flat"
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg",
+                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg"
                   }}
                 />
               </div>
@@ -873,83 +959,23 @@ export default function ModeratorProfilePage() {
                 <Input
                   value="Moderator"
                   size="lg"
-                  isReadOnly
+                  isReadOnly={true}
                   variant="flat"
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg",
+                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg"
                   }}
                 />
               </div>
             </div>
-
-            {/* Right side - Avatar */}
-            <div className="flex flex-col items-center justify-start space-y-4">
-              <div className="relative">
-                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
-                  <img 
-                    key={avatarKey} // Force re-render when avatar changes
-                    src={getUserAvatarUrl(user, 200, true)}
-                    alt="Profile"
-                    className="w-48 h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = '/logc.png';
-                    }}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
-                  onPress={() => fileInputRef.current?.click()}
-                  onMouseEnter={() => {
-                    setIsHovering(true);
-                    if (lottieRef.current) lottieRef.current.play();
-                  }}
-                  onMouseLeave={() => {
-                    setIsHovering(false);
-                    if (lottieRef.current) lottieRef.current.stop();
-                  }}
-                >
-                  {editAnimation ? (
-                    <Lottie
-                      lottieRef={lottieRef}
-                      animationData={editAnimation}
-                      className="w-6 h-6"
-                      loop
-                      autoplay={false}
-                    />
-                  ) : (
-                    <svg className="w-5 h-5 text-[#FF1744]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                  )}
-                </Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-              <Button
-                color="danger"
-                variant="solid"
-                size="sm"
-                className="px-8"
-                onPress={handleRemoveAvatar}
-              >
-                Remove
-              </Button>
-            </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Edit/Save/Cancel buttons at the bottom */}
           <div className="flex justify-start mt-8 pt-6 border-t border-gray-700">
             {!isEditing ? (
-              <Button
-                color="primary"
+              <Button 
+                color="primary" 
                 size="lg"
                 className="px-12"
                 onPress={() => setIsEditing(true)}
@@ -958,8 +984,8 @@ export default function ModeratorProfilePage() {
               </Button>
             ) : (
               <div className="flex gap-4">
-                <Button
-                  color="success"
+                <Button 
+                  color="success" 
                   size="lg"
                   className="px-8"
                   onPress={handleSave}
@@ -968,7 +994,7 @@ export default function ModeratorProfilePage() {
                 >
                   Save
                 </Button>
-                <Button
+                <Button 
                   color="warning"
                   variant="light"
                   size="lg"
@@ -978,8 +1004,8 @@ export default function ModeratorProfilePage() {
                 >
                   Change Password
                 </Button>
-                <Button
-                  color="danger"
+                <Button 
+                  color="danger" 
                   variant="light"
                   size="lg"
                   className="px-8"
@@ -993,6 +1019,34 @@ export default function ModeratorProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Crop Modal */}
+      <Modal 
+        isOpen={showCropModal} 
+        onClose={() => setShowCropModal(false)}
+        size="lg"
+        classNames={{
+          base: "bg-black",
+          header: "border-b border-gray-700",
+          body: "py-6",
+          footer: "border-t border-gray-700"
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-white">
+            <h3>Crop Your Avatar</h3>
+          </ModalHeader>
+          <ModalBody>
+            {selectedImage && (
+              <CropEditor
+                imageSrc={selectedImage}
+                onCrop={handleCropSave}
+                onCancel={() => setShowCropModal(false)}
+              />
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
 
       {/* Email Verification Modal */}
       <Modal
@@ -1036,14 +1090,15 @@ export default function ModeratorProfilePage() {
                 <Button
                   onClick={handleSendVerification}
                   disabled={isSendingVerification}
-                  variant="ghost"
-                  className="text-yellow-400 border-yellow-400"
+                  color="warning"
+                  variant="light"
+                  className="text-yellow-400"
                 >
                   {isSendingVerification ? 'Mengirim...' : 'Kirim Ulang Kode'}
                 </Button>
                 <Button
                   onClick={() => setShowVerificationModal(false)}
-                  variant="ghost"
+                  variant="light"
                   className="text-gray-400"
                 >
                   Batal
@@ -1069,135 +1124,149 @@ export default function ModeratorProfilePage() {
           <ModalHeader className="text-white flex flex-col gap-1">
             <h3 className="text-xl font-bold">Ubah Password</h3>
             <p className="text-sm text-gray-400">
-              Masukkan password baru Anda
+              Masukkan password baru yang kuat dan aman
             </p>
           </ModalHeader>
-          <ModalBody className="pb-6 space-y-4">
-            <div>
-              <Input
-                label="Password Baru"
-                type={showNewPassword ? "text" : "password"}
-                value={passwordData.newPassword}
-                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                className="w-full"
-                color="warning"
-                endContent={
-                  <EyeIcon 
-                    isVisible={showNewPassword} 
-                    onClick={() => setShowNewPassword(!showNewPassword)} 
+          <ModalBody className="pb-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Password Baru
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) => {
+                      const newPassword = e.target.value;
+                      setPasswordData(prev => ({ ...prev, newPassword }));
+                      
+                      // Validate password
+                      const validation = {
+                        length: newPassword.length >= 8,
+                        uppercase: /[A-Z]/.test(newPassword),
+                        number: /\d/.test(newPassword),
+                        symbol: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
+                        isValid: false,
+                        match: newPassword === passwordData.confirmPassword
+                      };
+                      validation.isValid = validation.length && validation.uppercase && validation.number && validation.symbol && validation.match;
+                      setPasswordValidation(validation);
+                    }}
+                    placeholder="Masukkan password baru"
+                    classNames={{
+                      input: "bg-gray-800 text-white pr-10",
+                      inputWrapper: "bg-gray-800 border-gray-600 hover:border-gray-500"
+                    }}
+                    endContent={
+                      <EyeIcon 
+                        isVisible={showNewPassword} 
+                        onClick={() => setShowNewPassword(!showNewPassword)} 
+                      />
+                    }
                   />
-                }
-              />
-            </div>
-
-            <div>
-              <Input
-                label="Konfirmasi Password"
-                type={showConfirmPassword ? "text" : "password"}
-                value={passwordData.confirmPassword}
-                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                className="w-full"
-                color="warning"
-                endContent={
-                  <EyeIcon 
-                    isVisible={showConfirmPassword} 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                  />
-                }
-              />
-            </div>
-
-            {/* Password Requirements */}
-            {passwordData.newPassword.length > 0 && (
-              <div className="mt-4 p-3 bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-300 mb-2">Persyaratan Password:</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.length ? '✓' : '✗'}
-                    </span>
-                    <span>Minimal 8 karakter</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.uppercase ? '✓' : '✗'}
-                    </span>
-                    <span>1 huruf kapital (A-Z)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.number ? '✓' : '✗'}
-                    </span>
-                    <span>1 angka (0-9)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.symbol ? '✓' : '✗'}
-                    </span>
-                    <span>1 simbol (!@#$%^&*)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.match ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.match ? '✓' : '✗'}
-                    </span>
-                    <span>Password dan konfirmasi cocok</span>
-                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="mt-6 flex gap-2 justify-center">
-              <Button
-                onClick={handleChangePassword}
-                disabled={!passwordValidation.isValid || isChangingPassword}
-                color="success"
-                className="px-8"
-                isLoading={isChangingPassword}
-              >
-                {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowChangePasswordModal(false);
-                  setPasswordData({ newPassword: "", confirmPassword: "" });
-                }}
-                variant="ghost"
-                className="text-gray-400 px-8"
-              >
-                Batal
-              </Button>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Konfirmasi Password Baru
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => {
+                      const confirmPassword = e.target.value;
+                      setPasswordData(prev => ({ ...prev, confirmPassword }));
+                      
+                      // Update match validation
+                      const updatedValidation = {
+                        ...passwordValidation,
+                        match: passwordData.newPassword === confirmPassword
+                      };
+                      updatedValidation.isValid = updatedValidation.length && updatedValidation.uppercase && updatedValidation.number && updatedValidation.symbol && updatedValidation.match;
+                      setPasswordValidation(updatedValidation);
+                    }}
+                    placeholder="Konfirmasi password baru"
+                    classNames={{
+                      input: "bg-gray-800 text-white pr-10",
+                      inputWrapper: "bg-gray-800 border-gray-600 hover:border-gray-500"
+                    }}
+                    endContent={
+                      <EyeIcon 
+                        isVisible={showConfirmPassword} 
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                      />
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Password Requirements */}
+              {passwordData.newPassword && (
+                <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+                  <h4 className="text-sm font-medium mb-2 text-white">Persyaratan Password:</h4>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.length ? '✓' : '✗'}
+                      </span>
+                      <span>Minimal 8 karakter</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.uppercase ? '✓' : '✗'}
+                      </span>
+                      <span>1 huruf kapital (A-Z)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.number ? '✓' : '✗'}
+                      </span>
+                      <span>1 angka (0-9)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.symbol ? '✓' : '✗'}
+                      </span>
+                      <span>1 simbol (!@#$%^&*)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.match ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.match ? '✓' : '✗'}
+                      </span>
+                      <span>Password dan konfirmasi cocok</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 flex gap-2 justify-center">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={!passwordValidation.isValid || isChangingPassword}
+                  color="success"
+                  className="px-8"
+                  isLoading={isChangingPassword}
+                >
+                  {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setPasswordData({ newPassword: "", confirmPassword: "" });
+                  }}
+                  variant="ghost"
+                  className="text-gray-400 px-8"
+                >
+                  Batal
+                </Button>
+              </div>
             </div>
           </ModalBody>
         </ModalContent>
       </Modal>
-
-      {/* Crop Modal */}
-      <Modal
-        isOpen={showCropModal}
-        onClose={() => setShowCropModal(false)}
-        size="lg"
-        classNames={{
-          base: "bg-black",
-          header: "border-b border-gray-700",
-          body: "py-6",
-          footer: "border-t border-gray-700",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="text-white">
-            <h3>Crop Your Avatar</h3>
-          </ModalHeader>
-          <ModalBody>
-            {selectedImage && (
-              <CropEditor
-                imageSrc={selectedImage}
-                onCrop={handleCropSave}
-                onCancel={() => setShowCropModal(false)}
-              />
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </div>
+    </ModeratorLayout>
   );
 }

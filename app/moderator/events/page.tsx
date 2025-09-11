@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import EventImageUpload from "@/components/EventImageUpload";
+import ModeratorLayout from "@/components/ModeratorLayout";
 import {
   Card,
   CardBody,
@@ -797,7 +798,10 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <ModeratorLayout
+      title="Events Management"
+      description="Manage events and competitions"
+    >
       {/* Alert */}
       {alertVisible && alertConfig && (
         <div className="fixed top-4 right-4 z-50 max-w-md">
@@ -814,10 +818,6 @@ export default function EventsPage() {
 
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Events Management</h1>
-          <p className="text-gray-400 mt-2">Manage events and competitions</p>
-        </div>
         {activeTab === "management" && (
           <Button
             color="primary"
@@ -1832,7 +1832,7 @@ export default function EventsPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </div>
+    </ModeratorLayout>
   );
 }
 

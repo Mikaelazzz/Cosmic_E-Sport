@@ -4,7 +4,7 @@ export default function ModeratorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="admin-layout px-12 py-8">
+    <div className="moderator-layout px-12 py-8">
       {children}
     </div>
   );

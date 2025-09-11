@@ -27,6 +27,7 @@ import {
 } from "@heroui/react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 interface Informasi {
   id: number;
@@ -149,13 +150,11 @@ const InformasiPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <ModeratorLayout
+      title="Kelola Informasi"
+      description="Kelola informasi dan pengumuman untuk anggota"
+    >
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Kelola Informasi</h1>
-          <p className="text-gray-400 mt-2">Kelola informasi dan pengumuman untuk anggota</p>
-          <p className="text-sm text-gray-500 mt-1">Status otomatis diperbarui berdasarkan tanggal publish dan berakhir</p>
-        </div>
         <div className="flex gap-2">
           {/* <Button
             variant="bordered"
@@ -358,7 +357,7 @@ const InformasiPage = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </div>
+    </ModeratorLayout>
   );
 };
 

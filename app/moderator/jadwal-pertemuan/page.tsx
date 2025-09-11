@@ -14,6 +14,7 @@ import { Card, CardBody } from '@heroui/card';
 import { Alert } from '@heroui/alert';
 import { Selection, SortDescriptor } from '@heroui/table';
 import { useAuth } from '@/context/AuthContext';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 // Custom icons
 const IconSearch = ({ className }: { className?: string }) => (
@@ -498,7 +499,10 @@ export default function JadwalPertemuanPage() {
   }
 
   return (
-    <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-7xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
+    <ModeratorLayout
+      title="Jadwal Pertemuan"
+      description="Kelola jadwal pertemuan dan meeting moderator"
+    >
       <div className="space-y-6">
         {/* Alert Notifications */}
         {alertConfig.show && (
@@ -518,13 +522,13 @@ export default function JadwalPertemuanPage() {
           />
         )}
 
-        {/* Header */}
+        {/* Header
         <div className="flex justify-between items-center mb-6 sm:mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-center text-yellow-400">Jadwal Pertemuan</h1>
             <p className="text-gray-400 text-center">Kelola jadwal pertemuan untuk periode yang aktif</p>
           </div>
-        </div>
+        </div> */}
 
         {/* Periode Status & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -999,6 +1003,6 @@ export default function JadwalPertemuanPage() {
           </ModalContent>
         </Modal>
       </div>
-    </section>
+    </ModeratorLayout>
   );
 }
