@@ -10,7 +10,7 @@ import { Chip } from '@heroui/chip';
 import { Pagination } from '@heroui/pagination';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/modal';
 import { Spinner } from '@heroui/spinner';
-import { Card, CardBody } from '@heroui/card';
+import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Alert } from '@heroui/alert';
 import { Selection, SortDescriptor } from '@heroui/table';
 import { useAuth } from '@/context/AuthContext';
@@ -747,7 +747,155 @@ export default function JadwalPertemuanPage() {
             </div>
           </div>
           
-          {/* Table Section */}
+          {/* Mobile Card View - Hidden on desktop */}
+          <div className="lg:hidden">
+            {/* Mobile Cards */}
+            <div className="space-y-4">
+              {sortedItems.length === 0 ? (
+                <Card className="bg-gray-900 border-gray-700">
+                  <CardBody className="text-center py-8">
+                    <p className="text-gray-400">Tidak ada jadwal pertemuan yang ditemukan</p>
+                  </CardBody>
+                </Card>
+              ) : (
+                sortedItems.map((jadwal) => (
+                  <Card key={jadwal.id} className="bg-gray-900 border-gray-700 hover:border-yellow-400/50 transition-colors">
+                    <CardBody className="p-4">
+                      <div className="space-y-3">
+                        {/* Header with Status */}
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-yellow-400 text-lg mb-1">
+                              {jadwal.nama_topik}
+                            </h3>
+                            <p className="text-sm text-gray-400">ID: {jadwal.id}</p>
+                          </div>
+                          <Chip
+                            size="sm"
+                            variant="flat"
+                            color={
+                              jadwal.status === 'berlangsung' ? 'success' :
+                              jadwal.status === 'selesai' ? 'primary' :
+                              jadwal.status === 'dibatalkan' ? 'danger' : 'warning'
+                            }
+                            className="capitalize"
+                          >
+                            {jadwal.status.replace('_', ' ')}
+                          </Chip>
+                        </div>
+
+                        {/* Details */}
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-400">Hari:</span>
+                            <p className="text-gray-200 font-medium">{jadwal.hari}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Tanggal:</span>
+                            <p className="text-gray-200 font-medium">{jadwal.tanggal}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Kelas:</span>
+                            <p className="text-gray-200 font-medium">{jadwal.kelas}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Jam:</span>
+                            <p className="text-gray-200 font-medium">{jadwal.jam_pertemuan}</p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-2 border-t border-gray-700">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            startContent={<IconEye className="w-4 h-4" />}
+                            onPress={() => router.push(`/moderator/jadwal-pertemuan/detail/${jadwal.id}`)}
+                          >
+                            Detail
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="warning"
+                            onPress={() => router.push(`/moderator/jadwal-pertemuan/edit/${jadwal.id}`)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => openDeleteModal(jadwal)}
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Mobile Bottom Info & Pagination */}
+            {filteredItems.length > 0 && (
+              <div className="mt-6 space-y-4">
+                {/* Data Count Info */}
+                <div className="flex justify-between items-center text-sm text-gray-400">
+                  <span>
+                    Menampilkan {((page - 1) * rowsPerPage) + 1} - {Math.min(page * rowsPerPage, filteredItems.length)} dari {filteredItems.length} jadwal
+                  </span>
+                  <span>
+                    Halaman {page} dari {pages}
+                  </span>
+                </div>
+                
+                {/* Pagination */}
+                {pages > 1 && (
+                  <div className="flex justify-center">
+                    <Pagination
+                      isCompact
+                      showControls
+                      showShadow
+                      color="primary"
+                      page={page}
+                      total={pages}
+                      onChange={setPage}
+                      classNames={{
+                        wrapper: "gap-0 overflow-visible h-8",
+                        item: "w-8 h-8 text-small rounded-none bg-transparent",
+                        cursor: "bg-yellow-400 text-gray-900 font-bold",
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Rows per page selector for mobile */}
+                <div className="flex justify-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-400">Baris per halaman:</span>
+                    <select
+                      className="bg-gray-700 border border-gray-600 hover:border-yellow-400 focus:border-yellow-400 text-white text-sm px-2 py-1 rounded transition-colors"
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(Number(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={15}>15</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table Section - Hidden on mobile */}
+          <div className="hidden lg:block">
           <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
             <div className="overflow-x-auto">
               <Table
@@ -794,7 +942,7 @@ export default function JadwalPertemuanPage() {
             </div>
           </div>
           
-          {/* Footer: Info and Pagination */}
+          {/* Desktop Footer: Info and Pagination */}
           {filteredItems.length > 0 && (
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-700">
               <span className="text-sm text-gray-400">
@@ -820,6 +968,7 @@ export default function JadwalPertemuanPage() {
               )}
             </div>
           )}
+          </div>
           
           {/* Empty State */}
           {filteredItems.length === 0 && jadwalPertemuan.length > 0 && (

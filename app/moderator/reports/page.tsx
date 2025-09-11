@@ -429,7 +429,15 @@ export default function ModeratorReportsPage() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
+                          label={({ payload }: any) => {
+                            const labelName = payload?.status ?? payload?.name ?? '';
+                            const pct = typeof payload?.percentage === 'number'
+                              ? payload.percentage
+                              : typeof payload?.percent === 'number'
+                                ? payload.percent * 100
+                                : 0;
+                            return `${labelName} (${pct.toFixed(1)}%)`;
+                          }}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="count"

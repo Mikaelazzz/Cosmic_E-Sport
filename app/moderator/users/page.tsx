@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/table';
 import { Input } from '@heroui/input';
 import { Button } from '@heroui/button';
+import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/dropdown';
 import { Chip } from '@heroui/chip';
 import { User } from '@heroui/user';
@@ -584,7 +585,7 @@ export default function UsersPage() {
                       e.currentTarget.src = '/logc.png';
                     }}
                   />
-                </div>
+            </div>
             <div className="flex flex-col">
               <p className="text-sm font-medium">{user.nama_lengkap}</p>
               {/* <p className="text-xs text-default-500">{user.email}</p> */}
@@ -896,6 +897,179 @@ export default function UsersPage() {
       title="User Management"
       description="Kelola pengguna dan anggota komunitas"
     >
+      {/* Mobile Card View - Hidden on desktop */}
+      <div className="lg:hidden">
+        {/* Mobile Top Content */}
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-col gap-3">
+            <Input
+              isClearable
+              placeholder="Cari berdasarkan nama, email, atau NIM..."
+              startContent={<IconSearch />}
+              value={filterValue}
+              onClear={() => onClear()}
+              onValueChange={onSearchChange}
+              className="w-full"
+            />
+            <div className="flex gap-2">
+              <Dropdown>
+                <DropdownTrigger className="flex">
+                  <Button variant="flat" size="sm">
+                    Role ({roleFilter === "all" ? "Semua" : Array.from(roleFilter as Set<string>).join(", ")})
+                  </Button>
+                </DropdownTrigger>
+                <DropdownMenu
+                  disallowEmptySelection
+                  aria-label="Role Filter"
+                  closeOnSelect={false}
+                  selectedKeys={roleFilter}
+                  selectionMode="multiple"
+                  onSelectionChange={setRoleFilter}
+                >
+                  <DropdownItem key="user">User</DropdownItem>
+                  <DropdownItem key="moderator">Moderator</DropdownItem>
+                  <DropdownItem key="admin">Admin</DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+              
+              <Button color="primary" size="sm" startContent={<IconPlus />} onPress={onOpen}>
+                Tambah
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="space-y-3">
+          {sortedItems.map((user) => (
+            <Card key={user.id} className="w-full">
+              <CardBody className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                      <img 
+                        // key={avatarKey} 
+                        src={getUserAvatarUrl(user, 200, true)}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/logc.png';
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col text-default-500">
+                      <div className='text-sm'>{user.nama_lengkap}</div>
+                      <div className='text-xs'>{user.email}</div>
+                    </div>
+                    {/* <User
+                      avatarProps={{
+                        radius: "full",
+                        size: "sm",
+                        src: user.profile_image || getUserAvatarUrl(user),
+                      }}
+                      classNames={{
+                        description: "text-default-500",
+                      }}
+                      description={user.email}
+                      name={user.nama_lengkap}
+                      
+                    /> */}
+                  </div>
+                  <Chip
+                    className="capitalize"
+                    color={user.role === 'admin' ? 'danger' : user.role === 'moderator' ? 'warning' : 'default'}
+                    size="sm"
+                    variant="flat"
+                  >
+                    {user.role}
+                  </Chip>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-default-500">NIM:</span>
+                    <span>{user.nim || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-default-500">Jabatan:</span>
+                    <span>{user.jabatan || '-'}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    color="primary"
+                    onPress={() => handleEdit(user)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    color="danger"
+                    onPress={() => handleDeleteConfirm(user.id)}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+
+        {/* Mobile Bottom Info & Pagination */}
+        <div className="mt-4 space-y-3">
+          {/* Data Count Info */}
+          <div className="flex justify-between items-center text-small text-default-500">
+            <span>
+              Menampilkan {((page - 1) * rowsPerPage) + 1} - {Math.min(page * rowsPerPage, filteredItems.length)} dari {filteredItems.length} user
+            </span>
+            <span>
+              Halaman {page} dari {pages}
+            </span>
+          </div>
+          
+          {/* Pagination */}
+          {pages > 1 && (
+            <div className="flex justify-center">
+              <Pagination
+                isCompact
+                showControls
+                showShadow
+                color="primary"
+                page={page}
+                total={pages}
+                onChange={setPage}
+              />
+            </div>
+          )}
+          
+          {/* Rows per page selector for mobile */}
+          <div className="flex justify-center">
+            <div className="flex items-center gap-2">
+              <span className="text-small text-default-500">Baris per halaman:</span>
+              <select
+                className="bg-transparent text-small text-default-500 outline-none"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={20}>20</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className="hidden lg:block">
         <Table
           isCompact
           removeWrapper
@@ -932,6 +1106,7 @@ export default function UsersPage() {
             )}
           </TableBody>
         </Table>
+      </div>
 
         {/* Modal for Create/Edit User */}
         <Modal
@@ -940,7 +1115,7 @@ export default function UsersPage() {
             onClose();
             resetForm();
           }}
-          placement="top-center"
+          placement="center"
         >
           <ModalContent>
             {(onClose) => (

@@ -13,6 +13,9 @@ import {
   Select,
   SelectItem,
   Chip,
+  Card,
+  CardBody,
+  CardHeader,
   Modal,
   ModalContent,
   ModalHeader,
@@ -209,13 +212,13 @@ const InformasiPage = () => {
           placeholder="Cari informasi..."
           value={searchTerm}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-          className="max-w-xs"
+          className="max-w-sm"
         />
         <Select
           placeholder="Status"
           selectedKeys={[selectedStatus]}
           onSelectionChange={(keys: any) => setSelectedStatus(Array.from(keys)[0] as string)}
-          className="max-w-xs"
+          className="max-w-sm"
         >
           {statusList.map((status) => (
             <SelectItem key={status.key}>
@@ -225,7 +228,154 @@ const InformasiPage = () => {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Mobile Card View - Hidden on desktop */}
+      <div className="lg:hidden">
+        {/* Mobile Cards */}
+        <div className="space-y-4">
+          {loading ? (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardBody className="text-center py-8">
+                <p className="text-gray-400">Loading...</p>
+              </CardBody>
+            </Card>
+          ) : informasiList.length === 0 ? (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardBody className="text-center py-8">
+                <p className="text-gray-400">Tidak ada data</p>
+              </CardBody>
+            </Card>
+          ) : (
+            informasiList.map((item) => (
+              <Card key={item.id} className="bg-gray-800 border-gray-700 hover:border-blue-400/50 transition-colors">
+                <CardBody className="p-4">
+                  <div className="space-y-3">
+                    {/* Header with Status */}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white text-lg mb-1">
+                          {item.nama_informasi}
+                        </h3>
+                        {item.deskripsi && (
+                          <p className="text-sm text-gray-400 line-clamp-2 mb-2">
+                            {item.deskripsi}
+                          </p>
+                        )}
+                      </div>
+                      <Chip 
+                        size="sm" 
+                        color={getStatusColor(item.status)}
+                        variant="flat"
+                      >
+                        {getStatusLabel(item.status)}
+                      </Chip>
+                    </div>
+
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-400">Tanggal Publish:</span>
+                        <p className="text-gray-300 font-medium">
+                          {new Date(item.tanggal_publish).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Tanggal Berakhir:</span>
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-medium ${
+                            new Date(item.tanggal_berakhir) < new Date() 
+                              ? 'text-red-400' 
+                              : new Date(item.tanggal_berakhir) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                          }`}>
+                            {new Date(item.tanggal_berakhir).toLocaleDateString('id-ID')}
+                          </span>
+                          {new Date(item.tanggal_berakhir) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && 
+                           new Date(item.tanggal_berakhir) >= new Date() && (
+                            <span className="text-xs text-yellow-400">Segera berakhir</span>
+                          )}
+                          {new Date(item.tanggal_berakhir) < new Date() && (
+                            <span className="text-xs text-red-400">Sudah berakhir</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Creator Info */}
+                    <div className="text-sm border-t border-gray-700 pt-2">
+                      <span className="text-gray-400">Dibuat oleh:</span>
+                      <p className="text-gray-300 font-medium">
+                        {item.created_by_user.nama_lengkap}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onPress={() => handleView(item)}
+                      >
+                        Lihat
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={() => handleEdit(item.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        onPress={() => {
+                          setDeleteId(item.id);
+                          onDeleteOpen();
+                        }}
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 space-y-4">
+            {/* Page Info */}
+            <div className="flex justify-center text-sm text-gray-400">
+              <span>
+                Halaman {currentPage} dari {totalPages}
+              </span>
+            </div>
+            
+            {/* Pagination */}
+            <div className="flex justify-center">
+              <Pagination
+                total={totalPages}
+                page={currentPage}
+                onChange={setCurrentPage}
+                showControls
+                size="sm"
+                classNames={{
+                  wrapper: "gap-0 overflow-visible h-8",
+                  item: "w-8 h-8 text-small rounded-none bg-transparent text-gray-400",
+                  cursor: "bg-blue-400 text-gray-900 font-bold",
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table - Hidden on mobile */}
+      <div className="hidden lg:block">
       <div className="bg-gray-800 rounded-lg overflow-hidden">
         <Table aria-label="Informasi table" className="min-w-full">
           <TableHeader>
@@ -328,7 +478,7 @@ const InformasiPage = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
+      {/* Desktop Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-6">
           <Pagination
@@ -339,6 +489,7 @@ const InformasiPage = () => {
           />
         </div>
       )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>

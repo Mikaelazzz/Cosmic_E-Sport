@@ -8,6 +8,7 @@ import ModeratorLayout from "@/components/ModeratorLayout";
 import {
   Card,
   CardBody,
+  CardHeader,
   Button,
   Input,
   Textarea,
@@ -890,7 +891,169 @@ export default function EventsPage() {
             </div>
           ) : (
             <>
-              {/* Events Table */}
+              {/* Mobile Card View - Hidden on desktop */}
+              <div className="lg:hidden space-y-4">
+                {events.length === 0 ? (
+                  <Card className="bg-[#111020] border-2 border-[#FFD700]">
+                    <CardBody className="text-center py-8">
+                      <UsersIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-400 font-medium">No events found</p>
+                      <p className="text-gray-500 text-sm">Create your first event to get started</p>
+                    </CardBody>
+                  </Card>
+                ) : (
+                  events.map((event) => (
+                    <Card key={event.id} className="bg-[#111020] border-2 border-[#FFD700]/50 hover:border-[#FFD700] transition-colors">
+                      <CardBody className="p-4">
+                        <div className="space-y-4">
+                          {/* Header with Image and Status */}
+                          <div className="flex gap-3">
+                            {event.gambar && (
+                              <div className="w-20 h-11 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                                <Image
+                                  src={event.gambar.startsWith('/src/events/') 
+                                    ? `/api/images/events/${event.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
+                                    : event.gambar}
+                                  alt={event.nama_event}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-[#FFD700] text-lg mb-1 truncate">
+                                {event.nama_event}
+                              </h3>
+                              <div className="flex flex-wrap gap-2">
+                                <Chip
+                                  color={statusColorMap[event.status]}
+                                  size="sm"
+                                  variant="flat"
+                                >
+                                  {event.status.toUpperCase()}
+                                </Chip>
+                                <Badge color="primary" variant="flat" className="text-xs">
+                                  {event.participant_type}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Event Details */}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="text-gray-400">Date:</span>
+                              <p className="text-gray-300 font-medium">
+                                {new Date(event.tanggal_pelaksanaan).toLocaleDateString('id-ID')}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-400">Cost:</span>
+                              <p className="text-[#FFD700] font-medium">
+                                {formatCurrency(event.biaya)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Participants Info */}
+                          <div className="bg-[#1a1a2e] rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-gray-400 text-sm">Participants:</span>
+                              <div className="flex items-center gap-2">
+                                <UsersIcon className="w-4 h-4 text-[#FFD700]" />
+                                <Badge color="primary" variant="flat">
+                                  {event.anggota_participant}/{event.max_participant}
+                                </Badge>
+                              </div>
+                            </div>
+                            {event.pending_participants_count && event.pending_participants_count > 0 && (
+                              <Badge color="warning" variant="flat" size="sm">
+                                +{event.pending_participants_count} pending
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-[#FFD700]/20">
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              color="primary"
+                              startContent={<EyeIcon className="w-4 h-4" />}
+                              onPress={() => handleView(event)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              startContent={<UsersIcon className="w-4 h-4" />}
+                              onPress={() => handleViewParticipants(event)}
+                            >
+                              Participants
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              color="warning"
+                              startContent={<TrophyIcon className="w-4 h-4" />}
+                              onPress={() => handleViewBracket(event)}
+                            >
+                              Bracket
+                            </Button>
+                            
+                            {/* Start/Complete Event Buttons */}
+                            {event.status === 'closed' && (
+                              <Button
+                                size="sm"
+                                color="success"
+                                variant="flat"
+                                startContent={<PlayIcon className="w-4 h-4" />}
+                                onPress={() => handleStartEvent(event)}
+                              >
+                                Start
+                              </Button>
+                            )}
+                            {event.status === 'ongoing' && (
+                              <Button
+                                size="sm"
+                                color="secondary"
+                                variant="flat"
+                                startContent={<CheckIcon className="w-4 h-4" />}
+                                onPress={() => handleCompleteEvent(event)}
+                              >
+                                Complete
+                              </Button>
+                            )}
+
+                            {/* Edit and Delete */}
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              color="warning"
+                              startContent={<PencilIcon className="w-4 h-4" />}
+                              onPress={() => handleEdit(event)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              color="danger"
+                              startContent={<TrashIcon className="w-4 h-4" />}
+                              onPress={() => handleDeleteConfirm(event)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Events Table - Hidden on mobile */}
+              <div className="hidden lg:block">
               <Card className="bg-[#111020] border-2 border-[#FFD700]">
             <CardBody className="p-0">
               <Table
@@ -1067,6 +1230,7 @@ export default function EventsPage() {
           </Table>
         </CardBody>
       </Card>
+      </div>
             </>
           )}
         </>
