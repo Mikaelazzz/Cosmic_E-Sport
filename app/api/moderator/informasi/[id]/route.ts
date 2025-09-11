@@ -6,6 +6,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Helper function to determine status based on dates
+function getAutoStatus(tanggalPublish: string, tanggalBerakhir: string): string {
+  const now = new Date();
+  const publishDate = new Date(tanggalPublish);
+  const expireDate = new Date(tanggalBerakhir);
+  
+  if (now > expireDate) {
+    return 'expired';
+  } else if (now >= publishDate && now <= expireDate) {
+    return 'active';
+  } else if (now < publishDate) {
+    return 'scheduled';
+  }
+  
+  return 'inactive';
+}
+
 // GET - Fetch single informasi by ID
 export async function GET(
   request: NextRequest,
@@ -57,8 +74,7 @@ export async function PUT(
       tanggal_publish,
       tanggal_berakhir,
       deskripsi,
-      link,
-      status
+      link
     } = body;
 
     // Validation
@@ -83,6 +99,9 @@ export async function PUT(
       }, { status: 404 });
     }
 
+    // Auto-determine status based on dates
+    const autoStatus = getAutoStatus(tanggal_publish, tanggal_berakhir);
+
     // Update informasi
     const { data, error } = await supabase
       .from('informasi')
@@ -93,7 +112,7 @@ export async function PUT(
         tanggal_berakhir,
         deskripsi,
         link,
-        status,
+        status: autoStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

@@ -6,9 +6,68 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Helper function to determine status based on dates
+function getAutoStatus(tanggalPublish: string, tanggalBerakhir: string): string {
+  const now = new Date();
+  const publishDate = new Date(tanggalPublish);
+  const expireDate = new Date(tanggalBerakhir);
+  
+  if (now > expireDate) {
+    return 'expired';
+  } else if (now >= publishDate && now <= expireDate) {
+    return 'active';
+  } else if (now < publishDate) {
+    return 'scheduled';
+  }
+  
+  return 'inactive';
+}
+
+// Update status for all informasi based on current date
+async function updateInformasiStatus() {
+  try {
+    // Get all informasi
+    const { data: allInformasi, error } = await supabase
+      .from('informasi')
+      .select('id, tanggal_publish, tanggal_berakhir, status');
+
+    if (error) throw error;
+
+    // Update status for each informasi if needed
+    const updates = [];
+    for (const info of allInformasi || []) {
+      const newStatus = getAutoStatus(info.tanggal_publish, info.tanggal_berakhir);
+      if (info.status !== newStatus) {
+        updates.push({
+          id: info.id,
+          status: newStatus
+        });
+      }
+    }
+
+    // Batch update if there are changes
+    if (updates.length > 0) {
+      for (const update of updates) {
+        await supabase
+          .from('informasi')
+          .update({ status: update.status })
+          .eq('id', update.id);
+      }
+    }
+
+    return updates.length;
+  } catch (error) {
+    console.error('Error updating informasi status:', error);
+    return 0;
+  }
+}
+
 // GET - Fetch all informasi with pagination and filters
 export async function GET(request: NextRequest) {
   try {
+    // Update status first before fetching
+    await updateInformasiStatus();
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -89,7 +148,6 @@ export async function POST(request: NextRequest) {
       tanggal_berakhir,
       deskripsi,
       link,
-      status = 'active',
       created_by
     } = body;
 
@@ -101,6 +159,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Auto-determine status based on dates
+    const autoStatus = getAutoStatus(tanggal_publish, tanggal_berakhir);
+
     // Insert new informasi
     const { data, error } = await supabase
       .from('informasi')
@@ -111,7 +172,7 @@ export async function POST(request: NextRequest) {
         tanggal_berakhir,
         deskripsi,
         link,
-        status,
+        status: autoStatus,
         created_by
       })
       .select(`
