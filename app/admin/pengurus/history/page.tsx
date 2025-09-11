@@ -150,7 +150,6 @@ export default function HistoryPengurusPage() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-lg">Loading history pengurus...</p>
         </div>
       </div>
     );

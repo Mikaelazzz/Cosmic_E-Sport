@@ -84,7 +84,6 @@ export default function AdminDashboard() {
       {loading && (
         <div className="flex justify-center items-center py-12">
           <Spinner size="lg" />
-          <span className="ml-2">Loading dashboard...</span>
         </div>
       )}
 
