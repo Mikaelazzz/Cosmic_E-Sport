@@ -67,9 +67,23 @@ interface PeriodeStatus {
   current_period?: {
     id: string;
     nama_periode: string;
-    tahun_ajaran: string;
+    tahun_akademik: string;
     semester: string;
+    tanggal_mulai: string;
+    tanggal_akhir: string;
+    deskripsi?: string;
   };
+  expected_semester?: string;
+  expected_tahun_akademik?: string;
+  available_periods?: Array<{
+    id: string;
+    nama: string;
+    tahun_akademik: string;
+    semester: string;
+    status: string;
+  }>;
+  message?: string;
+  transition_period?: boolean;
 }
 
 // Constants
@@ -271,6 +285,8 @@ export default function JadwalPertemuanPage() {
       let payload: any = { ...formData };
       if (editingJadwal) {
         payload.id = editingJadwal.id;
+      } else {
+        payload.created_by = user?.id;
       }
 
       const response = await fetch(url, {
@@ -466,140 +482,24 @@ export default function JadwalPertemuanPage() {
     }
   }, [router]);
 
-  // Top content
-  const topContent = useMemo(() => {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between gap-3 items-end">
-          <Input
-            isClearable
-            className="w-full sm:max-w-[44%]"
-            placeholder="Cari berdasarkan nama topik, hari, atau kelas..."
-            startContent={<IconSearch />}
-            value={filterValue}
-            onClear={() => setFilterValue("")}
-            onValueChange={setFilterValue}
-          />
-          <div className="flex gap-3">
-            <Dropdown>
-              <DropdownTrigger className="hidden sm:flex">
-                <Button endContent={<IconChevronDown className="text-small" />} variant="flat">
-                  Status
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                disallowEmptySelection
-                aria-label="Table Columns"
-                closeOnSelect={false}
-                selectedKeys={statusFilter}
-                selectionMode="multiple"
-                onSelectionChange={setStatusFilter}
-              >
-                {statusOptions.map((status) => (
-                  <DropdownItem key={status.uid} className="capitalize">
-                    {status.name}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
-            <Dropdown>
-              <DropdownTrigger className="hidden sm:flex">
-                <Button endContent={<IconChevronDown className="text-small" />} variant="flat">
-                  Columns
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                disallowEmptySelection
-                aria-label="Table Columns"
-                closeOnSelect={false}
-                selectedKeys={visibleColumns}
-                selectionMode="multiple"
-                onSelectionChange={setVisibleColumns}
-              >
-                {columns.map((column) => (
-                  <DropdownItem key={column.uid} className="capitalize">
-                    {column.name}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
-            <Button 
-              color="primary" 
-              endContent={<IconPlus />} 
-              onPress={() => {
-                resetForm();
-                onFormOpen();
-              }}
-            >
-              Tambah Baru
-            </Button>
-          </div>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-default-400 text-small">Total {jadwalPertemuan.length} jadwal pertemuan</span>
-          <label className="flex items-center text-default-400 text-small">
-            Rows per page:
-            <select
-              className="bg-transparent outline-none text-default-400 text-small ml-2"
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="15">15</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    );
-  }, [
-    filterValue,
-    statusFilter,
-    visibleColumns,
-    jadwalPertemuan.length,
-    onFormOpen,
-    resetForm,
-  ]);
-
-  const bottomContent = useMemo(() => {
-    return (
-      <div className="py-2 px-2 flex justify-between items-center">
-        <span className="w-[30%] text-small text-default-400">
-          {selectedKeys === "all"
-            ? "All items selected"
-            : `${selectedKeys.size} of ${filteredItems.length} selected`}
-        </span>
-        <Pagination
-          isCompact
-          showControls
-          showShadow
-          color="primary"
-          page={page}
-          total={pages}
-          onChange={setPage}
-        />
-        <div className="hidden sm:flex w-[30%] justify-end gap-2">
-          <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={() => setPage(1)}>
-            First
-          </Button>
-          <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={() => setPage(pages)}>
-            Last
-          </Button>
-        </div>
-      </div>
-    );
-  }, [selectedKeys, items.length, page, pages, filteredItems.length]);
+  // Cleanup: topContent and bottomContent removed - now using inline controls
 
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center">
-        <Spinner size="lg" />
-      </div>
+      <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-7xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
+        <div className='text-center py-6 sm:py-10 text-yellow-400'>
+          <div className='flex items-center justify-center gap-2 sm:gap-3'>
+            <div className='w-6 h-6 sm:w-8 sm:h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin'></div>
+            <p className='text-lg sm:text-xl font-bold'>Memuat data jadwal pertemuan...</p>
+          </div>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-7xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
+      <div className="space-y-6">
         {/* Alert Notifications */}
         {alertConfig.show && (
           <Alert
@@ -610,65 +510,257 @@ export default function JadwalPertemuanPage() {
             variant="bordered"
             onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
             isClosable
+            className="border-yellow-400 bg-gray-800/50"
+            classNames={{
+              title: "text-yellow-400",
+              description: "text-gray-300"
+            }}
           />
         )}
 
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Jadwal Pertemuan</h1>
-            <p className="text-gray-300">Kelola jadwal pertemuan untuk periode yang aktif</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-center text-yellow-400">Jadwal Pertemuan</h1>
+            <p className="text-gray-400 text-center">Kelola jadwal pertemuan untuk periode yang aktif</p>
           </div>
         </div>
 
-        {/* Periode Status */}
-        {periodeStatus && (
-          <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
-            <CardBody>
+        {/* Periode Status & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Periode Status */}
+          {periodeStatus && (
+            <div className="lg:col-span-2 bg-gray-800 rounded-xl p-4 sm:p-6 border-2 border-dashed border-yellow-400 shadow-lg transform transition-all duration-500 hover:scale-[1.02]">
               {periodeStatus.has_active_period ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  <div>
-                    <p className="text-green-400 font-semibold">Periode Aktif</p>
-                    <p className="text-sm text-gray-300">
-                      {periodeStatus.current_period?.nama_periode} - {periodeStatus.current_period?.tahun_ajaran} ({periodeStatus.current_period?.semester})
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
                   </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-center text-yellow-400 mb-6">Periode Aktif!</h3>
+                  
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-yellow-400 font-medium mb-1 sm:mb-0">Nama Periode:</span>
+                      <span className="text-yellow-300 font-bold text-lg">{periodeStatus.current_period?.nama_periode}</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-yellow-400 font-medium mb-1 sm:mb-0">Tahun Akademik:</span>
+                      <span className="text-yellow-300 font-bold text-lg">{periodeStatus.current_period?.tahun_akademik}</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-yellow-400 font-medium mb-1 sm:mb-0">Semester:</span>
+                      <span className="text-yellow-300 font-bold text-lg capitalize">{periodeStatus.current_period?.semester}</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-yellow-400 font-medium mb-1 sm:mb-0">Periode:</span>
+                      <span className="text-yellow-300 font-bold text-lg">
+                        {periodeStatus.current_period?.tanggal_mulai && new Date(periodeStatus.current_period.tanggal_mulai).toLocaleDateString('id-ID')} - 
+                        {periodeStatus.current_period?.tanggal_akhir && new Date(periodeStatus.current_period.tanggal_akhir).toLocaleDateString('id-ID')}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-yellow-400 font-medium mb-1 sm:mb-0">Total Jadwal:</span>
+                      <span className="text-green-400 font-bold text-lg">{jadwalPertemuan.length} pertemuan</span>
+                    </div>
+                  </div>
+                </div>
+              ) : periodeStatus.transition_period ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-center text-orange-400 mb-4">Masa Transisi Semester</h3>
+                  <p className="text-center text-gray-300">{periodeStatus.message}</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div>
-                    <p className="text-red-400 font-semibold">Tidak Ada Periode Aktif</p>
-                    <p className="text-sm text-gray-300">Hubungi admin untuk mengaktifkan periode</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </div>
                   </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-center text-red-400 mb-4">Tidak Ada Periode Aktif</h3>
+                  <p className="text-center text-gray-300 mb-4">{periodeStatus.message}</p>
+                  {periodeStatus.expected_semester && periodeStatus.expected_tahun_akademik && (
+                    <div className="bg-gray-700 rounded-lg p-4 text-center">
+                      <p className="text-sm text-gray-400 mb-2">Periode yang diharapkan:</p>
+                      <p className="text-yellow-300 font-bold text-lg capitalize">
+                        {periodeStatus.expected_semester} {periodeStatus.expected_tahun_akademik}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
-            </CardBody>
-          </Card>
-        )}
+            </div>
+          )}
 
-        {/* Main Content */}
-        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
-          <CardBody className="p-0">
-            <Table
-              aria-label="Jadwal Pertemuan table with custom cells"
-              isHeaderSticky
-              bottomContent={bottomContent}
-              bottomContentPlacement="outside"
-              classNames={{
-                wrapper: "max-h-[382px] bg-transparent",
-                th: "bg-slate-700/50 text-[#FFD700] border-b border-[#FFD700]/30",
-                td: "border-b border-slate-600/30",
-              }}
-              selectedKeys={selectedKeys}
-              selectionMode="multiple"
-              sortDescriptor={sortDescriptor}
-              topContent={topContent}
-              topContentPlacement="outside"
-              onSelectionChange={setSelectedKeys}
-              onSortChange={setSortDescriptor}
-            >
+          {/* Quick Actions Card */}
+          <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border-2 border-dashed border-yellow-400 shadow-lg transform transition-all duration-500 hover:scale-[1.02]">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
+                  <IconPlus className="text-black" />
+                </div>
+                <div>
+                  <p className="text-yellow-400 font-semibold text-lg">Quick Actions</p>
+                  <p className="text-xs text-gray-400">Aksi cepat jadwal pertemuan</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Button
+                  className="w-full py-2 sm:py-3 text-sm sm:text-base bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg transition-all duration-300"
+                  startContent={
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                      <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                    </svg>
+                  }
+                  onPress={() => {
+                    if (periodeStatus?.has_active_period) {
+                      resetForm();
+                      onFormOpen();
+                    } else {
+                      showAlert('Warning!', 'Tidak ada periode aktif. Hubungi admin untuk mengaktifkan periode.', 'warning');
+                    }
+                  }}
+                  isDisabled={!periodeStatus?.has_active_period}
+                >
+                  Buat Jadwal Baru
+                </Button>
+                
+                <Button
+                  className="w-full py-2 sm:py-3 text-sm sm:text-base bg-gray-600 hover:bg-gray-700 border border-gray-500 text-white font-bold rounded-lg transition-all duration-300"
+                  startContent={
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/>
+                      <path fillRule="evenodd" d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.5 13 8 13c-1.5 0-3.309.488-4.615.911-1.087.352-2.49.003-2.932-1.25A7.988 7.988 0 0 1 0 10zm8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3z"/>
+                    </svg>
+                  }
+                  onPress={() => {
+                    fetchJadwalPertemuan();
+                    showAlert('Info', 'Data jadwal pertemuan telah diperbarui', 'primary');
+                  }}
+                >
+                  Refresh Data
+                </Button>
+
+                <Button
+                  className="w-full py-2 sm:py-3 text-sm sm:text-base bg-gray-600 hover:bg-gray-700 border border-gray-500 text-white font-bold rounded-lg transition-all duration-300"
+                  startContent={<IconEye className="w-4 h-4" />}
+                  onPress={() => {
+                    router.push('/moderator/jadwal-pertemuan');
+                  }}
+                >
+                  Kelola Absensi
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Tabel Jadwal */}
+        <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border-2 border-dashed border-yellow-400 shadow-lg">
+          {/* Header Section */}
+          <div className="flex flex-col gap-4 mb-6">
+            <h4 className="text-xl font-bold text-yellow-400 border-b border-yellow-400 pb-3">
+              Data Jadwal Pertemuan ({jadwalPertemuan.length})
+            </h4>
+            
+            {/* Search and Filter Controls */}
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+              <Input
+                isClearable
+                className="w-full lg:max-w-md"
+                placeholder="Cari berdasarkan nama topik, hari, atau kelas..."
+                startContent={<IconSearch className="text-gray-400" />}
+                value={filterValue}
+                onClear={() => setFilterValue("")}
+                onValueChange={setFilterValue}
+                variant="bordered"
+                classNames={{
+                  input: "text-white",
+                  label: "text-gray-300",
+                  inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                }}
+              />
+              
+              <div className="flex flex-wrap gap-3 items-center">
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Button 
+                      variant="bordered"
+                      endContent={<IconChevronDown className="text-small" />}
+                      className="border-gray-600 text-gray-300 hover:border-yellow-400"
+                    >
+                      Status ({Array.from(statusFilter).length})
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    disallowEmptySelection
+                    aria-label="Status Filter"
+                    closeOnSelect={false}
+                    selectedKeys={statusFilter}
+                    selectionMode="multiple"
+                    onSelectionChange={setStatusFilter}
+                    className="bg-gray-800"
+                  >
+                    {statusOptions.map((status) => (
+                      <DropdownItem key={status.uid} className="text-gray-300">
+                        {status.name}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+                
+                <label className="flex items-center text-gray-400 text-sm whitespace-nowrap">
+                  Per halaman:
+                  <select
+                    className="bg-gray-700 border border-gray-600 hover:border-yellow-400 focus:border-yellow-400 text-white text-sm ml-2 px-2 py-1 rounded transition-colors"
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  >
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          {/* Table Section */}
+          <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+            <div className="overflow-x-auto">
+              <Table
+                aria-label="Jadwal Pertemuan table"
+                removeWrapper
+                classNames={{
+                  table: "min-w-full",
+                  th: "bg-gray-800 text-yellow-400 border-b-2 border-yellow-400/50 font-bold text-sm px-4 py-3 whitespace-nowrap",
+                  td: "border-b border-gray-700 text-gray-300 px-4 py-4",
+                  tbody: "divide-y divide-gray-700"
+                }}
+                selectedKeys={selectedKeys}
+                selectionMode="multiple"
+                sortDescriptor={sortDescriptor}
+                onSelectionChange={setSelectedKeys}
+                onSortChange={setSortDescriptor}
+              >
               <TableHeader columns={columns.filter(column => Array.from(visibleColumns).includes(column.uid))}>
                 {(column) => (
                   <TableColumn
@@ -680,22 +772,72 @@ export default function JadwalPertemuanPage() {
                   </TableColumn>
                 )}
               </TableHeader>
-              <TableBody emptyContent={"Tidak ada jadwal pertemuan yang ditemukan"} items={sortedItems}>
+              <TableBody 
+                emptyContent={
+                  <div className="text-center py-8 text-gray-400">
+                    <p>Tidak ada jadwal pertemuan yang ditemukan</p>
+                  </div>
+                } 
+                items={sortedItems}
+              >
                 {(item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className="hover:bg-gray-800/50 transition-colors">
                     {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-          </CardBody>
-        </Card>
+            </div>
+          </div>
+          
+          {/* Footer: Info and Pagination */}
+          {filteredItems.length > 0 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-700">
+              <span className="text-sm text-gray-400">
+                Menampilkan {sortedItems.length} dari {filteredItems.length} data
+                {selectedKeys !== "all" && selectedKeys.size > 0 && (
+                  <span className="ml-2 text-yellow-400">({selectedKeys.size} dipilih)</span>
+                )}
+              </span>
+              
+              {pages > 1 && (
+                <Pagination
+                  isCompact
+                  showControls
+                  page={page}
+                  total={pages}
+                  onChange={setPage}
+                  classNames={{
+                    wrapper: "gap-0 overflow-visible h-8 rounded border border-yellow-400",
+                    item: "w-8 h-8 text-small rounded-none bg-transparent text-gray-400 hover:bg-yellow-400 hover:text-black transition-colors",
+                    cursor: "bg-yellow-500 shadow-lg text-black font-bold"
+                  }}
+                />
+              )}
+            </div>
+          )}
+          
+          {/* Empty State */}
+          {filteredItems.length === 0 && jadwalPertemuan.length > 0 && (
+            <div className="text-center py-8 mt-6 border-t border-gray-700">
+              <div className="text-gray-400">
+                <svg className="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p className="text-lg font-medium mb-2">Tidak ada hasil ditemukan</p>
+                <p className="text-sm">Coba ubah kata kunci pencarian atau filter yang digunakan</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Form Modal */}
-        <Modal isOpen={isFormOpen} onClose={onFormClose} size="2xl">
-          <ModalContent>
-            <ModalHeader className="flex flex-col gap-1">
-              {editingJadwal ? 'Edit Jadwal Pertemuan' : 'Tambah Jadwal Pertemuan Baru'}
+        <Modal isOpen={isFormOpen} onClose={onFormClose} size="2xl" className="bg-gray-800">
+          <ModalContent className="bg-gray-800 text-white border border-yellow-400">
+            <ModalHeader className="flex flex-col gap-1 border-b border-yellow-400/30">
+              <h3 className="text-yellow-400 font-bold">
+                {editingJadwal ? 'Edit Jadwal Pertemuan' : 'Tambah Jadwal Pertemuan Baru'}
+              </h3>
             </ModalHeader>
             <ModalBody>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,6 +847,12 @@ export default function JadwalPertemuanPage() {
                   value={formData.nama_topik}
                   onChange={(e) => setFormData(prev => ({ ...prev, nama_topik: e.target.value }))}
                   isRequired
+                  variant="bordered"
+                  classNames={{
+                    input: "text-white",
+                    label: "text-gray-300",
+                    inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                  }}
                 />
                 <Input
                   label="Hari"
@@ -712,6 +860,12 @@ export default function JadwalPertemuanPage() {
                   value={formData.hari}
                   onChange={(e) => setFormData(prev => ({ ...prev, hari: e.target.value }))}
                   isRequired
+                  variant="bordered"
+                  classNames={{
+                    input: "text-white",
+                    label: "text-gray-300",
+                    inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                  }}
                 />
                 <Input
                   type="date"
@@ -719,6 +873,12 @@ export default function JadwalPertemuanPage() {
                   value={formData.tanggal}
                   onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
                   isRequired
+                  variant="bordered"
+                  classNames={{
+                    input: "text-white",
+                    label: "text-gray-300",
+                    inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                  }}
                 />
                 <Input
                   label="Kelas"
@@ -726,6 +886,12 @@ export default function JadwalPertemuanPage() {
                   value={formData.kelas}
                   onChange={(e) => setFormData(prev => ({ ...prev, kelas: e.target.value }))}
                   isRequired
+                  variant="bordered"
+                  classNames={{
+                    input: "text-white",
+                    label: "text-gray-300",
+                    inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                  }}
                 />
                 <Input
                   label="Jam Pertemuan"
@@ -733,11 +899,17 @@ export default function JadwalPertemuanPage() {
                   value={formData.jam_pertemuan}
                   onChange={(e) => setFormData(prev => ({ ...prev, jam_pertemuan: e.target.value }))}
                   isRequired
+                  variant="bordered"
+                  classNames={{
+                    input: "text-white",
+                    label: "text-gray-300",
+                    inputWrapper: "border-gray-600 hover:border-yellow-400 focus-within:border-yellow-400 bg-gray-700"
+                  }}
                 />
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Status</label>
+                  <label className="text-sm font-medium text-gray-300">Status</label>
                   <select
-                    className="w-full px-3 py-2 bg-default-100 border border-default-200 rounded-lg"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 hover:border-yellow-400 focus:border-yellow-400 rounded-lg text-white transition-colors"
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as JadwalPertemuan['status'] }))}
                   >
@@ -749,11 +921,18 @@ export default function JadwalPertemuanPage() {
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="danger" variant="light" onPress={onFormClose}>
+            <ModalFooter className="border-t border-yellow-400/30">
+              <Button 
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold"
+                onPress={onFormClose}
+              >
                 Batal
               </Button>
-              <Button color="primary" onPress={handleSubmit} isLoading={isSubmitting}>
+              <Button 
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+                onPress={handleSubmit} 
+                isLoading={isSubmitting}
+              >
                 {editingJadwal ? 'Update' : 'Simpan'}
               </Button>
             </ModalFooter>
@@ -768,9 +947,10 @@ export default function JadwalPertemuanPage() {
           backdrop="blur"
           hideCloseButton={deleteModal.isDeleting}
           isDismissable={!deleteModal.isDeleting}
+          className="bg-gray-800"
         >
-          <ModalContent>
-            <ModalHeader>
+          <ModalContent className="bg-gray-800 text-white border border-red-400">
+            <ModalHeader className="border-b border-red-400/30">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center">
                   <svg className="w-5 h-5 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -800,20 +980,18 @@ export default function JadwalPertemuanPage() {
                 </p>
               </div>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter className="border-t border-red-400/30">
               <Button 
-                color="default" 
-                variant="light" 
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold"
                 onPress={closeDeleteModal}
                 isDisabled={deleteModal.isDeleting}
               >
                 Batal
               </Button>
               <Button 
-                color="danger" 
+                className="bg-red-500 hover:bg-red-600 text-white font-bold"
                 onPress={handleDelete}
                 isLoading={deleteModal.isDeleting}
-                className="font-semibold"
               >
                 {deleteModal.isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
               </Button>
@@ -821,6 +999,6 @@ export default function JadwalPertemuanPage() {
           </ModalContent>
         </Modal>
       </div>
-    </div>
+    </section>
   );
 }

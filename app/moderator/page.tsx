@@ -244,20 +244,6 @@ export default function ModeratorDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            Moderator Dashboard
-          </h1>
-          <Button 
-            color="danger" 
-            variant="ghost"
-            onPress={logout}
-          >
-            Logout
-          </Button>
-        </div>
-
         {/* Alert */}
         {alertConfig.show && (
           <Alert
@@ -272,7 +258,6 @@ export default function ModeratorDashboard() {
         {loading && (
           <div className="flex justify-center items-center py-12">
             <Spinner size="lg" />
-            <span className="ml-2">Loading dashboard...</span>
           </div>
         )}
 

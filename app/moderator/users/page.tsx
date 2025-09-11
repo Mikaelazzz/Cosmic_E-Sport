@@ -893,27 +893,6 @@ export default function UsersPage() {
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Manajemen User</h1>
-          <p className="text-gray-600 mt-2">Kelola data anggota UKM</p>
-          {currentUser && (
-            <div className="mt-2">
-              <p className="text-sm text-green-600 dark:text-green-400">
-                Selamat datang, {currentUser.nama_lengkap} ({currentUser.role}) - {currentUser.jabatan}
-              </p>
-              {/* Debug info untuk troubleshooting */}
-              <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-                <strong>DEBUG INFO:</strong><br/>
-                Role: {currentUser.role}<br/>
-                Jabatan: "{currentUser.jabatan}"<br/>
-                Is Ketua/Wakil: {isKetuaOrWakilKetua(currentUser.jabatan) ? 'YES' : 'NO'}<br/>
-                Can Create: {canCreateUser() ? 'YES' : 'NO'}<br/>
-                Has Access: {(currentUser.role === 'admin' || (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan))) ? 'YES' : 'NO'}
-              </div>
-            </div>
-          )}
-        </div>
-
         <Table
           isCompact
           removeWrapper
