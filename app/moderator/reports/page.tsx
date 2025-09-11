@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import ModeratorLayout from '@/components/ModeratorLayout';
 import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Button } from '@heroui/button';
 import { Divider } from '@heroui/divider';
@@ -244,26 +245,22 @@ export default function ModeratorReportsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Laporan & Analytics
-            </h1>
-            <p className="text-gray-600 mt-2">Analisis data kehadiran dan pertemuan organisasi</p>
-          </div>
-          <Button
-            color="primary"
-            variant="solid"
-            startContent={<IconDownload className="w-4 h-4" />}
-            onPress={downloadPDFReport}
-            isLoading={downloadLoading}
-          >
-            Download PDF
-          </Button>
-        </div>
+    <ModeratorLayout
+      title="Laporan & Analytics"
+      description="Analisis data kehadiran dan pertemuan organisasi"
+    >
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <Button
+          color="primary"
+          variant="solid"
+          startContent={<IconDownload className="w-4 h-4" />}
+          onPress={downloadPDFReport}
+          isLoading={downloadLoading}
+        >
+          Download PDF
+        </Button>
+      </div>
 
         {/* Alert */}
         {alertConfig.show && (
@@ -543,7 +540,6 @@ export default function ModeratorReportsPage() {
             Reports & Analytics • Moderator Dashboard
           </p>
         </div>
-      </div>
-    </div>
+    </ModeratorLayout>
   );
 }

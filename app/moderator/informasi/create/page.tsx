@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/ImageUpload';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 // Custom Textarea component since it's not available in HeroUI
 const Textarea = ({ label, placeholder, value, onChange, maxRows, minRows, description, isRequired, ...props }: any) => (
@@ -115,12 +116,11 @@ const CreateInformasiPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <ModeratorLayout
+      title="Tambah Informasi Baru"
+      description="Buat informasi atau pengumuman baru untuk anggota"
+    >
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Tambah Informasi Baru</h1>
-          <p className="text-gray-400 mt-2">Buat informasi atau pengumuman baru untuk anggota</p>
-        </div>
         <Button
           variant="light"
           onPress={() => router.push('/moderator/informasi')}
@@ -237,7 +237,7 @@ const CreateInformasiPage = () => {
           </div>
         </div>
       </form>
-    </div>
+    </ModeratorLayout>
   );
 };
 

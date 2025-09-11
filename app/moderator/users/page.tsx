@@ -14,6 +14,7 @@ import { Selection, SortDescriptor } from '@heroui/table';
 import { IconSearch, IconPlus } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { getUserAvatarUrl } from '@/lib/avatar';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 // Custom icons
 const IconChevronDown = ({ className }: { className?: string }) => (
@@ -891,8 +892,10 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
+    <ModeratorLayout
+      title="User Management"
+      description="Kelola pengguna dan anggota komunitas"
+    >
         <Table
           isCompact
           removeWrapper
@@ -1104,7 +1107,6 @@ export default function UsersPage() {
             )}
           </ModalContent>
         </Modal>
-      </div>
-    </div>
+    </ModeratorLayout>
   );
 }
