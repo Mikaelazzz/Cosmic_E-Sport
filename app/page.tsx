@@ -182,8 +182,39 @@ export default function Home() {
   {/* Halaman Ketiga */}
 <section id="pengurus" className="flex flex-col items-center justify-center w-full min-h-screen p-8 bg-black text-white">
   <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
+    Pendamping <span className="text-[#FFD700]">Cosmic</span>
+  </h1>
+  <CardScrollAnimation>
+    {/* Card 1 */}
+    <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-72 rounded-lg p-4 overflow-hidden group card-animate">
+      <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
+      {/* Shine effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+      {/* Yellow badge */}
+      <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
+        Ketua
+      </div>
+      
+      {/* Profile image */}
+      <div className="mb-4">
+        <img 
+          src="/pengurus/No.png" 
+          alt="Lwie Jaya" 
+          className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
+          />
+      </div>
+      
+      {/* Name */}
+      <h3 className="text-center text-white text-lg font-[orbitron] font-bold">
+        Novi
+      </h3>
+    </div>
+
+  </CardScrollAnimation>
+  <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)] mt-6">
     Pengurus <span className="text-[#FFD700]">Cosmic</span>
   </h1>
+  
   
   <CardScrollAnimation 
     className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl w-full"
