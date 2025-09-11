@@ -5,8 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Get current date for filtering - Temporary: use 2025-08-20 for testing
-    const today = '2025-08-20'; // new Date().toISOString().split('T')[0];
+    // Get current date for filtering
+    const today = new Date().toISOString().split('T')[0];
+    console.log('Dashboard API - Today:', today);
 
     // Fetch active informasi
     const { data: informasi, error: informasiError } = await supabase
@@ -27,11 +28,17 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Fetch today's pertemuan
+    // Fetch upcoming pertemuan (today and next 7 days)
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
     const { data: pertemuan, error: pertemuanError } = await supabase
       .from('jadwal_pertemuan')
       .select('*')
-      .eq('tanggal', today)
+      .gte('tanggal', today)
+      .lte('tanggal', nextWeekStr)
+      .order('tanggal', { ascending: true })
       .order('jam_mulai', { ascending: true });
 
     if (pertemuanError) {
@@ -42,6 +49,8 @@ export async function GET(request: NextRequest) {
         error: pertemuanError
       }, { status: 500 });
     }
+
+    console.log('Dashboard API - Found pertemuan:', pertemuan?.length || 0);
 
     // Fetch current active period
     const { data: activePeriod, error: periodError } = await supabase
