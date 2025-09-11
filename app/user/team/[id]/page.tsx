@@ -13,6 +13,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/input";
 import { useAuth } from "@/context/AuthContext";
+import UserLayout from "@/components/UserLayout";
 import { useRouter } from "next/navigation";
 import { getUserAvatarUrl } from "@/lib/avatar";
 // Using lucide-react icons instead of heroicons
@@ -494,7 +495,10 @@ export default function TeamDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <UserLayout 
+      title="Team Details"
+      description="Kelola dan lihat detail tim Anda">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Back Button */}
       <Button
         variant="light"
@@ -1226,5 +1230,6 @@ export default function TeamDetailPage() {
         </ModalContent>
       </Modal>
     </div>
+  </UserLayout>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import UserLayout from "@/components/UserLayout";
 import {
   Card,
   CardBody,
@@ -431,7 +432,10 @@ export default function TournamentRankingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E23] p-4">
+    <UserLayout 
+      title="Tournament Rankings"
+      description="Lihat ranking turnamen dan hasil kompetisi">
+      <div className="min-h-screen bg-[#0B0E23] p-4">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-6">
@@ -457,5 +461,6 @@ export default function TournamentRankingsPage() {
         )}
       </div>
     </div>
+  </UserLayout>
   );
 }

@@ -750,8 +750,31 @@ export default function UserProfilePage() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Alert color="warning" title="Access Denied">
+          Please login to access this page.
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-yellow-400 mb-2">Profile User</h1>
+        <p className="text-gray-400">Kelola informasi profil dan avatar Anda</p>
+      </div>
+
       {message && (
         <Alert
           color={messageType === "success" ? "success" : "danger"}
@@ -764,9 +787,79 @@ export default function UserProfilePage() {
 
       <div className="shadow-lg">
         <div className="p-8">
-          <div className="flex gap-8">
-            {/* Left side - Form fields */}
-            <div className="flex-1 space-y-6">
+          {/* Mobile Layout: Avatar on top, Form below */}
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Avatar Section - Appears first on mobile, right on desktop */}
+            <div className="flex flex-col items-center justify-start space-y-4 lg:order-2">
+              <div className="relative">
+                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                  <img 
+                    key={avatarKey} // Force re-render when avatar changes
+                    src={getUserAvatarUrl(user, 200, true)}
+                    alt="Profile"
+                    className="w-48 h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/logc.png';
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
+                  onPress={() => fileInputRef.current?.click()}
+                  onMouseEnter={() => {
+                    setIsHovering(true);
+                    if (lottieRef.current) {
+                      lottieRef.current.play();
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setIsHovering(false);
+                    if (lottieRef.current) {
+                      lottieRef.current.stop();
+                    }
+                  }}
+                >
+                  {editAnimation ? (
+                    <Lottie
+                      lottieRef={lottieRef}
+                      animationData={editAnimation}
+                      className="w-6 h-6"
+                      loop={true}
+                      autoplay={false}
+                    />
+                  ) : (
+                    // Fallback icon jika animasi belum load
+                    <svg 
+                      className="w-5 h-5 text-[#FF1744]" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  )}
+                </Button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <Button
+                color="danger"
+                variant="solid"
+                size="sm"
+                className="px-8"
+                onPress={handleRemoveAvatar}
+              >
+                Remove
+              </Button>
+            </div>
+
+            {/* Form Section - Appears second on mobile, left on desktop */}
+            <div className="flex-1 space-y-6 lg:order-1">
               <div>
                 <label className="block text-sm font-medium text-yellow-400 mb-2">Username</label>
                 <Input
@@ -788,6 +881,22 @@ export default function UserProfilePage() {
                 <Input
                   value={formData.nim}
                   onValueChange={(value) => handleInputChange('nim', value)}
+                  size="lg"
+                  isReadOnly={!isEditing}
+                  variant={isEditing ? "bordered" : "flat"}
+                  className="bg-transparent"
+                  classNames={{
+                    input: "bg-transparent text-white placeholder-gray-400",
+                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-yellow-400 mb-2">Jabatan</label>
+                <Input
+                  value={formData.jabatan}
+                  onValueChange={(value) => handleInputChange('jabatan', value)}
                   size="lg"
                   isReadOnly={!isEditing}
                   variant={isEditing ? "bordered" : "flat"}
@@ -872,66 +981,6 @@ export default function UserProfilePage() {
                   }}
                 />
               </div>
-            </div>
-
-            {/* Right side - Avatar */}
-            <div className="flex flex-col items-center justify-start space-y-4">
-              <div className="relative">
-                <div className="w-48 h-48 border-4 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
-                  <img 
-                    key={avatarKey} // Force re-render when avatar changes
-                    src={getUserAvatarUrl(user, 200, true)}
-                    alt="Profile"
-                    className="w-48 h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = '/logc.png';
-                    }}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="absolute bottom-0.5 right-4 rounded-full w-10 h-10 min-w-10 bg-[#FFD700] border-2 border-[#FF1744] p-0 overflow-hidden"
-                  onPress={() => fileInputRef.current?.click()}
-                  onMouseEnter={() => {
-                    setIsHovering(true);
-                    if (lottieRef.current) lottieRef.current.play();
-                  }}
-                  onMouseLeave={() => {
-                    setIsHovering(false);
-                    if (lottieRef.current) lottieRef.current.stop();
-                  }}
-                >
-                  {editAnimation ? (
-                    <Lottie
-                      lottieRef={lottieRef}
-                      animationData={editAnimation}
-                      className="w-6 h-6"
-                      loop
-                      autoplay={false}
-                    />
-                  ) : (
-                    <svg className="w-5 h-5 text-[#FF1744]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                  )}
-                </Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-              <Button
-                color="danger"
-                variant="solid"
-                size="sm"
-                className="px-8"
-                onPress={handleRemoveAvatar}
-              >
-                Remove
-              </Button>
             </div>
           </div>
 
@@ -1026,14 +1075,15 @@ export default function UserProfilePage() {
                 <Button
                   onClick={handleSendVerification}
                   disabled={isSendingVerification}
-                  variant="ghost"
-                  className="text-yellow-400 border-yellow-400"
+                  color="warning"
+                  variant="light"
+                  className="text-yellow-400"
                 >
                   {isSendingVerification ? 'Mengirim...' : 'Kirim Ulang Kode'}
                 </Button>
                 <Button
                   onClick={() => setShowVerificationModal(false)}
-                  variant="ghost"
+                  variant="light"
                   className="text-gray-400"
                 >
                   Batal
@@ -1059,103 +1109,117 @@ export default function UserProfilePage() {
           <ModalHeader className="text-white flex flex-col gap-1">
             <h3 className="text-xl font-bold">Ubah Password</h3>
             <p className="text-sm text-gray-400">
-              Masukkan password baru Anda
+              Masukkan password baru yang kuat dan aman
             </p>
           </ModalHeader>
-          <ModalBody className="pb-6 space-y-4">
-            <div>
-              <Input
-                label="Password Baru"
-                type={showNewPassword ? "text" : "password"}
-                value={passwordData.newPassword}
-                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                className="w-full"
-                color="warning"
-                endContent={
-                  <EyeIcon 
-                    isVisible={showNewPassword} 
-                    onClick={() => setShowNewPassword(!showNewPassword)} 
-                  />
-                }
-              />
-            </div>
+          <ModalBody className="pb-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Password Baru
+                </label>
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={passwordData.newPassword}
+                  onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                  className="w-full"
+                  variant="bordered"
+                  classNames={{
+                    input: "bg-transparent text-white placeholder-gray-400",
+                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg focus-within:border-yellow-400",
+                  }}
+                  endContent={
+                    <EyeIcon 
+                      isVisible={showNewPassword} 
+                      onClick={() => setShowNewPassword(!showNewPassword)} 
+                    />
+                  }
+                />
+              </div>
 
-            <div>
-              <Input
-                label="Konfirmasi Password"
-                type={showConfirmPassword ? "text" : "password"}
-                value={passwordData.confirmPassword}
-                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                className="w-full"
-                color="warning"
-                endContent={
-                  <EyeIcon 
-                    isVisible={showConfirmPassword} 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                  />
-                }
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Konfirmasi Password
+                </label>
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                  className="w-full"
+                  variant="bordered"
+                  classNames={{
+                    input: "bg-transparent text-white placeholder-gray-400",
+                    inputWrapper: "bg-transparent border-2 border-gray-600 rounded-lg focus-within:border-yellow-400",
+                  }}
+                  endContent={
+                    <EyeIcon 
+                      isVisible={showConfirmPassword} 
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                    />
+                  }
+                />
+              </div>
 
-            {/* Password Requirements */}
-            {passwordData.newPassword.length > 0 && (
-              <div className="mt-4 p-3 bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-300 mb-2">Persyaratan Password:</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.length ? '✓' : '✗'}
-                    </span>
-                    <span>Minimal 8 karakter</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.uppercase ? '✓' : '✗'}
-                    </span>
-                    <span>1 huruf kapital (A-Z)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.number ? '✓' : '✗'}
-                    </span>
-                    <span>1 angka (0-9)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.symbol ? '✓' : '✗'}
-                    </span>
-                    <span>1 simbol (!@#$%^&*)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={passwordValidation.match ? 'text-green-500' : 'text-red-500'}>
-                      {passwordValidation.match ? '✓' : '✗'}
-                    </span>
-                    <span>Password dan konfirmasi cocok</span>
+              {/* Password Requirements */}
+              {passwordData.newPassword.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+                  <p className="text-sm text-gray-300 mb-2">Persyaratan Password:</p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.length ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.length ? '✓' : '✗'}
+                      </span>
+                      <span>Minimal 8 karakter</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.uppercase ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.uppercase ? '✓' : '✗'}
+                      </span>
+                      <span>1 huruf kapital (A-Z)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.number ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.number ? '✓' : '✗'}
+                      </span>
+                      <span>1 angka (0-9)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.symbol ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.symbol ? '✓' : '✗'}
+                      </span>
+                      <span>1 simbol (!@#$%^&*)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={passwordValidation.match ? 'text-green-500' : 'text-red-500'}>
+                        {passwordValidation.match ? '✓' : '✗'}
+                      </span>
+                      <span>Password dan konfirmasi cocok</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="mt-6 flex gap-2 justify-center">
-              <Button
-                onClick={handleChangePassword}
-                disabled={!passwordValidation.isValid || isChangingPassword}
-                color="success"
-                className="px-8"
-                isLoading={isChangingPassword}
-              >
-                {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowChangePasswordModal(false);
-                  setPasswordData({ newPassword: "", confirmPassword: "" });
-                }}
-                variant="ghost"
-                className="text-gray-400 px-8"
-              >
-                Batal
-              </Button>
+              <div className="mt-6 flex gap-2 justify-center">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={!passwordValidation.isValid || isChangingPassword}
+                  color="success"
+                  className="px-8"
+                  isLoading={isChangingPassword}
+                >
+                  {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setPasswordData({ newPassword: "", confirmPassword: "" });
+                  }}
+                  variant="ghost"
+                  className="text-gray-400 px-8"
+                >
+                  Batal
+                </Button>
+              </div>
             </div>
           </ModalBody>
         </ModalContent>

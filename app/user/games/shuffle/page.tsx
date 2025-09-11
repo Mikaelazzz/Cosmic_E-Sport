@@ -2,6 +2,7 @@
 import { Button } from '@heroui/button'
 import { Select, SelectItem } from '@heroui/select'
 import React, { useState, useEffect } from 'react'
+import UserLayout from "@/components/UserLayout"
 
 const Page = () => {
   // State untuk form
@@ -137,7 +138,10 @@ const Page = () => {
   }
 
   return (
-    <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-4xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
+    <UserLayout 
+      title="Hero Shuffle"
+      description="Acak pilihan hero untuk mode fun atau ranked">
+      <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-4xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
       <div className='mb-6 sm:mb-8 md:mb-10'>
         <h1 className='text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center text-yellow-400'>Hero Shuffle</h1>
         
@@ -334,6 +338,7 @@ const Page = () => {
         )}
       </div>
     </section>
+  </UserLayout>
   )
 }
 

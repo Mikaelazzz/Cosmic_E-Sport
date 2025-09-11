@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import UserLayout from "@/components/UserLayout";
 import {
   Card,
   CardBody,
@@ -857,7 +858,10 @@ export default function UserEventsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <UserLayout
+      title="Events"
+      description="Join competitions and events"
+    >
       {/* Alert */}
       {alertVisible && alertConfig && (
         <div className="fixed top-4 right-4 z-50 max-w-md">
@@ -871,12 +875,6 @@ export default function UserEventsPage() {
           />
         </div>
       )}
-
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Events</h1>
-        <p className="text-gray-400 mt-2">Join competitions and events</p>
-      </div>
 
       {/* Error Message */}
       {error && (
@@ -1345,6 +1343,6 @@ export default function UserEventsPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </div>
+    </UserLayout>
   );
 }

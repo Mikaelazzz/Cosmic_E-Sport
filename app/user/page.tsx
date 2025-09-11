@@ -5,6 +5,7 @@ import { Button } from '@heroui/button';
 import { Divider } from '@heroui/divider';
 import { Chip } from '@heroui/chip';
 import QRScannerModal from '@/components/QRScannerModal';
+import UserLayout from '@/components/UserLayout';
 import { Calendar, Clock, Users, RefreshCcw, QrCode, Loader2 } from "lucide-react";
 
 interface Pertemuan {
@@ -103,7 +104,23 @@ export default function UserDashboard() {
 
   const formatTanggal = (tanggal: string) => {
     const date = new Date(tanggal);
-    return date.toLocaleDateString('id-ID', {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    // Format tanggal untuk perbandingan (YYYY-MM-DD)
+    const dateStr = date.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    let dayInfo = '';
+    if (dateStr === todayStr) {
+      dayInfo = 'Hari Ini • ';
+    } else if (dateStr === tomorrowStr) {
+      dayInfo = 'Besok • ';
+    }
+    
+    return dayInfo + date.toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -115,47 +132,87 @@ export default function UserDashboard() {
     return `${jamMulai.substring(0, 5)} - ${jamAkhir.substring(0, 5)} WIB`;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'berlangsung':
-        return 'success';
-      case 'akan_dimulai':
-        return 'warning';
-      case 'selesai':
-        return 'default';
-      default:
-        return 'primary';
+  const getStatusColor = (status: string, tanggal: string, jamMulai: string, jamAkhir: string) => {
+    const now = new Date();
+    const pertemuanDate = new Date(tanggal);
+    const today = now.toISOString().split('T')[0];
+    const pertemuanDateStr = pertemuanDate.toISOString().split('T')[0];
+    
+    // Set waktu pertemuan
+    const jamMulaiTime = new Date(`${tanggal}T${jamMulai}`);
+    const jamAkhirTime = new Date(`${tanggal}T${jamAkhir}`);
+    
+    // Logic untuk menentukan status real-time
+    if (pertemuanDateStr === today) {
+      if (now >= jamMulaiTime && now <= jamAkhirTime) {
+        return 'success'; // sedang berlangsung
+      } else if (now < jamMulaiTime) {
+        return 'warning'; // akan dimulai hari ini
+      } else {
+        return 'default'; // sudah selesai
+      }
+    } else if (pertemuanDate > now) {
+      return 'primary'; // akan datang
+    } else {
+      return 'default'; // sudah lewat
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'berlangsung':
+  const getStatusText = (status: string, tanggal: string, jamMulai: string, jamAkhir: string) => {
+    const now = new Date();
+    const pertemuanDate = new Date(tanggal);
+    const today = now.toISOString().split('T')[0];
+    const pertemuanDateStr = pertemuanDate.toISOString().split('T')[0];
+    
+    // Set waktu pertemuan
+    const jamMulaiTime = new Date(`${tanggal}T${jamMulai}`);
+    const jamAkhirTime = new Date(`${tanggal}T${jamAkhir}`);
+    
+    // Logic untuk menentukan status real-time
+    if (pertemuanDateStr === today) {
+      if (now >= jamMulaiTime && now <= jamAkhirTime) {
         return 'Berlangsung';
-      case 'akan_dimulai':
-        return 'Akan Dimulai';
-      case 'selesai':
+      } else if (now < jamMulaiTime) {
+        const diffMinutes = Math.floor((jamMulaiTime.getTime() - now.getTime()) / (1000 * 60));
+        if (diffMinutes <= 60) {
+          return `Dimulai ${diffMinutes}m lagi`;
+        }
+        return 'Hari Ini';
+      } else {
         return 'Selesai';
-      case 'belum_mulai':
-        return 'Belum Dimulai';
-      default:
-        return status;
+      }
+    } else if (pertemuanDate > now) {
+      const diffDays = Math.floor((pertemuanDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        return 'Besok';
+      } else if (diffDays <= 7) {
+        return `${diffDays} hari lagi`;
+      }
+      return 'Akan Datang';
+    } else {
+      return 'Sudah Lewat';
     }
   };
 
   if (loading) {
-  return (
-    <section className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
-      </div>
-    </section>
-  );
-}
+    return (
+      <UserLayout
+        title="Dashboard"
+        description="Selamat datang di dashboard user"
+      >
+        <div className="flex justify-center items-center min-h-[400px]">
+          <Loader2 className="animate-spin text-blue-600" size={40} />
+        </div>
+      </UserLayout>
+    );
+  }
 
   if (error) {
     return (
-      <section className="p-6">
+      <UserLayout
+        title="Dashboard"
+        description="Selamat datang di dashboard user"
+      >
         <Card className="border-red-200 shadow-md">
           <CardBody className="text-center py-10">
             <p className="text-red-600 mb-4 font-medium">{error}</p>
@@ -169,25 +226,16 @@ export default function UserDashboard() {
             </Button>
           </CardBody>
         </Card>
-      </section>
+      </UserLayout>
     );
   }
 
   return (
-    <section className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Jadwal Hari Ini</h1>
-          <p className="mt-1 text-gray-600">
-            {new Date().toLocaleDateString('id-ID', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
-        </div>
+    <UserLayout
+      title="Jadwal Pertemuan"
+      description={`Jadwal minggu ini (${new Date().toLocaleDateString('id-ID')} - ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('id-ID')})`}
+    >
+      <div className="flex justify-end mb-4">
         <Chip 
           color="primary" 
           variant="flat" 
@@ -217,12 +265,12 @@ export default function UserDashboard() {
                     </div>
                   </div>
                   <Chip 
-                    color={getStatusColor(pertemuan.status)}
+                    color={getStatusColor(pertemuan.status, pertemuan.tanggal, pertemuan.jam_mulai, pertemuan.jam_akhir)}
                     variant="flat"
                     size="sm"
                     className="uppercase tracking-wide font-medium"
                   >
-                    {getStatusText(pertemuan.status)}
+                    {getStatusText(pertemuan.status, pertemuan.tanggal, pertemuan.jam_mulai, pertemuan.jam_akhir)}
                   </Chip>
                 </div>
               </CardHeader>
@@ -280,10 +328,10 @@ export default function UserDashboard() {
             <CardBody className="text-center py-12">
               <Calendar className="mx-auto text-gray-300 mb-4" size={56} />
               <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                Tidak Ada Pertemuan Hari Ini
+                Tidak Ada Jadwal Pertemuan
               </h3>
               <p className="text-gray-500">
-                Silakan cek jadwal untuk hari-hari selanjutnya
+                Belum ada jadwal pertemuan untuk minggu ini
               </p>
             </CardBody>
           </Card>
@@ -291,7 +339,7 @@ export default function UserDashboard() {
       </div>
 
       {/* Refresh Button */}
-      <div className="flex justify-center mt-8">
+      {/* <div className="flex justify-center mt-8">
         <Button
           variant="bordered"
           onClick={fetchDashboardData}
@@ -300,7 +348,7 @@ export default function UserDashboard() {
         >
           Refresh Data
         </Button>
-      </div>
+      </div> */}
 
       {/* QR Scanner Modal */}
       {currentPertemuanId && (
@@ -311,6 +359,6 @@ export default function UserDashboard() {
           pertemuanId={currentPertemuanId.toString()}
         />
       )}
-    </section>
+    </UserLayout>
   );
 }

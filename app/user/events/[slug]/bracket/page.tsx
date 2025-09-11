@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import UserLayout from "@/components/UserLayout";
 import {
   Card,
   CardBody,
@@ -391,7 +392,10 @@ export default function UserBracketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0D21] text-white">
+    <UserLayout 
+      title="Tournament Bracket"
+      description="Lihat bracket turnamen dan perkembangan pertandingan">
+      <div className="min-h-screen bg-[#0B0D21] text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -446,5 +450,6 @@ export default function UserBracketPage() {
         </Card>
       </div>
     </div>
+  </UserLayout>
   );
 }

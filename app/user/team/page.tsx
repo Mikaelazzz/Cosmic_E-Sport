@@ -11,6 +11,7 @@ import { Badge } from "@heroui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
+import UserLayout from "@/components/UserLayout";
 import { Eye as EyeIcon, Star as StarIcon, Plus as PlusIcon, Search as SearchIcon } from "lucide-react";
 
 interface Team {
@@ -230,7 +231,10 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <UserLayout
+      title="Teams"
+      description="Create and join teams for competitions"
+    >
       {/* Alert Notification */}
       {alertVisible && (
         <div className="mb-6">
@@ -537,6 +541,6 @@ export default function TeamPage() {
           </ModalBody>
         </ModalContent>
       </Modal>
-    </div>
+    </UserLayout>
   );
 }

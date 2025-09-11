@@ -2,6 +2,7 @@
 import { Button } from '@heroui/button'
 import { Input } from '@heroui/input'
 import React, { useState } from 'react'
+import UserLayout from "@/components/UserLayout"
 
 const FirstPurchase = () => {
   // State untuk form
@@ -97,7 +98,10 @@ const FirstPurchase = () => {
   }
 
   return (
-    <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-4xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
+    <UserLayout 
+      title="Cek First Purchase"
+      description="Periksa status first purchase untuk akun Mobile Legends">
+      <section className='p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-4xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10'>
       <div className='mb-6 sm:mb-8 md:mb-10'>
         <h1 className='text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center text-yellow-400'>Cek First Purchase</h1>
         
@@ -254,6 +258,7 @@ const FirstPurchase = () => {
         )}
       </div>
     </section>
+  </UserLayout>
   )
 }
 

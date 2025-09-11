@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import UserLayout from "@/components/UserLayout";
 import {
   Card,
   CardBody,
@@ -419,7 +420,10 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0D21] p-6">
+    <UserLayout 
+      title="Event Details"
+      description="Lihat detail dan ikut event">
+      <div className="min-h-screen bg-[#0B0D21] p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -781,5 +785,6 @@ export default function EventDetailPage() {
         </ModalContent>
       </Modal>
     </div>
+  </UserLayout>
   );
 }

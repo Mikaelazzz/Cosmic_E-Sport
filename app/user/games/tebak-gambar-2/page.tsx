@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from '@heroui/button';
 import { Input } from '@heroui/input';
 import { Alert } from '@heroui/react';
+import UserLayout from "@/components/UserLayout";
 
 // Data type for hero
 interface Hero {
@@ -159,76 +160,61 @@ export default function KuisGambarPage() {
   }, [heroes]);
 
   return (
-    <section className="p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-2xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10">
-      <div className="mb-6 sm:mb-8 md:mb-10">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center text-yellow-400">Kuis Gambar Hero</h1>
-        <p className="text-center text-gray-300 mb-4">Tebak nama hero dari gambar yang diperbesar!</p>
-        <div className="flex justify-center mb-6">
-          <Button onClick={nextHero} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg px-6 py-2">
-            Hero Selanjutnya
-          </Button>
+    <UserLayout 
+      title="Kuis Gambar Hero"
+      description="Permainan tebak nama hero dari gambar yang diperbesar">
+      <section className="p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-2xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10">
+        <div className="mb-6 sm:mb-8 md:mb-10">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center text-yellow-400">Kuis Gambar Hero</h1>
+          <p className="text-center text-gray-300 mb-4">Tebak nama hero dari gambar yang diperbesar!</p>
+          <div className="flex justify-center mb-6">
+            <Button onClick={nextHero} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-lg px-6 py-2">
+              Hero Selanjutnya
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Success Alert */}
-      {showSuccess && (
-        <div className="mb-6">
-          <Alert
-            color="success"
-            title="Jawaban Benar!"
-            description={`Selamat! Anda berhasil menebak "${current?.hero}" dengan benar.`}
-            isVisible={showSuccess}
-            variant="faded"
-            onClose={() => setShowSuccess(false)}
-          />
-        </div>
-      )}
+        {/* Success Alert */}
+        {showSuccess && (
+          <div className="mb-6">
+            <Alert
+              color="success"
+              title="Jawaban Benar!"
+              description={`Selamat! Anda berhasil menebak "${current?.hero}" dengan benar.`}
+              isVisible={showSuccess}
+              variant="faded"
+              onClose={() => setShowSuccess(false)}
+            />
+          </div>
+        )}
 
-      {/* Error Alert */}
-      {showError && (
-        <div className="mb-6">
-          <Alert
-            color="danger"
-            title="Jawaban Salah!"
-            description={`"${userAnswer}" bukan jawaban yang benar. Coba lagi!`}
-            isVisible={showError}
-            variant="faded"
-            onClose={() => setShowError(false)}
-          />
-        </div>
-      )}
+        {/* Error Alert */}
+        {showError && (
+          <div className="mb-6">
+            <Alert
+              color="danger"
+              title="Jawaban Salah!"
+              description={`"${userAnswer}" bukan jawaban yang benar. Coba lagi!`}
+              isVisible={showError}
+              variant="faded"
+              onClose={() => setShowError(false)}
+            />
+          </div>
+        )}
 
-      <div className="flex flex-col items-center gap-6">
-        {loading && <div className="text-gray-400">Loading gambar hero...</div>}
-        
-        {!loading && current && (
-          <div className="flex flex-col items-center gap-4 w-full">
-            {/* Gambar Hero */}
-            {showAnswer ? (
-              // Tampilkan gambar asli setelah jawaban benar dengan ratio 9:16
-              <div className="w-64 h-[28rem] border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative" style={{ aspectRatio: '9/16' }}>
-                <img
-                  src={`https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/${current.image_hero}`}
-                  alt={current.hero}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    if (!e.currentTarget.src.includes('/images/')) {
-                      e.currentTarget.src = `https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/images/${current.image_hero}`;
-                    } else {
-                      e.currentTarget.style.display = 'none';
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              // Tampilkan gambar yang diperbesar untuk menebak dengan ratio 1:1
-              <div className="w-64 h-64 border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative">
-                <div className="w-full h-full overflow-hidden">
+        <div className="flex flex-col items-center gap-6">
+          {loading && <div className="text-gray-400">Loading gambar hero...</div>}
+          
+          {!loading && current && (
+            <div className="flex flex-col items-center gap-4 w-full">
+              {/* Gambar Hero */}
+              {showAnswer ? (
+                // Tampilkan gambar asli setelah jawaban benar dengan ratio 9:16
+                <div className="w-64 h-[28rem] border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative" style={{ aspectRatio: '9/16' }}>
                   <img
                     src={`https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/${current.image_hero}`}
-                    alt="Hero"
-                    className="w-full h-full object-cover transition-transform duration-300"
-                    style={zoomStyle}
+                    alt={current.hero}
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       if (!e.currentTarget.src.includes('/images/')) {
                         e.currentTarget.src = `https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/images/${current.image_hero}`;
@@ -238,46 +224,65 @@ export default function KuisGambarPage() {
                     }}
                   />
                 </div>
-              </div>
-            )}
+              ) : (
+                // Tampilkan gambar yang diperbesar untuk menebak dengan ratio 1:1
+                <div className="w-64 h-64 border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative">
+                  <div className="w-full h-full overflow-hidden">
+                    <img
+                      src={`https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/${current.image_hero}`}
+                      alt="Hero"
+                      className="w-full h-full object-cover transition-transform duration-300"
+                      style={zoomStyle}
+                      onError={(e) => {
+                        if (!e.currentTarget.src.includes('/images/')) {
+                          e.currentTarget.src = `https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/images/${current.image_hero}`;
+                        } else {
+                          e.currentTarget.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
-            {/* Input Jawaban */}
-            {!showAnswer && (
-              <div className="w-full max-w-sm space-y-4">
-                <Input
-                  label="Tebak Nama Hero"
-                  placeholder="Masukkan nama hero..."
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="w-full"
-                  variant="bordered"
-                />
-                <Button
-                  onClick={checkAnswer}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg py-2"
-                  disabled={!userAnswer.trim()}
-                >
-                  Cek Jawaban
-                </Button>
-              </div>
-            )}
+              {/* Input Jawaban */}
+              {!showAnswer && (
+                <div className="w-full max-w-sm space-y-4">
+                  <Input
+                    label="Tebak Nama Hero"
+                    placeholder="Masukkan nama hero..."
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full"
+                    variant="bordered"
+                  />
+                  <Button
+                    onClick={checkAnswer}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg py-2"
+                    disabled={!userAnswer.trim()}
+                  >
+                    Cek Jawaban
+                  </Button>
+                </div>
+              )}
 
-            {/* Tampilkan jawaban setelah benar */}
-            {showAnswer && (
-              <div className="text-center space-y-2">
-                <h3 className="text-xl sm:text-2xl font-bold text-yellow-400">{current.hero}</h3>
-                <p className="text-gray-300">Jawaban Anda: <span className="text-green-400 font-bold">{userAnswer}</span></p>
-                {countdown > 0 && (
-                  <p className="text-gray-400">Hero selanjutnya dalam {countdown} detik...</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        
-        {!loading && !current && <div className="text-gray-400">Hero tidak ditemukan.</div>}
-      </div>
-    </section>
+              {/* Tampilkan jawaban setelah benar */}
+              {showAnswer && (
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-yellow-400">{current.hero}</h3>
+                  <p className="text-gray-300">Jawaban Anda: <span className="text-green-400 font-bold">{userAnswer}</span></p>
+                  {countdown > 0 && (
+                    <p className="text-gray-400">Hero selanjutnya dalam {countdown} detik...</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!loading && !current && <div className="text-gray-400">Hero tidak ditemukan.</div>}
+        </div>
+      </section>
+    </UserLayout>
   );
 }
