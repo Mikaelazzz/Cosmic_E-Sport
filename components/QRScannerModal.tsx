@@ -796,27 +796,30 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose}
-      size="lg"
+      size="sm"
       backdrop="blur"
       isDismissable={!isSubmitting && !scanSuccess && !showSuccessOverlay}
+      placement="center"
       classNames={{
-        base: "bg-background",
-        header: "border-b border-divider",
-        body: "py-6",
-        footer: "border-t border-divider"
+        base: "mx-4 my-4 max-h-[85vh] max-w-[400px] lg:max-w-[450px]", // Smaller max width for desktop
+        wrapper: "p-4", // Add padding to wrapper
+        backdrop: "bg-black/50",
+        header: "border-b border-divider px-4 py-3",
+        body: "px-4 py-4 max-h-[65vh] overflow-y-auto", // Smaller body height
+        footer: "border-t border-divider px-4 py-3"
       }}
     >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded-lg">
-              <svg className="w-5 h-5 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary rounded-lg">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold">Scan QR Presensi</h2>
-              <p className="text-small text-default-500">Pertemuan ID: {pertemuanId}</p>
+              <h2 className="text-lg sm:text-xl font-bold">Scan Presensi</h2>
+              {/* <p className="text-small text-default-500">Pertemuan ID: {pertemuanId}</p> */}
             </div>
           </div>
         </ModalHeader>
@@ -824,12 +827,12 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         <ModalBody>
           {/* Success Overlay - Covers entire modal to prevent scanner from reading the response */}
           {showSuccessOverlay && (
-            <div className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center">
-              <Card className="border-none shadow-lg max-w-sm mx-4">
+            <div className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4">
+              <Card className="border-none shadow-lg max-w-[280px] sm:max-w-[320px] mx-auto w-full">
                 <CardHeader className="text-center pb-2">
                   {/* Icon based on attendance status */}
                   <div className="flex justify-center w-full">
-                    <div className={`p-4 rounded-full ${
+                    <div className={`p-3 sm:p-4 rounded-full ${
                       attendanceStatus === 'already_attended' 
                         ? 'bg-warning-100 text-warning-600'
                         : attendanceStatus === 'updated_from_absent'
@@ -837,11 +840,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                         : 'bg-success-100 text-success-600'
                     }`}>
                       {attendanceStatus === 'already_attended' ? (
-                        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                       ) : (
-                        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -849,12 +852,12 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   </div>
                 </CardHeader>
                 
-                <CardBody className="text-center pt-2">
+                <CardBody className="text-center pt-2 px-4 sm:px-6">
                   {/* Title and message based on status */}
                   {attendanceStatus === 'already_attended' ? (
                     <>
-                      <h3 className="text-lg font-semibold mb-2">Sudah Absen</h3>
-                      <p className="text-warning-600 mb-3">
+                      <h3 className="text-base sm:text-lg font-semibold mb-2">Sudah Absen</h3>
+                      <p className="text-warning-600 mb-3 text-sm sm:text-base">
                         Anda sudah melakukan absensi untuk pertemuan ini
                       </p>
                       <Chip color="warning" variant="flat" size="sm">
@@ -863,38 +866,38 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                     </>
                   ) : attendanceStatus === 'updated_from_absent' ? (
                     <>
-                      <h3 className="text-lg font-semibold mb-2">Absensi Berhasil Diperbarui!</h3>
-                      <p className="text-secondary-600 mb-3">
+                      <h3 className="text-base sm:text-lg font-semibold mb-2">Absensi Berhasil Diperbarui!</h3>
+                      <p className="text-secondary-600 mb-3 text-sm sm:text-base">
                         Status Anda telah berhasil diubah dari "Tidak Hadir" menjadi "Hadir"
                       </p>
                       <div className="flex flex-col items-center gap-2">
                         <Chip color="secondary" variant="flat" size="sm">
                           Status: {scanResult?.data?.status || 'Hadir'}
                         </Chip>
-                        <p className="text-small text-default-500">
+                        <p className="text-xs sm:text-small text-default-500">
                           Waktu: {formatIndonesiaTime(scanResult?.data?.jam || '')}
                         </p>
                       </div>
                     </>
                   ) : attendanceStatus === 'new_attendance' ? (
                     <>
-                      <h3 className="text-lg font-semibold mb-2">Absensi Berhasil Tercatat!</h3>
-                      <p className="text-success-600 mb-3">
+                      <h3 className="text-base sm:text-lg font-semibold mb-2">Absensi Berhasil Tercatat!</h3>
+                      <p className="text-success-600 mb-3 text-sm sm:text-base">
                         Presensi Anda telah berhasil dicatat
                       </p>
                       <div className="flex flex-col items-center gap-2">
                         <Chip color="success" variant="flat" size="sm">
                           Status: {scanResult?.data?.status || 'Hadir'}
                         </Chip>
-                        <p className="text-small text-default-500">
+                        <p className="text-xs sm:text-small text-default-500">
                           Waktu: {formatIndonesiaTime(scanResult?.data?.jam || '')}
                         </p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <h3 className="text-lg font-semibold mb-2">Absensi Berhasil!</h3>
-                      <p className="text-success-600 mb-3">
+                      <h3 className="text-base sm:text-lg font-semibold mb-2">Absensi Berhasil!</h3>
+                      <p className="text-success-600 mb-3 text-sm sm:text-base">
                         Presensi Anda telah tercatat
                       </p>
                       <div className="flex flex-col items-center gap-2">
@@ -970,9 +973,9 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           {!needsPermission && !error && !scanSuccess && !showSuccessOverlay && (
             <div className="space-y-4">
               {/* QR Scanner Container */}
-              <Card className="bg-black p-2">
-                <CardBody className="flex items-center justify-center">
-                  <div className="relative w-full aspect-square max-w-md mx-auto bg-black rounded-lg overflow-hidden">
+              <Card className="border border-divider p-1 sm:p-2">
+                <CardBody className="flex items-center justify-center p-2">
+                  <div className="relative w-full aspect-square max-w-[280px] sm:max-w-[300px] mx-auto bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                     
                     {/* Video Element */}
                     <video
@@ -992,20 +995,20 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                     
                     {/* Loading Overlay */}
                     {isLoading && (
-                      <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-10">
-                        <div className="text-center text-white">
+                      <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 flex items-center justify-center z-10">
+                        <div className="text-center text-gray-800 dark:text-white">
                           <Spinner size="lg" className="mb-4" />
-                          <p className="text-sm font-medium">Mengakses kamera...</p>
+                          <p className="text-xs sm:text-sm font-medium">Mengakses kamera...</p>
                         </div>
                       </div>
                     )}
  
                     {/* Submitting Overlay */}
                     {isSubmitting && (
-                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-                        <div className="text-center text-white">
+                      <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 flex items-center justify-center z-20">
+                        <div className="text-center text-gray-800 dark:text-white">
                           <Spinner size="lg" className="mb-4" />
-                          <p className="text-sm font-medium">Memproses absensi...</p>
+                          <p className="text-xs sm:text-sm font-medium">Memproses absensi...</p>
                         </div>
                       </div>
                     )}
@@ -1015,11 +1018,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                       <Button
                         isIconOnly
                         size="sm"
-                        className="absolute top-4 right-4 bg-black/50 text-white z-20"
+                        className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white/80 dark:bg-gray-800/80 text-gray-800 dark:text-white z-20"
                         onPress={switchCamera}
                         aria-label="Ganti kamera"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                         </svg>
                       </Button>
@@ -1033,17 +1036,17 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 {isSubmitting ? (
                   <div className="flex items-center gap-2 text-primary">
                     <Spinner size="sm" color="primary" />
-                    <span className="text-sm font-medium">Memproses...</span>
+                    <span className="text-xs sm:text-sm font-medium">Memproses...</span>
                   </div>
                 ) : hasPermission && !isLoading && !error && isScanning ? (
                   <div className="flex items-center gap-2 text-success">
                     <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Scanner Aktif</span>
+                    <span className="text-xs sm:text-sm font-medium animate-pulse">Silahkan Scan QR Code</span>
                   </div>
                 ) : isLoading ? (
-                  <span className="text-sm text-warning font-medium">Memuat...</span>
+                  <span className="text-xs sm:text-sm text-warning font-medium">Memuat...</span>
                 ) : (
-                  <span className="text-sm text-default-500 font-medium">Menunggu kamera</span>
+                  <span className="text-xs sm:text-sm text-default-500 font-medium">Menunggu kamera</span>
                 )}
               </div>
             </div>
@@ -1052,16 +1055,16 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           {/* Initial State - No camera yet */}
           {!hasPermission && !isLoading && !error && !needsPermission && !scanSuccess && !showSuccessOverlay && (
             <Card className="border-none shadow-lg">
-              <CardBody className="text-center py-8">
-                <div className="flex justify-center mb-4">
-                  <div className="p-4 rounded-full bg-warning-100 text-warning-600">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <CardBody className="text-center py-4 sm:py-6">
+                <div className="flex justify-center mb-3">
+                  <div className="p-2 sm:p-3 rounded-full bg-warning-100 text-warning-600">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">QR Scanner Presensi</h3>
-                <p className="text-default-600">
+                <h3 className="text-sm sm:text-base font-semibold mb-2">QR Scanner Presensi</h3>
+                <p className="text-xs sm:text-sm text-default-600">
                   Scanner akan mulai secara otomatis untuk memindai QR code presensi
                 </p>
               </CardBody>
@@ -1070,13 +1073,14 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         </ModalBody>
         
         <ModalFooter>
-          <div className="flex gap-3 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
             {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
               <Button
                 color="warning"
                 variant="flat"
                 onPress={handleRetry}
-                className="flex-1 font-semibold"
+                className="flex-1 font-semibold text-sm sm:text-base"
+                size="sm"
               >
                 Coba Lagi
               </Button>
@@ -1085,7 +1089,8 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
               color="danger" 
               variant="light" 
               onPress={handleClose}
-              className="flex-1"
+              className="flex-1 text-sm sm:text-base"
+              size="sm"
               isDisabled={isSubmitting}
             >
               {scanSuccess || showSuccessOverlay ? 'Selesai' : isSubmitting ? 'Tunggu...' : 'Tutup'}
