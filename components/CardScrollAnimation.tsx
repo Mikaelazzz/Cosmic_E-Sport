@@ -44,7 +44,6 @@ const CardScrollAnimation: React.FC<CardScrollAnimationProps> = ({
     ScrollTrigger.batch(cards, {
       start: scrollStart,
       end: scrollEnd,
-      scrub: 0.5,
       onEnter: batch => gsap.to(batch, {
         opacity: 1,
         y: 0,
