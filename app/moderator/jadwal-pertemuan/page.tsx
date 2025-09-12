@@ -48,6 +48,19 @@ const IconEye = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const IconEdit = ({ className }: { className?: string }) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708L10.5 9.207l-3-3L12.146.146zM11.207 9.5L9 7.293 4.5 11.793V13.5h1.707l4.5-4.5-.5-.5zM.5 13.5V16h2.5l9-9-2.5-2.5L.5 13.5z"/>
+  </svg>
+);
+
+const IconTrash = ({ className }: { className?: string }) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+    <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+  </svg>
+);
+
 // Types
 interface JadwalPertemuan {
   id: string;
@@ -470,8 +483,10 @@ export default function JadwalPertemuanPage() {
                 <DropdownItem key="detail" onClick={() => handleDetail(jadwal)} startContent={<IconEye />}>
                   Detail
                 </DropdownItem>
-                <DropdownItem key="edit" onClick={() => handleEdit(jadwal)}>Edit</DropdownItem>
-                <DropdownItem key="delete" onClick={() => openDeleteModal(jadwal)} className="text-danger" color="danger">
+                <DropdownItem key="edit" onClick={() => handleEdit(jadwal)} startContent={<IconEdit />}>
+                  Edit
+                </DropdownItem>
+                <DropdownItem key="delete" onClick={() => openDeleteModal(jadwal)} className="text-danger" color="danger" startContent={<IconTrash />}>
                   Delete
                 </DropdownItem>
               </DropdownMenu>
@@ -805,13 +820,14 @@ export default function JadwalPertemuanPage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex gap-2 pt-2 border-t border-gray-700">
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-700">
                           <Button
                             size="sm"
                             variant="flat"
                             color="primary"
                             startContent={<IconEye className="w-4 h-4" />}
                             onPress={() => router.push(`/moderator/jadwal-pertemuan/${jadwal.id}`)}
+                            className="flex-1 min-w-0"
                           >
                             Detail
                           </Button>
@@ -819,7 +835,9 @@ export default function JadwalPertemuanPage() {
                             size="sm"
                             variant="flat"
                             color="warning"
-                            onPress={() => router.push(`/moderator/jadwal-pertemuan/edit/${jadwal.id}`)}
+                            startContent={<IconEdit className="w-4 h-4" />}
+                            onPress={() => handleEdit(jadwal)}
+                            className="flex-1 min-w-0"
                           >
                             Edit
                           </Button>
@@ -827,7 +845,9 @@ export default function JadwalPertemuanPage() {
                             size="sm"
                             variant="flat"
                             color="danger"
+                            startContent={<IconTrash className="w-4 h-4" />}
                             onPress={() => openDeleteModal(jadwal)}
+                            className="flex-1 min-w-0"
                           >
                             Hapus
                           </Button>
