@@ -128,13 +128,13 @@ export async function PATCH(
 
 // Define RouteParams interface
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // PUT - Update period
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { 
       nama, 
       tahun_akademik, 
@@ -235,7 +235,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE - Delete period
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if period has any meetings
     const { data: meetings, error: meetingCheckError } = await supabase

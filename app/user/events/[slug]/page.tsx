@@ -357,7 +357,7 @@ export default function EventDetailPage() {
   // Check if user can join event
   const canJoinEvent = () => {
     if (!event || !isAuthenticated) return false;
-    if (event.status !== 'published') return false;
+    if (event.status !== 'open') return false;
     if (myParticipation) return false; // Already registered
     if (event.current_participants && event.current_participants >= event.max_participant) return false;
     return true;

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         .in('pertemuan_id', meetingIds);
 
       if (!attendanceError && attendance) {
-        attendanceData = attendance;
+        attendanceData = attendance as any;
         
         // Get detailed attendance with meeting info
         const { data: detailedAttendance } = await supabase
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
           `)
           .in('pertemuan_id', meetingIds);
         
-        attendanceDetails = detailedAttendance || [];
+        attendanceDetails = detailedAttendance as any || [];
       }
     }
 

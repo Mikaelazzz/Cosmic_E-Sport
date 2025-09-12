@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET - Fetch specific meeting with attendance data
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const { data: meeting, error } = await supabase
       .from('jadwal_pertemuan')
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT - Update meeting
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { 
       nama_pertemuan, 
       tanggal, 
@@ -170,7 +170,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE - Delete meeting
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if meeting has attendance records
     const { data: attendance, error: attendanceCheckError } = await supabase
@@ -225,7 +225,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 // PATCH - Update meeting status
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { status } = await request.json();
 
     if (!status || !['terjadwal', 'berlangsung', 'selesai', 'dibatalkan'].includes(status)) {

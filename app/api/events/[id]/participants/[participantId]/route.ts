@@ -7,10 +7,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+interface RouteParams {
+  params: Promise<{
+    id: string;
+    participantId: string;
+  }>;
+}
+
 // PUT - Approve/Reject participant
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; participantId: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { user, error: authError } = getAuthenticatedUser(request);
@@ -139,7 +146,7 @@ export async function PUT(
 // DELETE - Remove participant
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; participantId: string } }
+  { params }: RouteParams
 ) {
   try {
     const { user, error: authError } = getAuthenticatedUser(request);
@@ -153,8 +160,9 @@ export async function DELETE(
       );
     }
 
-    const eventId = params.id;
-    const participantId = params.participantId;
+    const resolvedParams = await params;
+    const eventId = resolvedParams.id;
+    const participantId = resolvedParams.participantId;
 
     // Check if participant exists
     const { data: participant, error: participantError } = await supabase

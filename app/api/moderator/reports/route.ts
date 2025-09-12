@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Get attendance data for these meetings
     const meetingIds = meetings?.map(m => m.id) || [];
     
-    let attendanceData = [];
+    let attendanceData: any[] = [];
     if (meetingIds.length > 0) {
       const { data: attendance, error: attendanceError } = await supabase
         .from('absen')

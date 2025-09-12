@@ -56,7 +56,7 @@ export async function GET(
     }
 
     // Get user details for each pengurus
-    const nimList = pengurus?.map(p => p.admin_nim?.nim).filter(Boolean) || [];
+    const nimList = pengurus?.map((p: any) => p.admin_nim?.nim).filter(Boolean) || [];
     
     let users: any[] = [];
     if (nimList.length > 0) {
@@ -75,7 +75,7 @@ export async function GET(
     }
 
     // Format pengurus data
-    const formattedPengurus = pengurus?.map(p => {
+    const formattedPengurus = pengurus?.map((p: any) => {
       const user = users.find(u => u.nim === p.admin_nim?.nim);
       return {
         id: p.id,

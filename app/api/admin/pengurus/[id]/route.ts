@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
 // PUT - Update pengurus
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { nim, role, jabatan } = await request.json();
 
     if (!nim || !role || !jabatan) {
@@ -113,10 +119,10 @@ export async function PUT(
 // DELETE - Remove pengurus
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Get pengurus data before deletion
     const { data: pengurus, error: pengurusError } = await supabase

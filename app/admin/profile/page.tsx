@@ -590,7 +590,10 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout 
+      title="Profile Management" 
+      description="Manage your admin profile settings"
+    >
       {message && (
         <Alert 
           color={messageType === "success" ? "success" : "danger"} 

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     const formData = await request.formData();
     
     const nama_tournament = formData.get('nama_tournament') as string;
@@ -110,10 +116,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
 
     // Get prestasi data to delete associated image
     const { data: prestasiData, error: fetchError } = await supabase

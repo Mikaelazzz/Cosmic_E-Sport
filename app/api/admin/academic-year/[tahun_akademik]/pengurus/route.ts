@@ -91,7 +91,7 @@ export async function GET(
     }
 
     // Get user details for each pengurus
-    const nimList = pengurus?.map(p => p.admin_nim?.nim).filter(Boolean) || [];
+    const nimList = pengurus?.map((p: any) => p.admin_nim?.nim).filter(Boolean) || [];
     
     let users: any[] = [];
     if (nimList.length > 0) {
@@ -111,7 +111,7 @@ export async function GET(
     // Combine pengurus data and remove duplicates by NIM
     const uniquePengurusMap = new Map();
     
-    pengurus?.forEach(p => {
+    pengurus?.forEach((p: any) => {
       const user = users.find(u => u.nim === p.admin_nim?.nim);
       const nim = p.admin_nim?.nim;
       

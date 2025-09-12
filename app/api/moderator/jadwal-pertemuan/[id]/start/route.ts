@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 import { getCurrentTimeForDB, getCurrentTimestampForDB } from '@/lib/time-utils';
 
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params;

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 
+interface RouteParams {
+  params: Promise<{
+    pertemuanId: string;
+  }>;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { pertemuanId: string } }
+  { params }: RouteParams
 ) {
   try {
     const { pertemuanId } = await params;

@@ -171,8 +171,11 @@ export default function HistoryPengurusPage() {
             <Select
               label="Filter by Tahun Akademik"
               placeholder="Pilih tahun akademik"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+              selectedKeys={selectedYear ? [selectedYear] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setSelectedYear(selected);
+              }}
               className="max-w-xs"
             >
               <SelectItem key="">Semua Tahun</SelectItem>
@@ -180,7 +183,7 @@ export default function HistoryPengurusPage() {
                 <SelectItem key={year}>
                   {year}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
             <div className="text-sm text-gray-500">
               Total: {filteredPeriods.length} periode selesai

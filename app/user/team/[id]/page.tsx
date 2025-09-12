@@ -684,8 +684,8 @@ export default function TeamDetailPage() {
                     if (a.role_in_team?.toLowerCase() !== 'leader' && b.role_in_team?.toLowerCase() === 'leader') return 1;
                     
                     // Alternative check if role_in_team is inconsistent
-                    const isALeader = a.role_in_team === 'Leader' || a.role_in_team === 'leader' || a.id === team.created_by;
-                    const isBLeader = b.role_in_team === 'Leader' || b.role_in_team === 'leader' || b.id === team.created_by;
+                    const isALeader = (a.role_in_team as string) === 'Leader' || (a.role_in_team as string) === 'leader' || a.id === team.created_by;
+                    const isBLeader = (b.role_in_team as string) === 'Leader' || (b.role_in_team as string) === 'leader' || b.id === team.created_by;
                     
                     if (isALeader && !isBLeader) return -1;
                     if (!isALeader && isBLeader) return 1;
@@ -705,19 +705,19 @@ export default function TeamDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-white">{member.nama_lengkap}</h4>
-                            {(member.role_in_team === 'Leader' || member.role_in_team === 'leader' || member.id === team.created_by) && (
+                            {((member.role_in_team as string) === 'Leader' || (member.role_in_team as string) === 'leader' || member.id === team.created_by) && (
                               <CrownIcon className="w-4 h-4 text-[#FFD700]" />
                             )}
                           </div>
                           <p className="text-sm text-gray-400">{member.email}</p>
                           <div className="flex items-center gap-1">
-                            {(member.role_in_team === 'Leader' || member.role_in_team === 'leader' || member.id === team.created_by) && (
+                            {((member.role_in_team as string) === 'Leader' || (member.role_in_team as string) === 'leader' || member.id === team.created_by) && (
                               <CrownIcon className="w-3 h-3 text-[#FFD700]" />
                             )}
                             <p className={`text-sm font-medium ${
-                              (member.role_in_team === 'Leader' || member.role_in_team === 'leader' || member.id === team.created_by) ? 'text-[#FFD700]' : 'text-gray-300'
+                              ((member.role_in_team as string) === 'Leader' || (member.role_in_team as string) === 'leader' || member.id === team.created_by) ? 'text-[#FFD700]' : 'text-gray-300'
                             }`}>
-                              {(member.role_in_team === 'Leader' || member.role_in_team === 'leader' || member.id === team.created_by) ? 'Leader' : 'Member'}
+                              {((member.role_in_team as string) === 'Leader' || (member.role_in_team as string) === 'leader' || member.id === team.created_by) ? 'Leader' : 'Member'}
                             </p>
                           </div>
                         </div>

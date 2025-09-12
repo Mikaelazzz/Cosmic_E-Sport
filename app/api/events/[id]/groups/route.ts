@@ -170,9 +170,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      const teams = participants?.map(p => ({
-        id: Array.isArray(p.teams) ? p.teams[0]?.id : p.teams.id,
-        name: Array.isArray(p.teams) ? p.teams[0]?.nama_team : p.teams.nama_team
+      const teams = participants?.map((p: any) => ({
+        id: Array.isArray(p.teams) ? p.teams[0]?.id : p.teams?.id,
+        name: Array.isArray(p.teams) ? p.teams[0]?.nama_team : p.teams?.nama_team
       })) || [];
 
       // Shuffle teams for random distribution

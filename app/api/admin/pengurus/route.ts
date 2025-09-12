@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user details for each pengurus
-      const nimList = pengurus?.map(p => p.admin_nim.nim) || [];
+      const nimList = pengurus?.map((p: any) => p.admin_nim.nim) || [];
       
       const { data: users, error: usersError } = await supabase
         .from('users')
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       // Combine pengurus data with user data and remove duplicates by NIM
       const uniquePengurusMap = new Map();
       
-      pengurus?.forEach(p => {
+      pengurus?.forEach((p: any) => {
         const user = users?.find(u => u.nim === p.admin_nim.nim);
         const nim = p.admin_nim.nim;
         
@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user details for each pengurus in history
-      const nimList = pengurus?.map(p => p.admin_nim.nim) || [];
+      const nimList = pengurus?.map((p: any) => p.admin_nim.nim) || [];
       
       const { data: users, error: usersError } = await supabase
         .from('users')
@@ -229,7 +229,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Combine pengurus history data with user data
-      const pengurusHistoryData = pengurus?.map(p => {
+      const pengurusHistoryData = pengurus?.map((p: any) => {
         const user = users?.find(u => u.nim === p.admin_nim.nim);
         return {
           id: p.id,
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
     if (existsInActivePeriode) {
       return NextResponse.json({ 
         success: false, 
-        message: `Pengurus dengan NIM ${nim} sudah terdaftar sebagai ${existsInActivePeriode.admin_nim.jabatan} untuk periode ${activePeriode.nama}. Gunakan fitur edit untuk mengubah jabatan.` 
+        message: `Pengurus dengan NIM ${nim} sudah terdaftar sebagai ${(existsInActivePeriode as any).admin_nim.jabatan} untuk periode ${activePeriode.nama}. Gunakan fitur edit untuk mengubah jabatan.` 
       }, { status: 400 });
     }
 
@@ -456,7 +456,7 @@ export async function POST(request: NextRequest) {
     } else if (!isUserRegistered) {
       responseMessage = `Pengurus dengan NIM ${nim} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. Status: Belum terdaftar - akan otomatis aktif setelah registrasi.`;
     } else {
-      responseMessage = `${userData.nama_lengkap} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. Status: Aktif.`;
+      responseMessage = `${userData?.nama_lengkap || nim} berhasil ditambahkan sebagai ${jabatan} untuk periode ${activePeriode.nama}. Status: Aktif.`;
     }
 
     return NextResponse.json({ 

@@ -3,9 +3,15 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 
+interface RouteParams {
+  params: Promise<{
+    filename: string;
+  }>;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: RouteParams
 ) {
   try {
     const { filename } = await params;

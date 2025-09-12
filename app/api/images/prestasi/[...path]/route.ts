@@ -3,12 +3,19 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 
+interface RouteParams {
+  params: Promise<{
+    path: string[];
+  }>;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: RouteParams
 ) {
   try {
-    const imagePath = params.path.join('/');
+    const { path: imagePaths } = await params;
+    const imagePath = imagePaths.join('/');
     const filePath = path.join(process.cwd(), 'src', 'prestasi', imagePath);
     
     // Check if file exists

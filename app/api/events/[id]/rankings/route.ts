@@ -179,7 +179,7 @@ async function getSingleEliminationRankings(supabase: any, eventId: number) {
   const processedTeams = new Set();
   
   // Filter only completed matches
-  const completedMatches = matches.filter(m => m.status === 'completed');
+  const completedMatches = matches.filter((m: any) => m.status === 'completed');
   console.log(`Found ${completedMatches.length} completed matches`);
   
   if (completedMatches.length === 0) {
@@ -187,13 +187,13 @@ async function getSingleEliminationRankings(supabase: any, eventId: number) {
   }
   
   // Get the maximum round (final) - this works for both 2-team and multi-team tournaments
-  const maxRound = Math.max(...completedMatches.map(m => m.round));
+  const maxRound = Math.max(...completedMatches.map((m: any) => m.round));
   console.log(`Max round: ${maxRound}`);
   
   // Process all completed matches to build rankings
   // Start with the highest round (final) and work backwards
   for (let round = maxRound; round >= 1; round--) {
-    const roundMatches = completedMatches.filter(m => m.round === round);
+    const roundMatches = completedMatches.filter((m: any) => m.round === round);
     console.log(`Round ${round} has ${roundMatches.length} completed matches`);
     
     for (const match of roundMatches) {
@@ -311,13 +311,13 @@ async function getGroupStageRankings(supabase: any, eventId: number) {
     const teams = group.bracket_group_teams || [];
     
     // Sort teams by points (descending), then by wins (descending)
-    const sortedTeams = teams.sort((a, b) => {
+    const sortedTeams = teams.sort((a: any, b: any) => {
       if (b.points !== a.points) return b.points - a.points;
       return b.wins - a.wins;
     });
     
     // Assign positions within group
-    const groupTeams = sortedTeams.map((team, index) => ({
+    const groupTeams = sortedTeams.map((team: any, index: number) => ({
       group_id: group.id,
       group_name: group.name,
       position_in_group: index + 1,
