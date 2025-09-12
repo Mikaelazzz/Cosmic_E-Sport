@@ -81,7 +81,7 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 ### Moderator 
 
-- [x] CRUD User > Role Anggota 
+- [x] CRUD User > Role Anggota TODO: menambahkan Edit Password > User
 
 - [x] CRUD Pertemuan Rutin 
 
@@ -103,11 +103,13 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 
 - [ ] Get Informasi 
 
+- [ ] Added Reset Password 
+
 ### Other Feature
 
-- [ ] Games
+- [x] Games
 
-- [ ] Notifikasi WEB dan HP 
+- [ ] Notifikasi WEB dan HP > Fail Fitur
 
 - [ ] Animasi yang keren untuk Website
 
@@ -118,3 +120,13 @@ Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template
 - [x] Landing Page with GSAP
 
 <!-- ADD some feature games with Api from >> https://ceknickname.com/lainnya -->
+
+### Layout && Responsif
+
+- [x] Admin
+
+- [ ] Moderator
+
+- [ ] User
+
+- [ ] Landing Page

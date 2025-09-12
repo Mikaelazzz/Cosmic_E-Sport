@@ -393,14 +393,14 @@ export const Navbar = () => {
                 <DropdownTrigger>
                   <button 
                     key={`mobile-${avatarKey}`}
-                    className="w-8 h-8 rounded-full overflow-hidden border-2 border-yellow-400 transition-transform hover:scale-105 cursor-pointer focus:outline-none"
+                    className="w-12 h-12 rounded-full overflow-hidden border-2 border-yellow-400 transition-transform hover:scale-105 cursor-pointer focus:outline-none"
                   >
                     <img 
                       src={getUserAvatarUrl(user, 40, true)} 
                       alt="Profile"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = '/logo.png';
+                        e.currentTarget.src = '/logc.png';
                       }}
                     />
                   </button>
