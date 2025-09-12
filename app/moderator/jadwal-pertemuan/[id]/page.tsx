@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Head from 'next/head';
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -483,70 +484,80 @@ export default function DetailPertemuanPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Alert Notifications */}
-        {alertConfig.show && (
-          <Alert
-            hideIconWrapper
-            color={alertConfig.color}
-            description={alertConfig.description}
-            title={alertConfig.title}
-            variant="bordered"
-            onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
-            isClosable
-          />
-        )}
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <title>Detail Pertemuan - Cosmic E-Sports</title>
+      </Head>
+      <div className="min-h-screen p-3 sm:p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 overflow-x-hidden">
+          {/* Alert Notifications */}
+          {alertConfig.show && (
+            <Alert
+              hideIconWrapper
+              color={alertConfig.color}
+              description={alertConfig.description}
+              title={alertConfig.title}
+              variant="bordered"
+              onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
+              isClosable
+              className="mx-2 sm:mx-0"
+            />
+          )}
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="w-full">
             <Button
               variant="light"
               onPress={() => router.back()}
-              className="mb-4"
+              className="mb-2 sm:mb-4 text-sm"
+              size="sm"
             >
               ← Kembali
             </Button>
-            <h1 className="text-3xl font-bold text-white">Detail Pertemuan</h1>
-            <p className="text-gray-300">Kelola detail pertemuan dan absensi anggota</p>
+            <h1 className="text-xl sm:text-3xl font-bold text-white">Detail Pertemuan</h1>
+            <p className="text-sm sm:text-base text-gray-300">Kelola detail pertemuan dan absensi anggota</p>
           </div>
         </div>
 
         {/* Section 1: Pertemuan Info */}
-        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
-          <CardHeader>
-            <h2 className="text-xl font-bold text-[#FFD700] flex items-center gap-2">
-              <IconClock className="w-6 h-6" />
-              {pertemuan.nama_topik}
+        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur mx-2 sm:mx-0">
+          <CardHeader className="pb-2 sm:pb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
+              <IconClock className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="truncate">{pertemuan.nama_topik}</span>
             </h2>
           </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <CardBody className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
               <div>
-                <p className="text-sm text-gray-400">Hari & Tanggal</p>
-                <p className="font-semibold text-white">{pertemuan.hari}</p>
-                <p className="text-sm text-gray-300">{formatDate(pertemuan.tanggal)}</p>
+                <p className="text-xs sm:text-sm text-gray-400">Hari & Tanggal</p>
+                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.hari}</p>
+                <p className="text-xs sm:text-sm text-gray-300">{formatDate(pertemuan.tanggal)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">Kelas</p>
-                <p className="font-semibold text-white">{pertemuan.kelas}</p>
+                <p className="text-xs sm:text-sm text-gray-400">Kelas</p>
+                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.kelas}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">Jam Pertemuan</p>
-                <p className="font-semibold text-white">{pertemuan.jam_pertemuan}</p>
+                <p className="text-xs sm:text-sm text-gray-400">Jam Pertemuan</p>
+                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.jam_pertemuan}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">Status</p>
+                <p className="text-xs sm:text-sm text-gray-400">Status</p>
                 <Chip color={getStatusColor(pertemuan.status)} variant="flat" size="sm">
                   {pertemuan.status}
                 </Chip>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
               <div>
-                <p className="text-sm text-gray-400">Jam Mulai</p>
+                <p className="text-xs sm:text-sm text-gray-400">Jam Mulai</p>
                 <p className="font-semibold text-white">{formatTime(pertemuan.jam_mulai)}</p>
               </div>
               <div>
@@ -771,15 +782,16 @@ export default function DetailPertemuanPage() {
         </Card>
       </div>
 
-      {/* QR Code Generator Modal */}
-      <QRCodeGenerator
-        pertemuanId={pertemuanId}
-        isOpen={isQRModalOpen}
-        onClose={closeQRModal}
-        onSuccess={() => {
-          showAlert('Success!', 'QR Code generated successfully', 'success');
-        }}
-      />
-    </div>
+        {/* QR Code Generator Modal */}
+        <QRCodeGenerator
+          pertemuanId={pertemuanId}
+          isOpen={isQRModalOpen}
+          onClose={closeQRModal}
+          onSuccess={() => {
+            showAlert('Success!', 'QR Code generated successfully', 'success');
+          }}
+        />
+      </div>
+    </>
   );
 }

@@ -811,7 +811,7 @@ export default function JadwalPertemuanPage() {
                             variant="flat"
                             color="primary"
                             startContent={<IconEye className="w-4 h-4" />}
-                            onPress={() => router.push(`/moderator/jadwal-pertemuan/detail/${jadwal.id}`)}
+                            onPress={() => router.push(`/moderator/jadwal-pertemuan/${jadwal.id}`)}
                           >
                             Detail
                           </Button>
