@@ -38,10 +38,6 @@ export const siteConfig = {
       label: "Prestasi",
       href: "/#prestasi",
     },
-    {
-      label: "Logout",
-      href: "/logout",
-    },
   ],
   links: {
     github: "https://github.com/heroui-inc/heroui",
