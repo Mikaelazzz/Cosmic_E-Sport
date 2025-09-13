@@ -68,7 +68,7 @@ export default function RootLayout({
               <main className="flex-grow">
                 {children}
               </main>
-              <footer className="w-full border-t border-blue-900 pt-8 pb-2 px-4">
+              <footer className="w-full border-t border-blue-900 pt-8 pb-2 px-4 mt-4">
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-white pb-4">
                   {/* Tentang */}
                   <div>
@@ -79,7 +79,7 @@ export default function RootLayout({
                   </div>
                   {/* Quick Links */}
                   <div>
-                    <h3 className="text-[#FFD700] font-bold text-lg mb-2">Quick Links</h3>
+                    <h3 className="text-[#FFD700] font-bold text-sm mb-2">Quick Links</h3>
                     <ul className="space-y-1">
                       <li><a href="/#tentang" className="hover:text-[#FFD700] transition-colors">Tentang Kami</a></li>
                       <li><a href="/#pengurus" className="hover:text-[#FFD700] transition-colors">Pengurus</a></li>
@@ -88,10 +88,9 @@ export default function RootLayout({
                   </div>
                   {/* Follow Us */}
                   <div>
-                    <h3 className="text-[#FFD700] font-bold text-lg mb-2">Follow Us</h3>
+                    <h3 className="text-[#FFD700] font-bold text-sm mb-2">Follow Us</h3>
                     <div className="flex flex-col text-lg space-x-4 mt-2">
                       <ul className="space-y-1">
-                      <li><a href="#" target="blank" className="hover:text-[#FFD700] transition-colors">Discord Cosmic</a></li>
                       <li><a href="https://www.instagram.com/cosmic.ukdc/" target="blank" className="hover:text-[#FFD700] transition-colors">Instagram Cosmic</a></li>
                       <li><a href="#" target="blank" className="hover:text-[#FFD700] transition-colors">Whatsapp Cosmic</a></li>
                     </ul>
