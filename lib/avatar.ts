@@ -50,7 +50,7 @@ export function generateAvatarUrl(
 
 /**
  * Get user profile image URL
- * Returns local profile image if available, otherwise returns empty string for fallback
+ * Returns Supabase storage URL if available, otherwise returns empty string for fallback
  */
 export function getUserAvatarUrl(user: {
   nama_lengkap?: string;
@@ -59,17 +59,21 @@ export function getUserAvatarUrl(user: {
   nim?: string;
   role?: string;
 }, size: number = 128, forceRefresh: boolean = false): string {
-  // Check for local profile image first
+  // Check for Supabase storage image first
   if (user.nim && user.role) {
     const fileName = `${user.role.toLowerCase()}-${user.nim}.jpg`;
-    let localAvatarPath = `/api/profile/${fileName}`;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     
-    // Add cache busting timestamp if forceRefresh is true
-    if (forceRefresh) {
-      localAvatarPath += `?t=${Date.now()}`;
+    if (supabaseUrl) {
+      let supabaseAvatarPath = `${supabaseUrl}/storage/v1/object/public/profiles/avatars/${fileName}`;
+      
+      // Add cache busting timestamp if forceRefresh is true
+      if (forceRefresh) {
+        supabaseAvatarPath += `?t=${Date.now()}`;
+      }
+      
+      return supabaseAvatarPath;
     }
-    
-    return localAvatarPath;
   }
   
   // If user has profile_image URL, return it

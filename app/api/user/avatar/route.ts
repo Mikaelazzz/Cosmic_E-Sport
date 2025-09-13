@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthCookie } from '@/lib/cookies';
-import { writeFile, mkdir, unlink } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,33 +34,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the profile directory if it doesn't exist
-    const profileDir = path.join(process.cwd(), 'src', 'profile');
-    
-    if (!existsSync(profileDir)) {
-      await mkdir(profileDir, { recursive: true });
+    // Validate file size (max 5MB)
+    if (avatar.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { success: false, message: 'File size must be less than 5MB' },
+        { status: 400 }
+      );
     }
+
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Generate filename: [Role]-[NIM].jpg (normalize role to lowercase)
     const fileName = `${role.toLowerCase()}-${nim}.jpg`;
-    const filePath = path.join(profileDir, fileName);
+    const filePath = `avatars/${fileName}`;
 
     // Convert file to buffer
     const bytes = await avatar.arrayBuffer();
     const buffer = new Uint8Array(bytes);
 
     // Remove old avatar if exists
-    if (existsSync(filePath)) {
-      await unlink(filePath);
+    const { error: removeError } = await supabase.storage
+      .from('profiles')
+      .remove([filePath]);
+
+    // Note: removeError is expected if file doesn't exist, so we don't throw here
+
+    // Upload the new avatar
+    const { data, error } = await supabase.storage
+      .from('profiles')
+      .upload(filePath, buffer, {
+        contentType: avatar.type,
+        upsert: true
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return NextResponse.json(
+        { success: false, message: 'Failed to upload avatar' },
+        { status: 500 }
+      );
     }
 
-    // Save the new avatar
-    await writeFile(filePath, buffer);
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filePath);
 
     return NextResponse.json({
       success: true,
       message: 'Avatar updated successfully',
-      fileName: fileName
+      fileName: fileName,
+      url: publicUrlData.publicUrl
     });
 
   } catch (error) {
@@ -88,13 +114,27 @@ export async function DELETE(request: NextRequest) {
 
     const { nim, role } = await request.json();
 
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     // Generate filename: [Role]-[NIM].jpg (normalize role to lowercase)
     const fileName = `${role.toLowerCase()}-${nim}.jpg`;
-    const filePath = path.join(process.cwd(), 'src', 'profile', fileName);
+    const filePath = `avatars/${fileName}`;
 
     // Remove avatar if exists
-    if (existsSync(filePath)) {
-      await unlink(filePath);
+    const { error } = await supabase.storage
+      .from('profiles')
+      .remove([filePath]);
+
+    if (error && error.message !== 'The resource was not found') {
+      console.error('Supabase delete error:', error);
+      return NextResponse.json(
+        { success: false, message: 'Failed to remove avatar' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
