@@ -197,18 +197,6 @@ export default function UsersPage() {
         created_at: user.created_at || new Date().toISOString()
       };
       
-      // Enhanced debug logging untuk melihat semua detail user
-      console.log('=== USER DATA DEBUG ===');
-      console.log('AuthContext user:', user);
-      console.log('Processed userData:', userData);
-      console.log('Jabatan check:', {
-        originalJabatan: user.jabatan,
-        processedJabatan: userData.jabatan,
-        isKetuaOrWakil: isKetuaOrWakilKetua(userData.jabatan),
-        canCreate: userData.role === 'admin' || (userData.role === 'moderator' && isKetuaOrWakilKetua(userData.jabatan))
-      });
-      console.log('========================');
-      
       setCurrentUser(userData);
     } else {
       setCurrentUser(null);
@@ -222,16 +210,11 @@ export default function UsersPage() {
 
   // Helper function to check if jabatan is ketua or wakil ketua
   const isKetuaOrWakilKetua = (jabatan: string | undefined) => {
-    console.log('=== isKetuaOrWakilKetua CALLED ===');
-    console.log('Input jabatan:', jabatan);
-    
     if (!jabatan) {
-      console.log('No jabatan provided, returning false');
       return false;
     }
     
     const normalizedJabatan = jabatan.toLowerCase().trim();
-    console.log('Normalized jabatan:', normalizedJabatan);
     
     // Check for various formats of ketua and wakil ketua
     const isKetua = normalizedJabatan.includes('ketua') && !normalizedJabatan.includes('wakil');
@@ -240,18 +223,6 @@ export default function UsersPage() {
     const isViceChairman = normalizedJabatan.includes('vice') && normalizedJabatan.includes('chairman');
     
     const result = isKetua || isWakilKetua || isChairman || isViceChairman;
-    
-    console.log('Jabatan analysis:', {
-      originalJabatan: jabatan,
-      normalizedJabatan,
-      isKetua,
-      isWakilKetua,
-      isChairman,
-      isViceChairman,
-      finalResult: result
-    });
-    console.log('====================================');
-    
     return result;
   };
 
@@ -259,15 +230,6 @@ export default function UsersPage() {
   const canEditUser = (targetUser: UserData) => {
     if (!currentUser) return false;
     
-    // Debug log for troubleshooting
-    console.log('canEditUser check:', {
-      currentUserRole: currentUser.role,
-      currentUserJabatan: currentUser.jabatan,
-      targetUserRole: targetUser.role,
-      targetUserJabatan: targetUser.jabatan,
-      isCurrentUserKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan),
-      isTargetUserKetuaOrWakil: isKetuaOrWakilKetua(targetUser.jabatan)
-    });
     
     // Admin always has full access except to other admins
     if (currentUser.role === 'admin') {
@@ -300,14 +262,6 @@ export default function UsersPage() {
       return false;
     }
     
-    console.log('canDeleteUser check:', {
-      currentUserRole: currentUser.role,
-      currentUserJabatan: currentUser.jabatan,
-      targetUserRole: targetUser.role,
-      targetUserJabatan: targetUser.jabatan,
-      isCurrentUserKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan)
-    });
-    
     // Admin can delete everyone except other admins
     if (currentUser.role === 'admin') {
       return targetUser.role !== 'admin';
@@ -330,11 +284,7 @@ export default function UsersPage() {
   };
 
   const canCreateUser = () => {
-    console.log('=== canCreateUser CALLED ===');
-    console.log('currentUser:', currentUser);
-    
     if (!currentUser) {
-      console.log('No currentUser, returning false');
       return false;
     }
     
@@ -342,28 +292,12 @@ export default function UsersPage() {
     const isAdmin = currentUser.role === 'admin';
     const isModerator = currentUser.role === 'moderator';
     const canCreate = isAdmin || (isModerator && isKetuaWakil);
-    
-    console.log('canCreateUser detailed check:', {
-      currentUserRole: currentUser.role,
-      currentUserJabatan: currentUser.jabatan,
-      isAdmin,
-      isModerator,
-      isKetuaWakil,
-      finalResult: canCreate
-    });
-    console.log('=============================');
-    
+
     return canCreate;
   };
 
   const canUpdatePassword = () => {
     if (!currentUser) return false;
-    
-    console.log('canUpdatePassword check:', {
-      currentUserRole: currentUser.role,
-      currentUserJabatan: currentUser.jabatan,
-      isKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan)
-    });
     
     // Admin always can update passwords
     if (currentUser.role === 'admin') return true;
@@ -826,19 +760,7 @@ export default function UsersPage() {
               const isLeadership = isKetua || isWakilKetua;
               
               const shouldShowButton = isAdmin || (isModerator && isLeadership);
-              
-              console.log('=== ADD NEW BUTTON RENDER ===');
-              console.log('currentUser.role:', currentUser.role);
-              console.log('currentUser.jabatan:', currentUser.jabatan);
-              console.log('Processed jabatan:', jabatan);
-              console.log('isAdmin:', isAdmin);
-              console.log('isModerator:', isModerator);
-              console.log('isKetua:', isKetua);
-              console.log('isWakilKetua:', isWakilKetua);
-              console.log('isLeadership:', isLeadership);
-              console.log('shouldShowButton:', shouldShowButton);
-              console.log('==============================');
-              
+
               return shouldShowButton;
             })() && (
               <Button
@@ -917,13 +839,6 @@ export default function UsersPage() {
   // Check if user has any access to the page
   const hasPageAccess = () => {
     if (!currentUser) return false;
-    
-    console.log('hasPageAccess check:', {
-      currentUserRole: currentUser.role,
-      currentUserJabatan: currentUser.jabatan,
-      isKetuaOrWakil: isKetuaOrWakilKetua(currentUser.jabatan),
-      result: currentUser.role === 'admin' || (currentUser.role === 'moderator' && isKetuaOrWakilKetua(currentUser.jabatan))
-    });
     
     // Admin always has access
     if (currentUser.role === 'admin') return true;

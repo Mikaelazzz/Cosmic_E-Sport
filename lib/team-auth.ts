@@ -13,10 +13,7 @@ export interface UserSession {
 export function getAuthenticatedUser(request: NextRequest): { user: UserSession | null; error: NextResponse | null } {
   const token = request.cookies.get("cosmic_auth")?.value;
   
-  console.log('🔍 Authentication check - Token exists:', !!token);
-  
   if (!token) {
-    console.log('❌ No cosmic_auth token found');
     return {
       user: null,
       error: NextResponse.json(
@@ -29,9 +26,7 @@ export function getAuthenticatedUser(request: NextRequest): { user: UserSession 
   let userSession: UserSession;
   try {
     userSession = JSON.parse(token);
-    console.log('✅ Token parsed successfully - User ID:', userSession?.id);
   } catch (error) {
-    console.log('❌ Error parsing token:', error);
     return {
       user: null,
       error: NextResponse.json(
@@ -42,7 +37,6 @@ export function getAuthenticatedUser(request: NextRequest): { user: UserSession 
   }
 
   if (!userSession || !userSession.id) {
-    console.log('❌ Invalid user session or missing ID');
     return {
       user: null,
       error: NextResponse.json(
@@ -57,7 +51,6 @@ export function getAuthenticatedUser(request: NextRequest): { user: UserSession 
   const ACTIVITY_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
   
   if (now - userSession.lastActivity > ACTIVITY_TIMEOUT) {
-    console.log('❌ Session expired - Last activity:', new Date(userSession.lastActivity));
     return {
       user: null,
       error: NextResponse.json(
@@ -67,6 +60,5 @@ export function getAuthenticatedUser(request: NextRequest): { user: UserSession 
     };
   }
 
-  console.log('✅ Authentication successful for user:', userSession.nama_lengkap);
   return { user: userSession, error: null };
 }

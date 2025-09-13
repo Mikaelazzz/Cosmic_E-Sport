@@ -36,9 +36,6 @@ export const Navbar = () => {
   const pathname = usePathname();
   const [avatarKey, setAvatarKey] = useState(0);
 
-  // Debug logging
-  console.log('Navbar render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading, 'user:', user?.email);
-  console.log('Current pathname:', pathname);
 
   // Force avatar refresh when user changes
   useEffect(() => {
@@ -49,7 +46,6 @@ export const Navbar = () => {
 
   // Get current role context based on pathname
   const getCurrentRoleContext = () => {
-    console.log('getCurrentRoleContext - pathname:', pathname);
     if (pathname.startsWith('/admin')) return 'admin';
     if (pathname.startsWith('/moderator')) return 'moderator';
     if (pathname.startsWith('/user')) return 'user';
@@ -64,7 +60,6 @@ export const Navbar = () => {
 
     // Determine current role context from pathname
     const currentRoleContext = getCurrentRoleContext();
-    console.log('getNavItems - currentRoleContext:', currentRoleContext);
 
     switch (currentRoleContext) {
       case 'admin':
@@ -195,8 +190,6 @@ export const Navbar = () => {
     const currentRoleContext = getCurrentRoleContext();
     const userRole = user?.role;
 
-    console.log('getRoleSwitchingOptions - currentRoleContext:', currentRoleContext, 'userRole:', userRole);
-
     if (!userRole) return [];
 
     const options = [];
@@ -226,8 +219,6 @@ export const Navbar = () => {
       }
     }
     // User role has no switching options
-
-    console.log('getRoleSwitchingOptions - options:', options);
     return options;
   };
 

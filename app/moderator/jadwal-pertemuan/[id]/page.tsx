@@ -257,7 +257,6 @@ export default function DetailPertemuanPage() {
       
       // Only refresh if the update is for this pertemuan
       if (updatedPertemuanId.toString() === pertemuanId) {
-        console.log('🔄 Real-time absensi update detected, refreshing data...');
         fetchAbsensiData();
       }
     };

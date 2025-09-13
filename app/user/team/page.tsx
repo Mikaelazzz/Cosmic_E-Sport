@@ -93,7 +93,6 @@ export default function TeamPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          console.log('Teams data received:', result.data);
           // Debug first team participants
           if (result.data.length > 0) {
             console.log('First team participants:', result.data[0].participants);

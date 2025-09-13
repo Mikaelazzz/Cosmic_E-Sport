@@ -181,7 +181,6 @@ const InformasiPage = () => {
                 const result = await response.json();
                 
                 if (result.success) {
-                  console.log('Status update result:', result.data);
                   // Refresh the list after updating
                   fetchInformasi();
                 } else {

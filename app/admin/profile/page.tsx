@@ -378,18 +378,13 @@ export default function AdminProfilePage() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log('Fetched user profile:', result); // Debug log
+          
           if (result.success && result.data) {
             // Update form data with fresh data
             setFormData({
               nim: result.data.nim || "",
               nama_lengkap: result.data.nama_lengkap || "",
               jabatan: result.data.jabatan || "",
-            });
-            console.log('Updated form data:', { // Debug log
-              nim: result.data.nim,
-              nama_lengkap: result.data.nama_lengkap,
-              jabatan: result.data.jabatan
             });
           }
         }
@@ -399,7 +394,6 @@ export default function AdminProfilePage() {
     };
 
     if (isAuthenticated && user) {
-      console.log('Current user from context:', user); // Debug log
       fetchUserProfile();
     }
   }, [isAuthenticated, user?.id]); // Depend on user.id to avoid infinite loop
@@ -426,27 +420,20 @@ export default function AdminProfilePage() {
   const handleCropSave = async (croppedBlob: Blob) => {
     if (!user) return;
 
-    console.log('Starting avatar upload...', { userRole: user.role, userNim: user.nim });
-
     const formData = new FormData();
     const fileName = `${user.role.toLowerCase()}-${user.nim}.jpg`;
     formData.append('avatar', croppedBlob, fileName);
     formData.append('nim', user.nim);
     formData.append('role', user.role);
 
-    console.log('Form data prepared:', { fileName, blobSize: croppedBlob.size, nim: user.nim, role: user.role });
-
     try {
-      console.log('Sending request to /api/user/avatar...');
       const response = await fetch('/api/user/avatar', {
         method: 'POST',
         credentials: 'include',
         body: formData
       });
 
-      console.log('Response status:', response.status, response.statusText);
       const result = await response.json();
-      console.log('Response data:', result);
 
       if (result.success) {
         setMessage("Avatar updated successfully!");
@@ -462,8 +449,6 @@ export default function AdminProfilePage() {
           fileInputRef.current.value = '';
         }
         
-        // Remove the forced reload - let the component handle the update
-        console.log('Avatar upload completed successfully');
       } else {
         console.error('Upload failed:', result.message);
         setMessage(result.message || "Failed to update avatar");
@@ -503,8 +488,6 @@ export default function AdminProfilePage() {
         
         // Refresh user data to update navbar and other components
         await refreshUser();
-        
-        console.log('Avatar removal completed successfully');
       } else {
         setMessage(result.message || "Failed to remove avatar");
         setMessageType("error");

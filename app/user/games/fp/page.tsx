@@ -51,8 +51,6 @@ const FirstPurchase = () => {
       
       const data = await response.json()
       
-      // Log untuk debugging
-      console.log('API Response:', data)
       
       if (!response.ok) {
         // Jika HTTP status bukan 2xx

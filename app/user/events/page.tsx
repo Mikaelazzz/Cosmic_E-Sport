@@ -1241,9 +1241,6 @@ export default function UserEventsPage() {
                                     }
                                   }
                                 }}
-                                onLoad={() => {
-                                  console.log('Image loaded successfully:', buktiPembayaran);
-                                }}
                               />
                             </div>
                           </div>

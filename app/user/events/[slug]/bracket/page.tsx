@@ -66,23 +66,17 @@ export default function UserBracketPage() {
   // First, get event ID from the slug
   const fetchEventId = async (): Promise<string | null> => {
     try {
-      console.log('🔍 Fetching event ID for slug:', eventSlug);
       const response = await fetch(`/api/events/detail/${eventSlug}`, {
         method: 'GET',
         credentials: 'include'
       });
 
-      console.log('📋 Detail API response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('📋 Detail API result:', result);
         if (result.success && result.data.event) {
-          console.log('✅ Found event ID:', result.data.event.id);
           return result.data.event.id;
         }
       }
-      console.log('❌ No event found');
       return null;
     } catch (error) {
       console.error('❌ Error fetching event ID:', error);
@@ -104,11 +98,8 @@ export default function UserBracketPage() {
       setIsLoading(true);
       setError("");
 
-      console.log('🔍 Fetching bracket data for slug:', eventSlug);
-
       // First get the event ID from slug
       const id = await fetchEventId();
-      console.log('📋 Event ID from slug:', id);
       
       if (!id) {
         setError("Event not found");

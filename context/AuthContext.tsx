@@ -110,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [!!user]); // Only depend on whether user exists, not the user object itself
 
   const login = (userData: User) => {
-    console.log('AuthContext - Login called with:', userData.email);
     setUser(userData);
     
     // Create session for cookie
@@ -124,7 +123,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastActivity: Date.now()
     };
     
-    console.log('AuthContext - Setting client cookie:', userSession);
     // Set cookie (this ensures client-side access)
     setClientAuthCookie(userSession);
     

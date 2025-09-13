@@ -44,25 +44,21 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Cleanup function
   const cleanup = () => {
-    console.log('🧹 Cleaning up QR Scanner...');
     
     if (scanAnimationRef.current) {
       cancelAnimationFrame(scanAnimationRef.current);
       scanAnimationRef.current = null;
-      console.log('🧹 Cancelled scan animation');
     }
     
     if (stream) {
       stream.getTracks().forEach(track => {
         track.stop();
-        console.log('🧹 Stopped camera track:', track.kind);
       });
       setStream(null);
     }
     
     if (videoRef.current) {
       videoRef.current.srcObject = null;
-      console.log('🧹 Cleared video source');
     }
     
     setError(null);
@@ -76,7 +72,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     setShowSuccessOverlay(false);
     setScanResult(null);
     setAttendanceStatus(null);
-    console.log('🧹 Reset all states');
   };
  
   // Format time for Indonesia timezone (WIB)
@@ -124,7 +119,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Check camera permission status
   const checkPermissionStatus = async () => {
-    console.log('🔍 Checking camera permission status...');
     
     try {
       if (!checkBrowserSupport()) return;
@@ -133,17 +127,13 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       if (navigator.permissions) {
         try {
           const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          console.log('📋 Camera permission status:', permission.state);
           
           if (permission.state === 'granted') {
-            console.log('✅ Permission already granted, starting camera...');
             await startCamera();
           } else if (permission.state === 'prompt') {
-            console.log('❓ Permission needs prompt');
             setNeedsPermission(true);
             setIsLoading(false);
           } else {
-            console.log('❌ Permission denied');
             setError('Akses kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.');
             setIsLoading(false);
             setNeedsPermission(false);
@@ -154,18 +144,15 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           try {
             await startCamera();
           } catch (directErr) {
-            console.log('❓ Direct access failed, showing permission request');
             setNeedsPermission(true);
             setIsLoading(false);
           }
         }
       } else {
-        console.log('⚠️ No permission API, trying direct camera access...');
         // Try direct camera access for older browsers
         try {
           await startCamera();
         } catch (directErr) {
-          console.log('❓ Direct access failed, showing permission request');
           setNeedsPermission(true);
           setIsLoading(false);
         }
@@ -180,7 +167,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Start camera
   const startCamera = async () => {
-    console.log('📹 Starting camera...');
     
     try {
       setIsLoading(true);
@@ -203,18 +189,13 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       // For mobile/tablet devices, prefer back camera (environment)
       if (isDevice) {
         videoConstraints.facingMode = { ideal: 'environment' };
-        console.log('Mobile/Tablet detected - requesting back camera (environment)');
-      } else {
-        console.log('Desktop detected - using default camera');
       }
 
       // Request camera access with appropriate configuration
-      console.log('Requesting camera with constraints:', videoConstraints);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints
       });
 
-      console.log('✅ Camera stream acquired');
       setStream(mediaStream);
       
       if (videoRef.current) {
@@ -224,17 +205,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
             videoRef.current.play().then(() => {
-              console.log('✅ Video started successfully');
-              console.log('📐 Video dimensions:', {
-                videoWidth: videoRef.current?.videoWidth,
-                videoHeight: videoRef.current?.videoHeight
-              });
               setHasPermission(true);
               setIsLoading(false);
               
               // Small delay to ensure video is fully ready
               setTimeout(() => {
-                console.log('🔍 Starting QR scanning...');
                 setIsScanning(true);
                 startScanning();
               }, 500);
@@ -242,7 +217,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
               // Fallback: ensure scanning is running after 2 seconds
               setTimeout(() => {
                 if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
-                  console.log('🔄 Fallback: Ensuring QR scanning is active...');
                   setIsScanning(true);
                   startScanning();
                 }
@@ -319,25 +293,14 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Start QR code scanning
   const startScanning = () => {
-    console.log('🔍 Starting QR scanning...');
-    console.log('📊 Current states:', {
-      hasVideoRef: !!videoRef.current,
-      hasCanvasRef: !!canvasRef.current,
-      isScanning,
-      isSubmitting,
-      scanSuccess,
-      showSuccessOverlay
-    });
     
     // Jangan mulai scanning jika overlay success aktif
     if (showSuccessOverlay) {
-      console.log('❌ Success overlay is active, not starting scanner');
       return;
     }
     
     // Set scanning to true at the start
     setIsScanning(true);
-    console.log('✅ Set isScanning to true');
     
     let scanCount = 0;
     
@@ -346,11 +309,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // Check basic requirements first
       if (!videoRef.current || !canvasRef.current) {
-        console.log('❌ Missing video or canvas reference:', {
-          hasVideo: !!videoRef.current,
-          hasCanvas: !!canvasRef.current,
-          scanCount
-        });
         // Retry after short delay
         setTimeout(() => {
           if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
@@ -362,12 +320,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // Check if we should continue scanning
       if (isSubmitting || scanSuccess || showSuccessOverlay) {
-        console.log('❌ Should stop scanning:', {
-          isSubmitting,
-          scanSuccess,
-          showSuccessOverlay,
-          scanCount
-        });
         return;
       }
  
@@ -376,15 +328,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       const context = canvas.getContext('2d');
  
       if (!context) {
-        console.log('❌ No canvas context');
         return;
       }
  
       // Check if video is ready
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-        if (scanCount % 30 === 0) { // Log every 30 frames
-          console.log('⏳ Waiting for video data, readyState:', video.readyState);
-        }
         scanAnimationRef.current = requestAnimationFrame(scan);
         return;
       }
@@ -392,16 +340,8 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       const { videoWidth, videoHeight } = video;
       
       if (videoWidth === 0 || videoHeight === 0) {
-        if (scanCount % 30 === 0) {
-          console.log('⚠️ Video dimensions not ready:', { videoWidth, videoHeight });
-        }
         scanAnimationRef.current = requestAnimationFrame(scan);
         return;
-      }
- 
-      // Log scanning activity periodically
-      if (scanCount % 30 === 0) { // Log every 30 frames (about every 1 second)
-        console.log('🔄 Scanning active, frame:', scanCount, 'dimensions:', videoWidth + 'x' + videoHeight);
       }
  
       // Set canvas size to match video
@@ -421,22 +361,14 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           // Add more permissive scanning options
         });
         
-        // Debug: Log scanning attempt every 60 frames
-        if (scanCount % 60 === 0) {
-          console.log('🔍 QR Scan attempt:', scanCount, 'Result:', code ? 'DETECTED' : 'NOT_FOUND');
-        }
         
         if (code && code.data) {
-          console.log('🎯 QR Code detected:', code.data);
           const now = Date.now();
           if (now - lastScanTime > 1000) { // Reduced cooldown to 1 second for better responsiveness
-            console.log('✅ Processing QR code (cooldown passed)');
             setLastScanTime(now);
             handleQRCodeScanned(code.data);
             return; // Stop scanning after successful detection
-          } else {
-            console.log('⏰ QR code detected but in cooldown period, remaining:', Math.round((1000 - (now - lastScanTime))/1000) + 's');
-          }
+          } 
         }
       } catch (err) {
         console.error('❌ Error scanning QR code:', err);
@@ -445,8 +377,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       // Continue scanning - check conditions again
       if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
         scanAnimationRef.current = requestAnimationFrame(scan);
-      } else {
-        console.log('🛑 Stopping scan loop:', { isSubmitting, scanSuccess, showSuccessOverlay });
       }
     };
  
@@ -456,21 +386,12 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Handle QR code detection
   const handleQRCodeScanned = async (qrData: string) => {
-    console.log('🚀 handleQRCodeScanned called with:', {
-      isSubmitting,
-      scanSuccess,
-      showSuccessOverlay,
-      qrDataType: typeof qrData,
-      qrDataLength: qrData?.length
-    });
  
     if (isSubmitting) {
-      console.log('❌ Already submitting, ignoring QR scan');
       return;
     }
  
     if (scanSuccess || showSuccessOverlay) {
-      console.log('❌ Already successful or overlay active, ignoring QR scan');
       return;
     }
  
@@ -483,7 +404,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           parsed.message !== undefined || 
           parsed.operation !== undefined ||
           parsed.data !== undefined) {
-        console.log('❌ Detected API response in QR code - rejecting');
         setError('QR Code yang dipindai adalah hasil response API. Silakan scan QR code presensi yang asli dari moderator.');
         setIsSubmitting(false);
         
@@ -502,7 +422,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     // Add cooldown to prevent rapid scanning
     const now = Date.now();
     if (now - lastScanTime < 1000) { // 1 second cooldown - consistent with scanning
-      console.log('❌ Cooldown active, ignoring QR scan');
       return;
     }
     setLastScanTime(now);
@@ -513,7 +432,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     // STRICT QR validation - only accept valid attendance QR codes
     try {
       const parsed = JSON.parse(qrData);
-      console.log('🔍 Parsed QR data structure:', Object.keys(parsed));
       
       // IMMEDIATELY reject any API response patterns - ZERO TOLERANCE
       if (parsed.success !== undefined || 
@@ -541,7 +459,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // ONLY accept proper attendance QR codes
       if (parsed.type !== 'attendance') {
-        console.log('❌ QR type is not "attendance":', parsed.type);
         setError('QR Code harus bertipe "attendance" untuk presensi.');
         setIsSubmitting(false);
         setTimeout(() => {
@@ -554,7 +471,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // Must have required fields
       if (!parsed.pertemuan_id || !parsed.token) {
-        console.log('❌ QR code missing essential attendance fields');
         setError('QR Code tidak lengkap. Harus memiliki pertemuan_id dan token.');
         setIsSubmitting(false);
         setTimeout(() => {
@@ -571,7 +487,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         const currentTime = new Date().getTime();
         
         if (currentTime > expiryTime) {
-          console.log('❌ QR code has expired');
           setError('QR Code sudah kadaluarsa. Minta QR Code baru dari moderator.');
           setIsSubmitting(false);
           setTimeout(() => {
@@ -585,7 +500,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
       // Validate pertemuan_id matches
       if (parsed.pertemuan_id !== pertemuanIdNumber) {
-        console.log(`❌ QR pertemuan_id mismatch: ${parsed.pertemuan_id} vs ${pertemuanIdNumber}`);
         setError(`QR Code ini untuk pertemuan ${parsed.pertemuan_id}, bukan pertemuan ${pertemuanIdNumber}. Pastikan menggunakan QR Code yang sesuai.`);
         setIsSubmitting(false);
         setTimeout(() => {
@@ -595,13 +509,10 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         }, 3000);
         return;
       }
-      
-      console.log('✅ QR data validation passed, proceeding with API call');
       isValidQR = true;
       
     } catch {
       // Not JSON format - REJECT immediately
-      console.log('❌ STRICT: QR data is not valid JSON format - rejecting');
       setError('QR Code harus dalam format JSON yang valid untuk presensi.');
       setIsSubmitting(false);
       setTimeout(() => {
@@ -614,7 +525,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     
     // Only proceed if QR is valid
     if (!isValidQR) {
-      console.log('❌ QR validation failed, not proceeding with API call');
       return;
     }
     
@@ -646,11 +556,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         pertemuan_id: pertemuanIdNumber
       };
       
-      console.log('📨 Sending request:', {
-        ...requestData,
-        qr_data_type: typeof requestData.qr_data,
-        pertemuan_id_type: typeof requestData.pertemuan_id
-      });
  
       const response = await fetch('/api/user/absen', {
         method: 'POST',
@@ -660,12 +565,9 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         body: JSON.stringify(requestData),
       });
  
-      console.log('📡 Response status:', response.status);
       const result = await response.json();
-      console.log('📋 Response data:', result);
  
       if (response.ok && result.success) {
-        console.log('✅ Attendance recorded successfully');
         
         // IMMEDIATELY stop all scanning to prevent response being read as QR
         setIsScanning(false);
@@ -683,14 +585,12 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         if (stream) {
           stream.getTracks().forEach(track => {
             track.stop();
-            console.log('🛑 Stopped camera track after success:', track.kind);
           });
           setStream(null);
         }
         
         if (videoRef.current) {
           videoRef.current.srcObject = null;
-          console.log('🛑 Cleared video source after success');
         }
         
         setScanResult(result);
@@ -721,7 +621,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         
         // For 409 or already attended cases, treat as success
         if (response.status === 409 || errorMsg.includes('sudah melakukan absensi')) {
-          console.log('ℹ️ User already attended, treating as success');
           
           // IMMEDIATELY stop scanning
           setIsScanning(false);
@@ -738,14 +637,12 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           if (stream) {
             stream.getTracks().forEach(track => {
               track.stop();
-              console.log('🛑 Stopped camera track after already attended:', track.kind);
             });
             setStream(null);
           }
           
           if (videoRef.current) {
             videoRef.current.srcObject = null;
-            console.log('🛑 Cleared video source after already attended');
           }
           
           setAttendanceStatus('already_attended');
@@ -760,7 +657,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           
           // Resume scanning after error
           setTimeout(() => {
-            console.log('🔄 Resuming scanning after error...');
             setIsSubmitting(false);
             setIsScanning(true);
             startScanning();
@@ -774,7 +670,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // Resume scanning after network error
       setTimeout(() => {
-        console.log('🔄 Resuming scanning after network error...');
         setIsSubmitting(false);
         setIsScanning(true);
         startScanning();
@@ -784,7 +679,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Retry on error
   const handleRetry = () => {
-    console.log('🔄 Retrying camera access...');
     setError(null);
     setScanSuccess(false);
     setShowSuccessOverlay(false);
@@ -812,14 +706,10 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
   // Auto-start when modal opens
   useEffect(() => {
-    console.log('📱 Modal state changed - isOpen:', isOpen);
     
     if (isOpen) {
-      console.log('🚀 Modal opened, starting permission check...');
-      console.log('📋 Pertemuan ID:', pertemuanId);
       checkPermissionStatus();
     } else {
-      console.log('🚪 Modal closed, cleaning up...');
       cleanup();
     }
   }, [isOpen]);

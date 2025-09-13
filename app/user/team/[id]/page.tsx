@@ -675,9 +675,6 @@ export default function TeamDetailPage() {
                 {team.members
                   .slice()
                   .sort((a, b) => {
-                    // Debug: log the role values
-                    console.log('Member A:', a.nama_lengkap, 'Role:', a.role_in_team);
-                    console.log('Member B:', b.nama_lengkap, 'Role:', b.role_in_team);
                     
                     // Sort leaders first - try different variations
                     if (a.role_in_team?.toLowerCase() === 'leader' && b.role_in_team?.toLowerCase() !== 'leader') return -1;
