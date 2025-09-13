@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button, Card, CardBody, Image, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Slider } from '@heroui/react';
 import { IconPlus, IconTrash, IconEdit } from './icons';
+import { getEventImageUrl } from '@/lib/event-image';
 
 // Custom Crop Icon
 const IconCrop = ({ className }: { className?: string }) => (
@@ -37,14 +38,9 @@ export default function EventImageUpload({
   const [previewIsCropped, setPreviewIsCropped] = useState(false); // Track if preview is cropped
   const [dragActive, setDragActive] = useState(false);
   
-  // Convert database path to API route for preview
+  // Convert database path to Supabase Storage URL for preview
   const getPreviewUrl = (path: string | null) => {
-    if (!path) return null;
-    if (path.startsWith('/src/events/')) {
-      const filename = path.replace('/src/events/', '');
-      return `/api/images/events/${filename}`;
-    }
-    return path;
+    return getEventImageUrl(path);
   };
   
   const [preview, setPreview] = useState<string | null>(getPreviewUrl(value || null));

@@ -24,10 +24,6 @@ const nextConfig = {
       {
         source: '/src/events/pembayaran/:nim/:filename',
         destination: '/api/payment-proof/:nim/:filename'
-      },
-      {
-        source: '/src/events/:path*',
-        destination: '/api/images/events/:path*'
       }
     ];
   },

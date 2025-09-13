@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import EventImageUpload from "@/components/EventImageUpload";
 import ModeratorLayout from "@/components/ModeratorLayout";
+import { getEventImageUrlWithCache } from '@/lib/event-image';
 import {
   Card,
   CardBody,
@@ -911,9 +912,7 @@ export default function EventsPage() {
                             {event.gambar && (
                               <div className="w-20 h-11 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
                                 <Image
-                                  src={event.gambar.startsWith('/src/events/') 
-                                    ? `/api/images/events/${event.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
-                                    : event.gambar}
+                                  src={getEventImageUrlWithCache(event.gambar) || '/placeholder-event.jpg'}
                                   alt={event.nama_event}
                                   className="w-full h-full object-cover"
                                 />
@@ -1088,9 +1087,7 @@ export default function EventsPage() {
                       {event.gambar && (
                         <div className="w-20 h-11 rounded-lg overflow-hidden bg-gray-800">
                           <Image
-                            src={event.gambar.startsWith('/src/events/') 
-                              ? `/api/images/events/${event.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
-                              : event.gambar}
+                            src={getEventImageUrlWithCache(event.gambar) || '/placeholder-event.jpg'}
                             alt={event.nama_event}
                             width={80}
                             height={44}
@@ -1282,9 +1279,7 @@ export default function EventsPage() {
                           {event.gambar && (
                             <div className="w-20 h-11 rounded-lg overflow-hidden bg-gray-800 opacity-60">
                               <Image
-                                src={event.gambar.startsWith('/src/events/') 
-                                  ? `/api/images/events/${event.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
-                                  : event.gambar}
+                                src={getEventImageUrlWithCache(event.gambar) || '/placeholder-event.jpg'}
                                 alt={event.nama_event}
                                 width={80}
                                 height={44}
@@ -1744,9 +1739,7 @@ export default function EventsPage() {
                 {selectedEvent.gambar && (
                   <div className="w-full rounded-lg overflow-hidden bg-gray-800" style={{ aspectRatio: '16/9' }}>
                     <Image
-                      src={selectedEvent.gambar.startsWith('/src/events/') 
-                        ? `/api/images/events/${selectedEvent.gambar.replace('/src/events/', '')}?t=${Date.now()}` 
-                        : selectedEvent.gambar}
+                      src={getEventImageUrlWithCache(selectedEvent.gambar) || '/placeholder-event.jpg'}
                       alt={selectedEvent.nama_event}
                       className="w-full h-full object-cover"
                       width={640}

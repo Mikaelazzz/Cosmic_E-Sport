@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/team-auth";
-import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 
 export async function POST(request: NextRequest) {
@@ -52,53 +52,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create src/events directory if it doesn't exist
-    const eventsDir = path.join(process.cwd(), 'src', 'events');
-    if (!fs.existsSync(eventsDir)) {
-      fs.mkdirSync(eventsDir, { recursive: true });
-    }
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Get file extension
-    const fileExtension = path.extname(file.name);
+    const fileExtension = path.extname(file.name) || '.jpg';
     
-    // Create directory path: src/events/event-[id]
-    const uploadDir = path.join(eventsDir, `event-${eventId}`);
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
     // Generate filename: event-[id].ext
     const fileName = `event-${eventId}${fileExtension}`;
-    const filePath = path.join(uploadDir, fileName);
+    const filePath = `events/${fileName}`;
 
-    // Remove existing image files for this event
-    if (fs.existsSync(uploadDir)) {
-      const existingFiles = fs.readdirSync(uploadDir);
-      existingFiles.forEach(existingFile => {
-        if (existingFile.startsWith(`event-${eventId}.`)) {
-          const oldFilePath = path.join(uploadDir, existingFile);
-          if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
-          }
-        }
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = new Uint8Array(bytes);
+
+    // Remove existing image for this event first
+    const { error: removeError } = await supabase.storage
+      .from('profiles')
+      .remove([filePath]);
+
+    // Note: removeError is expected if file doesn't exist, so we don't throw here
+
+    // Upload the new image
+    const { data, error } = await supabase.storage
+      .from('profiles')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true
       });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return NextResponse.json(
+        { success: false, message: 'Failed to upload image' },
+        { status: 500 }
+      );
     }
 
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    fs.writeFileSync(filePath, new Uint8Array(buffer));
-
-    // Return the relative path for database storage
-    const relativePath = `/src/events/event-${eventId}/${fileName}`;
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filePath);
 
     return NextResponse.json({
       success: true,
       data: {
         fileName,
-        filePath: relativePath,
+        filePath: publicUrlData.publicUrl,
         fileSize: file.size,
         fileType: file.type
       },
@@ -138,18 +141,25 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const srcDir = path.join(process.cwd(), "src");
-    
-    // Find and delete existing files for this event
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Try to delete existing files for this event with different extensions
     const extensions = ["jpg", "jpeg", "png", "webp"];
     let deletedFile = false;
 
     for (const ext of extensions) {
-      const fileName = `events-${eventId}.${ext}`;
-      const filePath = path.join(srcDir, fileName);
+      const fileName = `event-${eventId}.${ext}`;
+      const filePath = `events/${fileName}`;
       
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const { error } = await supabase.storage
+        .from('profiles')
+        .remove([filePath]);
+
+      if (!error) {
         deletedFile = true;
       }
     }
