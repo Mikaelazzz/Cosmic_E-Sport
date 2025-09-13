@@ -51,6 +51,20 @@ export async function POST(
       );
     }
 
+    // Get meeting information for tardiness calculation
+    const { data: pertemuan, error: pertemuanError } = await supabase
+      .from('jadwal_pertemuan')
+      .select('tanggal, jam_mulai, status')
+      .eq('id', parseInt(pertemuanId))
+      .single();
+
+    if (pertemuanError || !pertemuan) {
+      return NextResponse.json(
+        { success: false, message: 'Pertemuan tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
     // Check if absensi record already exists
     const { data: existingAbsen, error: checkError } = await supabase
       .from('absen')
@@ -59,18 +73,38 @@ export async function POST(
       .eq('user_id', user_id)
       .single();
 
-    const currentTime = new Date();
-    const currentDay = currentTime.getDay();
+    // Get current timestamp in Indonesia timezone (WIB) - consistent with QR scan
+    const now = new Date();
+    const indonesiaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // UTC+7
+    const jamFormatted = indonesiaTime.toISOString().replace('Z', '+07:00'); // Proper timezone format
+    const hariFormatted = indonesiaTime.getDay();
+
+    // Auto-detect status based on 15-minute rule if status is 'hadir'
+    let finalStatus = status;
+    if (status === 'hadir' && pertemuan.status === 'berlangsung') {
+      // Create meeting start time in Indonesia timezone
+      const meetingDate = new Date(`${pertemuan.tanggal}T${pertemuan.jam_mulai}:00+07:00`);
+      const lateThreshold = new Date(meetingDate.getTime() + 15 * 60 * 1000); // 15 minutes after start
+      
+      // If current time is more than 15 minutes after start, mark as late
+      if (indonesiaTime > lateThreshold) {
+        finalStatus = 'terlambat';
+        console.log('🕐 Auto-marking as late: current time is more than 15 minutes after meeting start');
+        console.log('   Meeting start:', meetingDate.toISOString());
+        console.log('   Late threshold:', lateThreshold.toISOString());
+        console.log('   Current time:', indonesiaTime.toISOString());
+      }
+    }
 
     if (existingAbsen) {
       // Update existing record
       const { data, error } = await supabase
         .from('absen')
         .update({
-          status: status,
-          jam: ['hadir', 'terlambat'].includes(status) ? currentTime.toISOString() : null,
-          hari: currentDay,
-          updated_at: currentTime.toISOString()
+          status: finalStatus,
+          jam: ['hadir', 'terlambat'].includes(finalStatus) ? jamFormatted : null,
+          hari: hariFormatted,
+          updated_at: indonesiaTime.toISOString()
         })
         .eq('id', existingAbsen.id)
         .select()
@@ -87,7 +121,9 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: data,
-        message: 'Absensi berhasil diupdate'
+        message: finalStatus !== status ? 
+          `Absensi berhasil diupdate sebagai '${finalStatus}' (auto-detected berdasarkan waktu)` :
+          'Absensi berhasil diupdate'
       });
     } else {
       // Create new record
@@ -97,11 +133,11 @@ export async function POST(
           pertemuan_id: parseInt(pertemuanId),
           user_id: parseInt(user_id),
           nim: userData.nim,
-          status: status,
-          jam: ['hadir', 'terlambat'].includes(status) ? currentTime.toISOString() : null,
-          hari: currentDay,
-          created_at: currentTime.toISOString(),
-          updated_at: currentTime.toISOString()
+          status: finalStatus,
+          jam: ['hadir', 'terlambat'].includes(finalStatus) ? jamFormatted : null,
+          hari: hariFormatted,
+          created_at: indonesiaTime.toISOString(),
+          updated_at: indonesiaTime.toISOString()
         })
         .select()
         .single();
@@ -117,7 +153,9 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: data,
-        message: 'Absensi berhasil dicatat'
+        message: finalStatus !== status ? 
+          `Absensi berhasil dicatat sebagai '${finalStatus}' (auto-detected berdasarkan waktu)` :
+          'Absensi berhasil dicatat'
       });
     }
 

@@ -180,7 +180,19 @@ export async function POST(request: NextRequest) {
           qrParsed.operation !== undefined ||
           qrParsed.data !== undefined) {
         
-        console.log('❌ Detected API response pattern');
+        console.log('❌ Detected API response pattern - QR Code Source Investigation:');
+        console.log('   - QR contains success field:', qrParsed.success !== undefined);
+        console.log('   - QR contains message field:', qrParsed.message !== undefined);
+        console.log('   - QR contains operation field:', qrParsed.operation !== undefined);
+        console.log('   - QR contains data field:', qrParsed.data !== undefined);
+        console.log('   - Full QR structure keys:', Object.keys(qrParsed));
+        
+        // Enhanced security check - log potential security violation
+        console.log('🚨 SECURITY ALERT: Someone attempted to scan API response as QR code');
+        console.log('   - Timestamp:', new Date().toISOString());
+        console.log('   - Pertemuan ID:', pertemuanIdNum);
+        console.log('   - User Data:', userData);
+        console.log('   - QR Data Sample:', JSON.stringify(qrParsed).substring(0, 200) + '...');
         
         // Cek apakah ini response dari absensi yang sama
         if ((qrParsed.operation === 'already_present' || qrParsed.operation === 'update') && 
@@ -210,10 +222,10 @@ export async function POST(request: NextRequest) {
           });
         }
         
-        // Untuk response API lainnya, berikan pesan error yang jelas
+        // Untuk response API lainnya, berikan pesan error yang jelas dan edukatif
         return NextResponse.json({
           success: false,
-          message: 'QR Code yang dipindai adalah hasil response API, bukan QR code presensi. Silakan scan QR code presensi yang asli dari moderator.'
+          message: 'TIDAK VALID: QR Code yang Anda pindai adalah hasil response dari sistem absensi sebelumnya, bukan QR code presensi yang sah. Mohon pindai QR code presensi asli yang ditampilkan oleh moderator di layar/proyektor.'
         }, { status: 400 });
       }
       
@@ -266,6 +278,24 @@ export async function POST(request: NextRequest) {
         userData.nim = qrParsed.nim;
       }
       console.log('🔄 Updated user data from QR:', userData);
+
+    // Determine attendance status based on 15-minute rule
+    let attendanceStatus = 'hadir';
+    
+    // Create meeting start time in Indonesia timezone
+    const meetingDate = new Date(`${pertemuan.tanggal}T${pertemuan.jam_mulai}:00+07:00`);
+    const lateThreshold = new Date(meetingDate.getTime() + 15 * 60 * 1000); // 15 minutes after start
+    
+    // If current time is more than 15 minutes after start, mark as late
+    if (indonesiaTime > lateThreshold) {
+      attendanceStatus = 'terlambat';
+      console.log('🕐 Auto-marking as late: current time is more than 15 minutes after meeting start');
+      console.log('   Meeting start:', meetingDate.toISOString());
+      console.log('   Late threshold:', lateThreshold.toISOString());
+      console.log('   Current time:', indonesiaTime.toISOString());
+    } else {
+      console.log('✅ Marking as on-time: within 15 minutes of meeting start');
+    }
     } catch {
       // If QR is not JSON, use default values
     }
@@ -323,7 +353,7 @@ export async function POST(request: NextRequest) {
       pertemuan_id: pertemuanIdNum,
       user_id: userData.user_id,
       nim: userData.nim,
-      status: 'hadir'
+      status: attendanceStatus
     });
 
     // Check if absensi record already exists
@@ -348,18 +378,18 @@ export async function POST(request: NextRequest) {
     if (existingAbsen) {
       // Record exists, check if we can update it
       if (existingAbsen.status === 'tidak_hadir') {
-        // Allow update from tidak_hadir to hadir
-        console.log('🔄 Updating existing absen from tidak_hadir to hadir:', existingAbsen.id);
+        // Allow update from tidak_hadir to attendanceStatus (hadir/terlambat)
+        console.log(`🔄 Updating existing absen from tidak_hadir to ${attendanceStatus}:`, existingAbsen.id);
         operation = 'update';
         
         const { data: updateData, error: updateError } = await supabase
           .from('absen')
           .update({
-            status: 'hadir',
+            status: attendanceStatus,
             jam: jamFormatted,
             hari: hariFormatted,
             qr_code: qr_data,
-            update_at: now.toISOString()
+            updated_at: now.toISOString()
           })
           .eq('id', existingAbsen.id)
           .select()
@@ -378,7 +408,7 @@ export async function POST(request: NextRequest) {
         // Return success with previous status info
         return NextResponse.json({
           success: true,
-          message: 'Absensi berhasil diupdate dari tidak hadir menjadi hadir',
+          message: `Absensi berhasil diupdate dari tidak hadir menjadi ${attendanceStatus}`,
           operation: 'update',
           previous_status: 'tidak_hadir',
           data: {
@@ -423,12 +453,12 @@ export async function POST(request: NextRequest) {
           pertemuan_id: pertemuanIdNum,
           user_id: userData.user_id,
           nim: userData.nim || 'UNKNOWN',
-          status: 'hadir',
+          status: attendanceStatus,
           jam: jamFormatted,
           hari: hariFormatted,
           qr_code: qr_data,
           created_at: now.toISOString(),
-          update_at: now.toISOString()
+          updated_at: now.toISOString()
         })
         .select()
         .single();
@@ -440,7 +470,7 @@ export async function POST(request: NextRequest) {
             pertemuan_id: pertemuanIdNum,
             user_id: userData.user_id,
             nim: userData.nim,
-            status: 'hadir',
+            status: attendanceStatus,
             jam: jamFormatted,
             hari: hariFormatted,
             qr_code: qrString.substring(0, 100) + '...'
@@ -476,7 +506,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Absensi berhasil ${operation === 'insert' ? 'tercatat' : 'diupdate'}`,
+      message: `Absensi berhasil ${operation === 'insert' ? 'tercatat' : 'diupdate'} sebagai ${attendanceStatus}`,
       operation: operation,
       previous_status: operation === 'update' ? 'tidak_hadir' : null,
       data: {
@@ -487,7 +517,7 @@ export async function POST(request: NextRequest) {
         status: absenData.status,
         waktu_absen: absenData.jam,
         created_at: absenData.created_at,
-        updated_at: absenData.update_at || absenData.updated_at
+        updated_at: absenData.updated_at || absenData.update_at
       }
     });
 

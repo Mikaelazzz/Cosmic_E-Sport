@@ -4,7 +4,7 @@ import supabase from '@/lib/db';
 export async function GET() {
   try {
     // Fetch all users except admin role
-    const { data, error } = await supabase
+    const { data: users, error } = await supabase
       .from('users')
       .select(`
         id,
@@ -26,9 +26,39 @@ export async function GET() {
       }, { status: 500 });
     }
 
+    // Get attendance count for each user
+    const usersWithAttendance = await Promise.all(
+      (users || []).map(async (user) => {
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from('absen')
+          .select('id, status')
+          .eq('user_id', user.id);
+
+        if (attendanceError) {
+          console.error(`Error fetching attendance for user ${user.id}:`, attendanceError);
+          return {
+            ...user,
+            attendance_count: 0,
+            total_meetings: 0
+          };
+        }
+
+        const totalAttendance = attendanceData?.length || 0;
+        const hadirCount = attendanceData?.filter(a => a.status === 'hadir').length || 0;
+        const terlambatCount = attendanceData?.filter(a => a.status === 'terlambat').length || 0;
+        const effectiveAttendance = hadirCount + terlambatCount;
+
+        return {
+          ...user,
+          attendance_count: effectiveAttendance,
+          total_meetings: totalAttendance
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: data || []
+      data: usersWithAttendance
     });
 
   } catch (error) {
