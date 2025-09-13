@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Button } from '@heroui/button';
+import { Alert } from '@heroui/react';
 import { Divider } from '@heroui/divider';
 import { Chip } from '@heroui/chip';
 import QRScannerModal from '@/components/QRScannerModal';
@@ -35,10 +36,24 @@ export default function UserDashboard() {
   const [scanningId, setScanningId] = useState<number | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [currentPertemuanId, setCurrentPertemuanId] = useState<number | null>(null);
+  
+  // Alert state
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    title: '',
+    description: '',
+    color: 'success' as 'success' | 'danger' | 'warning',
+    variant: 'faded' as 'faded' | 'flat' | 'bordered'
+  });
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const showAlertMessage = (title: string, description: string, color: 'success' | 'danger' | 'warning' = 'success') => {
+    setAlertConfig({ title, description, color, variant: 'faded' });
+    setShowAlert(true);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -53,7 +68,6 @@ export default function UserDashboard() {
       }
     } catch (err) {
       setError('Terjadi kesalahan saat mengambil data');
-      console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -82,14 +96,25 @@ export default function UserDashboard() {
       const result = await response.json();
       
       if (result.success) {
-        alert('✅ Absensi berhasil dicatat!');
+        showAlertMessage(
+          'Absensi Berhasil!', 
+          'Kehadiran Anda telah berhasil dicatat dalam sistem.',
+          'success'
+        );
         fetchDashboardData();
       } else {
-        alert(`❌ ${result.message || 'Gagal melakukan absen'}`);
+        showAlertMessage(
+          'Absensi Gagal',
+          result.message || 'Gagal melakukan absen. Silakan coba lagi.',
+          'danger'
+        );
       }
     } catch (err) {
-      alert('❌ Terjadi kesalahan saat melakukan absen');
-      console.error('Absen error:', err);
+      showAlertMessage(
+        'Terjadi Kesalahan',
+        'Terjadi kesalahan saat melakukan absen. Silakan periksa koneksi internet Anda.',
+        'danger'
+      );
     } finally {
       setScanningId(null);
       setCurrentPertemuanId(null);
@@ -243,6 +268,20 @@ export default function UserDashboard() {
         >
           Periode {data?.currentPeriod?.semester} {data?.currentPeriod?.tahun}
         </Chip>
+      </div>
+
+      {/* Alert Notification */}
+      <div className="mb-6">
+        {showAlert && (
+          <Alert
+            color={alertConfig.color}
+            description={alertConfig.description}
+            isVisible={showAlert}
+            title={alertConfig.title}
+            variant={alertConfig.variant}
+            onClose={() => setShowAlert(false)}
+          />
+        )}
       </div>
 
       {/* Pertemuan List */}
