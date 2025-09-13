@@ -278,6 +278,15 @@ export async function POST(request: NextRequest) {
         userData.nim = qrParsed.nim;
       }
       console.log('🔄 Updated user data from QR:', userData);
+    } catch {
+      // If QR is not JSON, use default values
+    }
+
+    // Get current timestamp in Indonesia timezone (WIB)
+    const now = new Date();
+    
+    // Create proper Indonesia time by adding 7 hours offset to UTC
+    const indonesiaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // UTC+7
 
     // Determine attendance status based on 15-minute rule
     let attendanceStatus = 'hadir';
@@ -296,15 +305,6 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('✅ Marking as on-time: within 15 minutes of meeting start');
     }
-    } catch {
-      // If QR is not JSON, use default values
-    }
-
-    // Get current timestamp in Indonesia timezone (WIB)
-    const now = new Date();
-    
-    // Create proper Indonesia time by adding 7 hours offset to UTC
-    const indonesiaTime = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // UTC+7
     
     // Format timestamp for database - use Indonesia time 
     const jamFormatted = indonesiaTime.toISOString().replace('Z', '+07:00'); // Proper timezone format

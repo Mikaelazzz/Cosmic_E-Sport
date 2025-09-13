@@ -31,8 +31,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [deviceCount, setDeviceCount] = useState<number>(0);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [lastScanTime, setLastScanTime] = useState<number>(0);
   const [scanSuccess, setScanSuccess] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
@@ -181,35 +179,17 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       setShowSuccessOverlay(false);
  
       if (!checkBrowserSupport()) return;
- 
-      // Enumerate devices if possible
-      let videoDevices = [];
-      if (navigator.mediaDevices.enumerateDevices) {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          videoDevices = devices.filter(device => device.kind === 'videoinput');
-          setDeviceCount(videoDevices.length);
-          console.log('📱 Found', videoDevices.length, 'video devices');
-        } catch (enumErr) {
-          console.warn('⚠️ Could not enumerate devices:', enumErr);
-          setDeviceCount(1);
-        }
-      } else {
-        console.log('📱 Device enumeration not available, assuming 1 device');
-        setDeviceCount(1);
-      }
- 
-      // Request camera access
-      console.log('📹 Requesting camera with facingMode:', facingMode);
+
+      // Request camera access - use default camera
+      console.log('� Requesting default camera...');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: facingMode,
           width: { ideal: 1280, min: 640 },
           height: { ideal: 720, min: 480 },
           frameRate: { ideal: 30, min: 15 }
         }
       });
- 
+
       console.log('✅ Camera stream acquired');
       setStream(mediaStream);
       
@@ -227,13 +207,22 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
               });
               setHasPermission(true);
               setIsLoading(false);
-              setIsScanning(true);
               
               // Small delay to ensure video is fully ready
               setTimeout(() => {
                 console.log('🔍 Starting QR scanning...');
+                setIsScanning(true);
                 startScanning();
               }, 500);
+              
+              // Fallback: ensure scanning is running after 2 seconds
+              setTimeout(() => {
+                if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
+                  console.log('🔄 Fallback: Ensuring QR scanning is active...');
+                  setIsScanning(true);
+                  startScanning();
+                }
+              }, 2000);
             }).catch(err => {
               console.error('❌ Error playing video:', err);
               setError('Gagal memulai video kamera');
@@ -307,6 +296,14 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
   // Start QR code scanning
   const startScanning = () => {
     console.log('🔍 Starting QR scanning...');
+    console.log('📊 Current states:', {
+      hasVideoRef: !!videoRef.current,
+      hasCanvasRef: !!canvasRef.current,
+      isScanning,
+      isSubmitting,
+      scanSuccess,
+      showSuccessOverlay
+    });
     
     // Jangan mulai scanning jika overlay success aktif
     if (showSuccessOverlay) {
@@ -314,16 +311,34 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       return;
     }
     
+    // Set scanning to true at the start
+    setIsScanning(true);
+    console.log('✅ Set isScanning to true');
+    
     let scanCount = 0;
     
     const scan = () => {
       scanCount++;
       
-      if (!videoRef.current || !canvasRef.current || !isScanning || isSubmitting || scanSuccess || showSuccessOverlay) {
-        console.log('❌ Scan conditions not met:', {
+      // Check basic requirements first
+      if (!videoRef.current || !canvasRef.current) {
+        console.log('❌ Missing video or canvas reference:', {
           hasVideo: !!videoRef.current,
           hasCanvas: !!canvasRef.current,
-          isScanning,
+          scanCount
+        });
+        // Retry after short delay
+        setTimeout(() => {
+          if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
+            scan();
+          }
+        }, 100);
+        return;
+      }
+      
+      // Check if we should continue scanning
+      if (isSubmitting || scanSuccess || showSuccessOverlay) {
+        console.log('❌ Should stop scanning:', {
           isSubmitting,
           scanSuccess,
           showSuccessOverlay,
@@ -361,7 +376,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       }
  
       // Log scanning activity periodically
-      if (scanCount % 60 === 0) { // Log every 60 frames (about every 2 seconds)
+      if (scanCount % 30 === 0) { // Log every 30 frames (about every 1 second)
         console.log('🔄 Scanning active, frame:', scanCount, 'dimensions:', videoWidth + 'x' + videoHeight);
       }
  
@@ -376,30 +391,38 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         // Get image data for QR scanning
         const imageData = context.getImageData(0, 0, videoWidth, videoHeight);
         
-        // Scan for QR code with more permissive options
+        // Scan for QR code with enhanced options for better detection
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "attemptBoth" // Try both normal and inverted
+          inversionAttempts: "attemptBoth", // Try both normal and inverted
+          // Add more permissive scanning options
         });
+        
+        // Debug: Log scanning attempt every 60 frames
+        if (scanCount % 60 === 0) {
+          console.log('🔍 QR Scan attempt:', scanCount, 'Result:', code ? 'DETECTED' : 'NOT_FOUND');
+        }
         
         if (code && code.data) {
           console.log('🎯 QR Code detected:', code.data);
           const now = Date.now();
-          if (now - lastScanTime > 1500) { // Reduced cooldown to 1.5 seconds
+          if (now - lastScanTime > 1000) { // Reduced cooldown to 1 second for better responsiveness
             console.log('✅ Processing QR code (cooldown passed)');
             setLastScanTime(now);
             handleQRCodeScanned(code.data);
             return; // Stop scanning after successful detection
           } else {
-            console.log('⏰ QR code detected but in cooldown period, remaining:', Math.round((1500 - (now - lastScanTime))/1000) + 's');
+            console.log('⏰ QR code detected but in cooldown period, remaining:', Math.round((1000 - (now - lastScanTime))/1000) + 's');
           }
         }
       } catch (err) {
         console.error('❌ Error scanning QR code:', err);
       }
       
-      // Continue scanning
-      if (isScanning && !isSubmitting && !scanSuccess && !showSuccessOverlay) {
+      // Continue scanning - check conditions again
+      if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
         scanAnimationRef.current = requestAnimationFrame(scan);
+      } else {
+        console.log('🛑 Stopping scan loop:', { isSubmitting, scanSuccess, showSuccessOverlay });
       }
     };
  
@@ -454,7 +477,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
     // Add cooldown to prevent rapid scanning
     const now = Date.now();
-    if (now - lastScanTime < 1500) { // 1.5 second cooldown
+    if (now - lastScanTime < 1000) { // 1 second cooldown - consistent with scanning
       console.log('❌ Cooldown active, ignoring QR scan');
       return;
     }
@@ -713,6 +736,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           
           // Resume scanning after error
           setTimeout(() => {
+            console.log('🔄 Resuming scanning after error...');
             setIsSubmitting(false);
             setIsScanning(true);
             startScanning();
@@ -726,21 +750,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       
       // Resume scanning after network error
       setTimeout(() => {
+        console.log('🔄 Resuming scanning after network error...');
         setIsSubmitting(false);
         setIsScanning(true);
         startScanning();
       }, 2000);
-    }
-  };
- 
-  // Switch camera (front/back)
-  const switchCamera = async () => {
-    try {
-      setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-      await startCamera();
-    } catch (err: any) {
-      console.error('Error switching camera:', err);
-      setError('Gagal mengganti kamera. ' + (err.message || 'Coba lagi.'));
     }
   };
  
@@ -762,6 +776,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       scanAnimationRef.current = null;
     }
     
+    // Restart camera which will automatically start scanning
     startCamera();
   };
  
@@ -1004,21 +1019,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                           <p className="text-xs sm:text-sm font-medium">Memproses absensi...</p>
                         </div>
                       </div>
-                    )}
- 
-                    {/* Camera switch button - only show if multiple cameras */}
-                    {hasPermission && !isLoading && !error && deviceCount > 1 && !isSubmitting && (
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white/80 dark:bg-gray-800/80 text-gray-800 dark:text-white z-20"
-                        onPress={switchCamera}
-                        aria-label="Ganti kamera"
-                      >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      </Button>
                     )}
                   </div>
                 </CardBody>
