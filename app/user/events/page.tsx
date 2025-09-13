@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import UserLayout from "@/components/UserLayout";
+import { getPaymentProofUrl } from '@/lib/payment-proof';
 import {
   Card,
   CardBody,
@@ -1077,10 +1078,10 @@ export default function UserEventsPage() {
                           {myEvent.bukti_pembayaran ? (
                             <div className="flex items-center gap-2">
                               <img 
-                                src={myEvent.bukti_pembayaran} 
+                                src={getPaymentProofUrl(myEvent.bukti_pembayaran) || '/placeholder-image.jpg'} 
                                 alt="Payment proof"
                                 className="w-6 h-6 object-cover rounded border border-green-500 cursor-pointer hover:scale-110 transition-transform"
-                                onClick={() => handleImagePreview(myEvent.bukti_pembayaran!)}
+                                onClick={() => handleImagePreview(getPaymentProofUrl(myEvent.bukti_pembayaran)!)}
                                 onError={(e) => {
                                   console.error('Payment proof image failed to load:', myEvent.bukti_pembayaran);
                                   const img = e.target as HTMLImageElement;

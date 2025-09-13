@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/team-auth";
-import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 
@@ -57,31 +56,50 @@ export async function POST(request: NextRequest) {
     }
 
     const nim = userData.nim;
-    const fileExtension = path.extname(file.name);
+    const fileExtension = path.extname(file.name) || '.jpg';
     const fileName = `${nim}${fileExtension}`;
     
-    // Create directory path
-    const uploadDir = path.join(process.cwd(), 'src', 'events', 'pembayaran', nim);
-    const filePath = path.join(uploadDir, fileName);
+    // Create Supabase storage path
+    const filePath = `payment-proofs/${nim}/${fileName}`;
 
     try {
-      // Create directory if it doesn't exist
-      await mkdir(uploadDir, { recursive: true });
-      
-      // Convert file to buffer and save
+      // Convert file to buffer
       const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      
-      await writeFile(filePath, new Uint8Array(buffer));
-      
-      // Return the relative path that can be used as URL
-      const relativePath = `/src/events/pembayaran/${nim}/${fileName}`;
+      const buffer = new Uint8Array(bytes);
+
+      // Remove existing payment proof for this user first
+      const { error: removeError } = await supabase.storage
+        .from('profiles')
+        .remove([filePath]);
+
+      // Note: removeError is expected if file doesn't exist, so we don't throw here
+
+      // Upload the new payment proof
+      const { data, error } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: true
+        });
+
+      if (error) {
+        console.error('Supabase upload error:', error);
+        return NextResponse.json(
+          { success: false, message: 'Failed to upload payment proof' },
+          { status: 500 }
+        );
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath);
       
       return NextResponse.json({
         success: true,
         message: "Payment proof uploaded successfully",
         data: {
-          filePath: relativePath,
+          filePath: publicUrlData.publicUrl,
           fileName: fileName,
           originalName: file.name,
           size: file.size,

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import EventImageUpload from "@/components/EventImageUpload";
 import ModeratorLayout from "@/components/ModeratorLayout";
 import { getEventImageUrlWithCache } from '@/lib/event-image';
+import { getPaymentProofUrl } from '@/lib/payment-proof';
 import {
   Card,
   CardBody,
@@ -1642,12 +1643,12 @@ export default function EventsPage() {
                     <TableCell>
                       {participant.bukti_pembayaran ? (
                         <Image
-                          src={participant.bukti_pembayaran}
+                          src={getPaymentProofUrl(participant.bukti_pembayaran) || '/placeholder-image.jpg'}
                           alt="Payment proof"
                           width={50}
                           height={50}
                           className="rounded-lg object-cover cursor-pointer"
-                          onClick={() => window.open(participant.bukti_pembayaran!, '_blank')}
+                          onClick={() => window.open(getPaymentProofUrl(participant.bukti_pembayaran)!, '_blank')}
                         />
                       ) : (
                         <span className="text-gray-400">No proof</span>

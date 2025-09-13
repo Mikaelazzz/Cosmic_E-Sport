@@ -20,10 +20,6 @@ const nextConfig = {
       {
         source: '/src/prestasi/:path*',
         destination: '/api/images/prestasi/:path*'
-      },
-      {
-        source: '/src/events/pembayaran/:nim/:filename',
-        destination: '/api/payment-proof/:nim/:filename'
       }
     ];
   },

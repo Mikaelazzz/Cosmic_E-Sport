@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import UserLayout from "@/components/UserLayout";
+import { getPaymentProofUrl } from '@/lib/payment-proof';
 import {
   Card,
   CardBody,
@@ -423,7 +424,7 @@ export default function EventDetailPage() {
     <UserLayout 
       title="Event Details"
       description="Lihat detail dan ikut event">
-      <div className="min-h-screen bg-[#0B0D21] p-6">
+      <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -433,9 +434,9 @@ export default function EventDetailPage() {
             onPress={() => router.push('/user/events')}
             className="mb-4"
           >
-            ← Back to Events
+            Kembali
           </Button>
-          <h1 className="text-3xl font-bold text-[#FFD700]">Event Details</h1>
+          <h1 className="text-3xl font-bold text-[#FFD700]">Detail Event</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -461,7 +462,7 @@ export default function EventDetailPage() {
                   />
                 ) : (
                   <div className="w-full h-64 md:h-80 bg-gray-700 rounded-lg flex items-center justify-center mb-6">
-                    <span className="text-gray-400">No image available</span>
+                    <span className="text-gray-400">Tidak ada gambar yang tersedia</span>
                   </div>
                 )}
 
@@ -482,7 +483,7 @@ export default function EventDetailPage() {
 
                 {/* Event Description */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
+                  <h3 className="text-lg font-semibold text-white mb-3">Deskripsi</h3>
                   <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">
                     {event.deskripsi}
                   </p>
@@ -491,7 +492,7 @@ export default function EventDetailPage() {
                 {/* Terms and Conditions */}
                 {event.syarat_dan_ketentuan && (
                   <div>
-                    <h3 className="text-lg font-semibold text-white mb-3">Terms and Conditions</h3>
+                    <h3 className="text-lg font-semibold text-white mb-3">Syarat dan Ketentuan</h3>
                     <div className="bg-[#1a1a2e]/50 p-4 rounded-lg">
                       <p className="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">
                         {event.syarat_dan_ketentuan}
@@ -507,16 +508,16 @@ export default function EventDetailPage() {
           <div className="lg:col-span-1">
             <Card className="bg-[#111020] border-2 border-[#FFD700] sticky top-6">
               <CardBody className="p-6">
-                <h3 className="text-xl font-bold text-[#FFD700] mb-4">Event Information</h3>
+                <h3 className="text-xl font-bold text-[#FFD700] mb-4">Informasi Event</h3>
 
                 <div className="space-y-4">
                   {/* Event Date */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Event Date</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Tanggal Event</h4>
                     <p className="text-white">{formatDate(event.tanggal_pelaksanaan)}</p>
                     {event.tanggal_awal && event.tanggal_akhir && (
                       <p className="text-sm text-gray-400">
-                        Registration: {formatDate(event.tanggal_awal)} - {formatDate(event.tanggal_akhir)}
+                        Pendaftaran : {formatDate(event.tanggal_awal)} - {formatDate(event.tanggal_akhir)}
                       </p>
                     )}
                   </div>
@@ -525,7 +526,7 @@ export default function EventDetailPage() {
 
                   {/* Participant Type */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Participant Type</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Tipe Peserta</h4>
                     <Chip
                       color={event.participant_type === 'individual' ? 'primary' : 'secondary'}
                       size="sm"
@@ -537,15 +538,15 @@ export default function EventDetailPage() {
 
                   <Divider className="bg-gray-600" />
 
-                  {/* Participants */}
+                  {/* Peserta */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Participants</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Peserta</h4>
                     <p className="text-white">
                       {event.current_participants || 0} / {event.max_participant}
                     </p>
                     {event.participant_type === 'team' && (
                       <p className="text-sm text-gray-400">
-                        {event.anggota_participant} members per team
+                        {event.anggota_participant} anggota per tim
                       </p>
                     )}
                   </div>
@@ -554,17 +555,17 @@ export default function EventDetailPage() {
 
                   {/* Cost */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Registration Fee</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Biaya Pendaftaran</h4>
                     <p className="text-xl font-bold text-[#FFD700]">
-                      {event.biaya === 0 ? 'FREE' : formatCurrency(event.biaya)}
+                      {event.biaya === 0 ? 'Gratis' : formatCurrency(event.biaya)}
                     </p>
                   </div>
 
                   <Divider className="bg-gray-600" />
 
-                  {/* Tournament Bracket */}
+                  {/* Turnamen Bracket */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-400 mb-2">Tournament Bracket</h4>
+                    <h4 className="text-sm font-medium text-gray-400 mb-2">Turnamen Bracket</h4>
                     <BracketButton 
                       eventId={event.id} 
                       eventDate={event.tanggal_pelaksanaan}
@@ -577,7 +578,7 @@ export default function EventDetailPage() {
                     <>
                       <Divider className="bg-gray-600" />
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">My Registration</h4>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Status</h4>
                         <Chip
                           color={participantStatusColorMap[myParticipation.status]}
                           size="sm"
@@ -587,18 +588,18 @@ export default function EventDetailPage() {
                           {myParticipation.status.toUpperCase()}
                         </Chip>
                         <p className="text-xs text-gray-400">
-                          Registered: {formatDate(myParticipation.tanggal_daftar)}
+                          Terdaftar : {formatDate(myParticipation.tanggal_daftar)}
                         </p>
                         
                         {/* Payment Proof */}
                         {myParticipation.bukti_pembayaran && (
                           <div className="mt-2">
-                            <p className="text-xs text-gray-400 mb-1">Payment Proof:</p>
+                            <p className="text-xs text-gray-400 mb-1">Bukti Pembayaran :</p>
                             <img 
-                              src={myParticipation.bukti_pembayaran} 
+                              src={getPaymentProofUrl(myParticipation.bukti_pembayaran) || '/placeholder-image.jpg'} 
                               alt="Payment proof"
                               className="w-16 h-16 object-cover rounded border border-green-500 cursor-pointer hover:scale-110 transition-transform"
-                              onClick={() => handleImagePreview(myParticipation.bukti_pembayaran!)}
+                              onClick={() => handleImagePreview(getPaymentProofUrl(myParticipation.bukti_pembayaran)!)}
                             />
                           </div>
                         )}
@@ -606,7 +607,7 @@ export default function EventDetailPage() {
                         {/* Rejection Reason */}
                         {myParticipation.rejection_reason && (
                           <div className="mt-2 p-2 bg-red-900/20 border border-red-600/50 rounded text-xs text-red-400">
-                            <strong>Rejection Reason:</strong> {myParticipation.rejection_reason}
+                            <strong>Alasan Penolakan :</strong> {myParticipation.rejection_reason}
                           </div>
                         )}
                       </div>
@@ -623,7 +624,7 @@ export default function EventDetailPage() {
                         className="w-full font-bold"
                         onPress={onJoinOpen}
                       >
-                        Join Event
+                        Ikuti Event
                       </Button>
                     </>
                   )}
@@ -634,7 +635,7 @@ export default function EventDetailPage() {
                       <Divider className="bg-gray-600" />
                       <div className="text-center">
                         <Chip color="danger" variant="flat" size="sm">
-                          Event Full
+                          Event Penuh
                         </Chip>
                       </div>
                     </>
@@ -658,14 +659,14 @@ export default function EventDetailPage() {
       >
         <ModalContent>
           <ModalHeader className="text-[#FFD700]">
-            Join Event: {event?.nama_event}
+            Ikuti Event : {event?.nama_event}
           </ModalHeader>
           <ModalBody>
             {event && event.biaya > 0 && (
               <Alert color="warning" className="mb-4">
-                <strong>Registration Fee:</strong> {formatCurrency(event.biaya)}
+                <strong>Biaya Pendaftaran:</strong> {formatCurrency(event.biaya)}
                 <br />
-                Please upload payment proof to complete your registration.
+                Silakan unggah bukti pembayaran untuk menyelesaikan pendaftaran Anda.
               </Alert>
             )}
 
@@ -673,7 +674,7 @@ export default function EventDetailPage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
-                    Payment Proof <span className="text-red-500">*</span>
+                    Bukti Pembayaran <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-col gap-3">
                     <input
@@ -692,7 +693,7 @@ export default function EventDetailPage() {
                     {isUploading && (
                       <div className="flex items-center gap-2 text-blue-400">
                         <Spinner size="sm" />
-                        <span className="text-sm">Uploading...</span>
+                        <span className="text-sm">Mengunggah...</span>
                       </div>
                     )}
                     {selectedFile && buktiPembayaran && (
@@ -701,7 +702,7 @@ export default function EventDetailPage() {
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
-                          <span className="text-sm font-medium">File uploaded successfully</span>
+                          <span className="text-sm font-medium">File berhasil diunggah</span>
                         </div>
                         <p className="text-sm text-gray-300 mb-2">
                           {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
@@ -730,7 +731,7 @@ export default function EventDetailPage() {
 
             {event && event.syarat_dan_ketentuan && (
               <div className="bg-[#1a1a2e]/50 p-4 rounded-lg">
-                <p className="text-sm text-gray-400 mb-2">Terms and Conditions:</p>
+                <p className="text-sm text-gray-400 mb-2">Syarat dan Ketentuan:</p>
                 <p className="text-sm text-white whitespace-pre-wrap">
                   {event.syarat_dan_ketentuan}
                 </p>
@@ -746,7 +747,7 @@ export default function EventDetailPage() {
                 resetJoinForm();
               }}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               color="primary"
@@ -754,7 +755,7 @@ export default function EventDetailPage() {
               isLoading={isSubmitting || isUploading}
               isDisabled={isUploading}
             >
-              {isUploading ? "Uploading..." : "Join Event"}
+              {isUploading ? "Mengunggah..." : "Ikuti Event"}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -769,7 +770,7 @@ export default function EventDetailPage() {
       >
         <ModalContent>
           <ModalHeader className="text-[#FFD700]">
-            Payment Proof
+            Bukti Pembayaran
           </ModalHeader>
           <ModalBody className="pb-6">
             {selectedImageUrl && (
