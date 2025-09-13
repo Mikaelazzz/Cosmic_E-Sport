@@ -36,13 +36,26 @@ export default function ImageUpload({
   const [imageKey, setImageKey] = useState(0); // Force re-render key
   const [previewIsCropped, setPreviewIsCropped] = useState(false); // Track if preview is cropped
   
-  // Convert database path to API route for preview
+  // Convert database path to Supabase Storage URL for preview
   const getPreviewUrl = (path: string | null) => {
     if (!path) return null;
+    
+    // If it's already a full URL or blob URL, return as-is
+    if (path.startsWith('http') || path.startsWith('blob:')) {
+      return path;
+    }
+    
+    // Import the utility function dynamically for client-side use
     if (path.startsWith('/src/informasi/')) {
       const filename = path.replace('/src/informasi/', '');
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (SUPABASE_URL) {
+        return `${SUPABASE_URL}/storage/v1/object/public/profiles/informasi/${filename}`;
+      }
+      // Fallback to old API route if Supabase URL not available
       return `/api/static/informasi/${filename}`;
     }
+    
     return path;
   };
   
@@ -247,18 +260,27 @@ export default function ImageUpload({
 
         if (result.success) {
           const filename = result.data.filename;
-          const staticUrl = `/api/static/informasi/${filename}`;
+          // Use Supabase Storage URL instead of static API route
+          const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          let storageUrl;
+          if (SUPABASE_URL) {
+            storageUrl = `${SUPABASE_URL}/storage/v1/object/public/profiles/informasi/${filename}`;
+          } else {
+            // Fallback to old API route
+            storageUrl = `/api/static/informasi/${filename}`;
+          }
+          
           onChange(result.data.path);
           // Keep using the blob URL for preview to show the cropped result immediately
-          // setPreview(staticUrl); // Don't override the cropped preview
+          // setPreview(storageUrl); // Don't override the cropped preview
         } else {
           alert(result.message || 'Gagal mengupload gambar');
-          setPreview(value || null);
+          setPreview(getPreviewUrl(value || null));
         }
       } catch (error) {
         console.error('Upload error:', error);
         alert('Gagal mengupload gambar');
-        setPreview(value || null);
+        setPreview(getPreviewUrl(value || null));
       } finally {
         setUploading(false);
       }

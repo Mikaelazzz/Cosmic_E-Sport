@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 
 export async function POST(request: NextRequest) {
@@ -43,25 +42,57 @@ export async function POST(request: NextRequest) {
     // Get file extension
     const extension = path.extname(file.name) || '.jpg';
     
-    // Create directory path
-    const uploadDir = path.join(process.cwd(), 'src', 'informasi');
-    
-    // Create directory if it doesn't exist
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
     // Create filename: informasi-[id].[extension]
     const filename = `informasi-${informasiId}${extension}`;
-    const filepath = path.join(uploadDir, filename);
+    const storagePath = `informasi/${filename}`;
 
-    // Convert file to buffer and save
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = new Uint8Array(bytes);
-    
-    await writeFile(filepath, buffer);
 
-    // Return the relative path for database storage
+    // Check if file with this informasi ID already exists and remove it
+    const { data: existingFiles } = await supabase.storage
+      .from('profiles')
+      .list('informasi', {
+        search: `informasi-${informasiId}`
+      });
+
+    if (existingFiles && existingFiles.length > 0) {
+      // Remove existing files with same informasi ID
+      const filesToRemove = existingFiles
+        .filter(f => f.name.startsWith(`informasi-${informasiId}.`))
+        .map(f => `informasi/${f.name}`);
+      
+      if (filesToRemove.length > 0) {
+        await supabase.storage
+          .from('profiles')
+          .remove(filesToRemove);
+      }
+    }
+
+    // Upload new file to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('profiles')
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal mengupload file ke storage'
+      }, { status: 500 });
+    }
+
+    // Return the relative path for database storage (for backwards compatibility)
     const relativePath = `/src/informasi/${filename}`;
 
     return NextResponse.json({
@@ -69,6 +100,7 @@ export async function POST(request: NextRequest) {
       data: {
         filename,
         path: relativePath,
+        filePath: uploadData.path,
         size: file.size,
         type: file.type
       },
