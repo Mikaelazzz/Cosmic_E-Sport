@@ -11,10 +11,10 @@ interface AttendanceRecord {
   hari: string;
   nim: string;
   created_at: string;
-  users?: {
+  users: {
     nama_lengkap: string;
     nim: string;
-  };
+  } | null;
 }
 
 interface MeetingData {
@@ -143,7 +143,7 @@ export async function GET(
       );
     }
 
-    const attendance: AttendanceRecord[] = attendanceData || [];
+    const attendance: any[] = attendanceData || [];
 
     // Calculate statistics
     const totalAttendees = attendance.length;
