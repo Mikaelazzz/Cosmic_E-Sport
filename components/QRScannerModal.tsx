@@ -111,6 +111,16 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     }
     return true;
   };
+
+  // Detect if device is mobile or tablet
+  const isMobileOrTablet = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isTablet = /ipad|android(?!.*mobile)/i.test(userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    return isMobile || isTablet || (isTouchDevice && window.innerWidth <= 1024);
+  };
  
   // Check camera permission status
   const checkPermissionStatus = async () => {
@@ -180,14 +190,28 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
       if (!checkBrowserSupport()) return;
 
-      // Request camera access - use default camera
-      console.log('� Requesting default camera...');
+      // Detect device type and configure camera accordingly
+      const isDevice = isMobileOrTablet();
+      
+      // Configure video constraints based on device type
+      const videoConstraints: any = {
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 },
+        frameRate: { ideal: 30, min: 15 }
+      };
+
+      // For mobile/tablet devices, prefer back camera (environment)
+      if (isDevice) {
+        videoConstraints.facingMode = { ideal: 'environment' };
+        console.log('Mobile/Tablet detected - requesting back camera (environment)');
+      } else {
+        console.log('Desktop detected - using default camera');
+      }
+
+      // Request camera access with appropriate configuration
+      console.log('Requesting camera with constraints:', videoConstraints);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, min: 15 }
-        }
+        video: videoConstraints
       });
 
       console.log('✅ Camera stream acquired');
