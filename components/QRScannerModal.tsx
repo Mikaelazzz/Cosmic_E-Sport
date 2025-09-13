@@ -459,12 +459,6 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       return;
     }
     setLastScanTime(now);
- 
-    console.log('📤 Processing QR Code:', qrData);
-    console.log('📤 QR Data Type:', typeof qrData);
-    console.log('📤 QR Data Length:', qrData?.length);
-    console.log('📤 QR Data Preview:', qrData?.substring(0, 100) + '...');
-    console.log('📋 Pertemuan ID:', pertemuanId);
     
     const pertemuanIdNumber = parseInt(pertemuanId, 10);
     let isValidQR = false;
@@ -488,14 +482,13 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           parsed.qr_code !== undefined ||
           parsed.jam !== undefined ||
           parsed.hari !== undefined) {
-        console.log('❌ STRICT REJECTION: Detected API response or database record');
-        setError('TIDAK VALID: Data yang dipindai adalah response API atau record database. Gunakan QR code presensi asli dari moderator.');
+        setError('❌ TIDAK VALID: QR Code yang dipindai adalah response sistem atau data database, bukan QR presensi yang sah. Mohon pindai QR code presensi asli yang ditampilkan moderator!');
         setIsSubmitting(false);
         setTimeout(() => {
           setError(null);
           setIsScanning(true);
           startScanning();
-        }, 3000);
+        }, 4000); // Increased timeout for longer message
         return;
       }
       
@@ -1073,6 +1066,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         </ModalBody>
         
         <ModalFooter>
+          
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
             {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
               <Button

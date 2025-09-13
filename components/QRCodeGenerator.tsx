@@ -157,13 +157,19 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
     <Modal 
       isOpen={isOpen} 
       onClose={onClose}
-      size="lg"
+      size="md"
       backdrop="blur"
+      placement="center"
+      scrollBehavior="inside"
+      isDismissable={true}
+      hideCloseButton={false}
       classNames={{
-        base: "bg-[#1a1a2e]",
-        header: "border-b border-gray-700",
-        body: "py-6",
-        footer: "border-t border-gray-700"
+        base: "bg-[#1a1a2e] w-auto max-w-[90vw] sm:max-w-[500px] md:max-w-[550px] lg:max-w-[600px] mx-auto my-8 max-h-[85vh]",
+        header: "border-b border-gray-700 px-4 py-3",
+        body: "py-4 px-4 max-h-[60vh] overflow-y-auto",
+        footer: "border-t border-gray-700 px-4 py-3",
+        wrapper: "items-center justify-center p-6",
+        backdrop: "bg-black/50"
       }}
     >
       <ModalContent>
@@ -180,7 +186,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
         
         <ModalBody>
           {error && (
-            <Alert color="danger" className="mb-4">
+            <Alert color="danger" className="mb-3 sm:mb-4 text-sm">
               {error}
             </Alert>
           )}
@@ -188,71 +194,42 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
               <Spinner size="lg" />
-              <p className="text-gray-400 mt-4">Generating QR Code...</p>
+              <p className="text-gray-400 mt-4 text-sm">Generating QR Code...</p>
             </div>
           )}
 
           {qrData && (
-            <div className="space-y-6">
+            <div className="space-y-2">
               {/* QR Code Display */}
-              <Card className="bg-white p-2">
+              <Card className="bg-white mx-auto max-w-sm">
                 <CardBody className="flex items-center justify-center">
-                  <div className="text-center">
+                  <div className="text-center w-full">
                     <img 
                       src={qrData.qr_code} 
                       alt="QR Code for Attendance"
-                      className="mx-auto mb-2 w-80 h-80 max-w-full"
+                      className="mx-auto mb-2 w-full max-w-[200px] sm:max-w-[250px] md:max-w-[280px] h-auto aspect-square"
                     />
-                    <p className="text-gray-600">Scan untuk Absensi</p>
+                    {/* <p className="text-gray-600 text-sm">Scan untuk Absensi</p> */}
                   </div>
                 </CardBody>
               </Card>
 
               {/* Auto-refresh Controls */}
               <div className="bg-gradient-to-r from-[#0f3460] to-[#16213e] p-4 rounded-lg border border-gray-700">
-                {/* <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-white">Auto-Refresh QR Code</h4>
-                    <p className="text-gray-400 text-sm">QR code refreshes every 10 seconds</p>
-                  </div>
-                  <div className="flex gap-2">
-                    {!autoRefresh ? (
-                      <Button
-                        size="sm"
-                        color="success"
-                        onPress={startAutoRefresh}
-                        className="font-semibold"
-                      >
-                        Start Auto-Refresh
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        color="danger"
-                        onPress={stopAutoRefresh}
-                        className="font-semibold"
-                      >
-                        Stop Auto-Refresh
-                      </Button>
-                    )}
-                  </div>
-                </div> */}
-                
                 {/* Countdown Display */}
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-4">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {autoRefresh && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-400 text-sm">Berganti dalam</span>
+                      </div>
+                    )}
                     <div>
-                      {/* <p className="text-gray-400 text-xs">Next refresh in:</p> */}
                       <div className="text-xl font-bold text-[#FFD700]">
                         {formatCountdown(countdown)}
                       </div>
                     </div>
-                    {autoRefresh && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-green-400 text-sm">Auto-refresh active</span>
-                      </div>
-                    )}
                   </div>
                   {/* {qrData && (
                     <p className="text-gray-500 text-xs mt-2">
@@ -272,7 +249,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">QR Code Auto-Refresh</h3>
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-400 mb-6 text-sm max-w-xs mx-auto">
                 QR code untuk absensi akan mulai generate secara otomatis dan refresh setiap 10 detik
               </p>
             </div>
@@ -280,22 +257,27 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
         </ModalBody>
         
         <ModalFooter>
-          <Button 
-            color="danger" 
-            variant="light" 
-            onPress={onClose}
-          >
-            Close
-          </Button>
-          {autoRefresh && (
+          <div className="flex gap-3 justify-end">
             <Button 
-              color="warning" 
-              onPress={stopAutoRefresh}
-              className="font-semibold"
+              color="danger" 
+              variant="light" 
+              onPress={onClose}
+              className="text-sm"
+              size="sm"
             >
-              Stop Auto-Refresh
+              Close
             </Button>
-          )}
+            {/* {autoRefresh && (
+              <Button 
+                color="warning" 
+                onPress={stopAutoRefresh}
+                className="font-semibold text-sm"
+                size="sm"
+              >
+                Stop Auto-Refresh
+              </Button>
+            )} */}
+          </div>
         </ModalFooter>
       </ModalContent>
     </Modal>

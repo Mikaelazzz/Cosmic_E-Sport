@@ -14,7 +14,9 @@ import { Alert } from "@heroui/alert";
 import { Avatar } from "@heroui/avatar";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/dropdown";
 import { useAuth } from '@/context/AuthContext';
+import { getUserAvatarUrl } from '@/lib/avatar';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import ModeratorLayout from '@/components/ModeratorLayout';
 
 // Custom icons
 const IconClock = ({ className }: { className?: string }) => (
@@ -65,6 +67,13 @@ const IconCheck = ({ className }: { className?: string }) => (
 const IconX = ({ className }: { className?: string }) => (
   <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
     <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+  </svg>
+);
+
+const IconDownload = ({ className }: { className?: string }) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
   </svg>
 );
 
@@ -128,6 +137,7 @@ export default function DetailPertemuanPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'hadir' | 'tidak_hadir' | 'terlambat'>('all');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Alert state
   const [alertConfig, setAlertConfig] = useState<{
@@ -379,6 +389,52 @@ export default function DetailPertemuanPage() {
     }
   };
 
+  // Download PDF
+  const downloadPDF = async () => {
+    if (!pertemuan) return;
+    
+    setIsDownloadingPDF(true);
+    try {
+      const response = await fetch(`/api/moderator/absensi/${pertemuanId}/pdf`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Get filename from Content-Disposition header or create default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'laporan-absensi.pdf';
+      
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      showAlert('Berhasil!', 'Laporan PDF berhasil didownload', 'success');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      showAlert('Error!', 'Gagal mendownload laporan PDF', 'danger');
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   // Attendance Slider Component
   const AttendanceSlider = ({ statistik }: { statistik: StatistikKehadiran }) => {
     const { total_anggota, hadir, tidak_hadir, terlambat, persentase_kehadiran } = statistik;
@@ -399,34 +455,26 @@ export default function DetailPertemuanPage() {
 
     return (
       <div className="w-full">
-        <div className="flex justify-between text-sm text-default-600 mb-2">
-          <span className="text-success">Hadir: {hadir}</span>
-          <span className="text-warning">Terlambat: {terlambat}</span>
-          <span className="font-semibold">{persentase_kehadiran}%</span>
-          <span className="text-danger">Tidak Hadir: {tidak_hadir}</span>
+        <div className="text-xs text-gray-400 mb-2">
+          Tingkat Kehadiran: {persentase_kehadiran.toFixed(1)}%
         </div>
-        <div className="relative w-full h-4 bg-default-200 rounded-full overflow-hidden">
+        <div className="w-full h-4 bg-gray-700 rounded-full overflow-hidden flex">
           <div 
-            className="absolute left-0 top-0 h-full bg-success rounded-full transition-all duration-500"
+            className="h-full bg-green-500" 
             style={{ width: `${persentaseHadir}%` }}
           ></div>
           <div 
-            className="absolute top-0 h-full bg-warning rounded-full transition-all duration-500"
-            style={{ 
-              left: `${persentaseHadir}%`,
-              width: `${persentaseTerlambat}%` 
-            }}
+            className="h-full bg-yellow-500" 
+            style={{ width: `${persentaseTerlambat}%` }}
           ></div>
           <div 
-            className="absolute top-0 h-full bg-danger rounded-full transition-all duration-500"
-            style={{ 
-              left: `${persentaseHadir + persentaseTerlambat}%`,
-              width: `${persentaseTidakHadir}%` 
-            }}
+            className="h-full bg-red-500" 
+            style={{ width: `${persentaseTidakHadir}%` }}
           ></div>
         </div>
-        <div className="text-sm text-default-500 mt-2 text-center">
-          {hadir + terlambat + tidak_hadir} / {total_anggota} anggota
+        <div className="text-xs text-gray-400 mt-2 flex justify-between">
+          <span>{hadir + terlambat} / {total_anggota} hadir</span>
+          <span>{tidak_hadir} tidak hadir</span>
         </div>
       </div>
     );
@@ -492,285 +540,394 @@ export default function DetailPertemuanPage() {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <title>Detail Pertemuan - Cosmic E-Sports</title>
       </Head>
-      <div className="min-h-screen p-3 sm:p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 overflow-x-hidden">
-          {/* Alert Notifications */}
-          {alertConfig.show && (
-            <Alert
-              hideIconWrapper
-              color={alertConfig.color}
-              description={alertConfig.description}
-              title={alertConfig.title}
-              variant="bordered"
-              onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
-              isClosable
-              className="mx-2 sm:mx-0"
-            />
-          )}
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div className="w-full">
-            <Button
-              variant="light"
-              onPress={() => router.back()}
-              className="mb-2 sm:mb-4 text-sm"
-              size="sm"
-            >
-              ← Kembali
-            </Button>
-            <h1 className="text-xl sm:text-3xl font-bold text-white">Detail Pertemuan</h1>
-            <p className="text-sm sm:text-base text-gray-300">Kelola detail pertemuan dan absensi anggota</p>
-          </div>
-        </div>
+      <ModeratorLayout
+        title="Detail Pertemuan"
+        description="Kelola jadwal pertemuan dan absensi anggota"
+      >
+        <div className="min-h-screen p-3 sm:p-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 overflow-x-hidden">
+            {/* Alert Notifications */}
+            {alertConfig.show && (
+              <Alert
+                hideIconWrapper
+                color={alertConfig.color}
+                description={alertConfig.description}
+                title={alertConfig.title}
+                variant="bordered"
+                onClose={() => setAlertConfig(prev => ({ ...prev, show: false }))}
+                isClosable
+                className="mx-2 sm:mx-0"
+              />
+            )}
 
-        {/* Section 1: Pertemuan Info */}
-        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur mx-2 sm:mx-0">
-          <CardHeader className="pb-2 sm:pb-4">
-            <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
-              <IconClock className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="truncate">{pertemuan.nama_topik}</span>
-            </h2>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-              <div>
-                <p className="text-xs sm:text-sm text-gray-400">Hari & Tanggal</p>
-                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.hari}</p>
-                <p className="text-xs sm:text-sm text-gray-300">{formatDate(pertemuan.tanggal)}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-400">Kelas</p>
-                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.kelas}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-400">Jam Pertemuan</p>
-                <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.jam_pertemuan}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-400">Status</p>
-                <Chip color={getStatusColor(pertemuan.status)} variant="flat" size="sm">
-                  {pertemuan.status}
-                </Chip>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
-              <div>
-                <p className="text-xs sm:text-sm text-gray-400">Jam Mulai</p>
-                <p className="font-semibold text-white">{formatTime(pertemuan.jam_mulai)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Jam Akhir</p>
-                <p className="font-semibold text-white">{formatTime(pertemuan.jam_akhir)}</p>
-              </div>
-            </div>
+            {/* Section 1: Pertemuan Info */}
+            <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
+              <CardHeader className="pb-2 sm:pb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
+                  <IconClock className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="truncate text-base sm:text-xl">{pertemuan.nama_topik}</span>
+                </h2>
+              </CardHeader>
+              <CardBody className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-400">Hari & Tanggal</p>
+                    <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.hari}</p>
+                    <p className="text-xs sm:text-sm text-gray-300">{formatDate(pertemuan.tanggal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-400">Kelas</p>
+                    <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.kelas}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-400">Jam Pertemuan</p>
+                    <p className="font-semibold text-white text-sm sm:text-base">{pertemuan.jam_pertemuan}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-400">Status</p>
+                    <Chip color={getStatusColor(pertemuan.status)} variant="flat" size="sm">
+                      {pertemuan.status}
+                    </Chip>
+                  </div>
+                </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 flex-wrap">
-              {pertemuan.status === 'belum_mulai' && (
-                <Button
-                  color="success"
-                  startContent={<IconPlay />}
-                  onPress={startMeeting}
-                  isLoading={isUpdatingStatus}
-                  className="font-semibold"
-                >
-                  Mulai Pertemuan
-                </Button>
-              )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-400">Jam Mulai</p>
+                    <p className="font-semibold text-white">{formatTime(pertemuan.jam_mulai)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Jam Akhir</p>
+                    <p className="font-semibold text-white">{formatTime(pertemuan.jam_akhir)}</p>
+                  </div>
+                </div>
 
-              {pertemuan.status === 'berlangsung' && (
-                <>
-                  <Button
-                    color="danger"
-                    startContent={<IconStop />}
-                    onPress={endMeeting}
-                    isLoading={isUpdatingStatus}
-                    className="font-semibold"
-                  >
-                    Akhiri Pertemuan
-                  </Button>
-                  <Button
-                    className="bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-semibold"
-                    startContent={
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
-                      </svg>
-                    }
-                    onPress={openQRModal}
-                  >
-                    Presensi QR
-                  </Button>
-                </>
-              )}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Section 2: Statistik Kehadiran */}
-        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
-          <CardHeader>
-            <h2 className="text-xl font-bold text-[#FFD700] flex items-center gap-2">
-              <IconUsers className="w-6 h-6" />
-              Statistik Kehadiran
-            </h2>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">{statistik.total_anggota}</div>
-                <div className="text-sm text-gray-400">Total Anggota</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-400">{statistik.hadir}</div>
-                <div className="text-sm text-gray-400">Hadir</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400">{statistik.terlambat}</div>
-                <div className="text-sm text-gray-400">Terlambat</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-400">{statistik.tidak_hadir}</div>
-                <div className="text-sm text-gray-400">Tidak Hadir</div>
-              </div>
-            </div>
-            
-            <AttendanceSlider statistik={statistik} />
-          </CardBody>
-        </Card>
-
-        {/* Section 3: List Anggota */}
-        <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-xl font-bold text-[#FFD700] flex items-center gap-2">
-                <IconUsers className="w-6 h-6" />
-                List Anggota
-              </h2>
-              
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <Input
-                  isClearable
-                  placeholder="Cari berdasarkan nama atau NIM..."
-                  startContent={<IconSearch />}
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                  className="w-full sm:w-64"
-                />
-                
-                <Dropdown>
-                  <DropdownTrigger>
-                    <Button variant="flat" startContent={<IconFilter />}>
-                      Filter Status
+                {/* Action Buttons */}
+                <div className="flex gap-3 flex-wrap">
+                  {pertemuan.status === 'belum_mulai' && (
+                    <Button
+                      color="success"
+                      startContent={<IconPlay />}
+                      onPress={startMeeting}
+                      isLoading={isUpdatingStatus}
+                      className="font-semibold"
+                    >
+                      Mulai Pertemuan
                     </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu 
-                    selectedKeys={[statusFilter]}
-                    onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as any)}
-                  >
-                    <DropdownItem key="all">Semua Status</DropdownItem>
-                    <DropdownItem key="hadir">Hadir</DropdownItem>
-                    <DropdownItem key="terlambat">Terlambat</DropdownItem>
-                    <DropdownItem key="tidak_hadir">Tidak Hadir</DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
+                  )}
 
-                {pertemuan.status === 'berlangsung' && (
-                  <Button
-                    color="success"
-                    onPress={absenSemua}
-                    className="font-semibold"
-                  >
-                    Absen Semua
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody>
-            {filteredAbsensi.length > 0 ? (
-              <Table aria-label="Daftar Absensi Anggota">
-                <TableHeader>
-                  <TableColumn>ANGGOTA</TableColumn>
-                  <TableColumn>NIM</TableColumn>
-                  <TableColumn>STATUS</TableColumn>
-                  <TableColumn>WAKTU HADIR</TableColumn>
-                  <TableColumn>AKSI</TableColumn>
-                </TableHeader>
-                <TableBody>
-                  {filteredAbsensi.map((absensi) => (
-                    <TableRow key={absensi.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            name={absensi.user.nama_lengkap}
-                            size="sm"
-                            className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black"
-                          />
-                          <div>
-                            <p className="font-medium text-white">{absensi.user.nama_lengkap}</p>
-                            <p className="text-xs text-gray-400">{absensi.user.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">{absensi.user.nim}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Chip color={getAttendanceStatusColor(absensi.status)} variant="flat" size="sm">
-                          {getStatusText(absensi.status)}
-                        </Chip>
-                      </TableCell>
-                      <TableCell>
-                        {absensi.waktu_absen ? 
-                          new Date(absensi.waktu_absen).toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : '-'
+                  {pertemuan.status === 'berlangsung' && (
+                    <>
+                      <Button
+                        color="danger"
+                        startContent={<IconStop />}
+                        onPress={endMeeting}
+                        isLoading={isUpdatingStatus}
+                        className="font-semibold"
+                      >
+                        Akhiri Pertemuan
+                      </Button>
+                      <Button
+                        className="bg-[#FFD700] hover:bg-[#FFD700]/90 text-black font-semibold"
+                        startContent={
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
+                          </svg>
                         }
-                      </TableCell>
-                      <TableCell>
-                        {pertemuan.status === 'berlangsung' && (
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              color="success"
-                              variant="flat"
-                              onPress={() => handleManualAbsen(absensi.user.id, 'hadir')}
-                              startContent={<IconCheck className="w-3 h-3" />}
-                            >
-                              Hadir
-                            </Button>
-                            <Button
-                              size="sm"
-                              color="warning"
-                              variant="flat"
-                              onPress={() => handleManualAbsen(absensi.user.id, 'terlambat')}
-                              startContent={<IconClock className="w-3 h-3" />}
-                            >
-                              Terlambat
-                            </Button>
-                            <Button
-                              size="sm"
-                              color="danger"
-                              variant="flat"
-                              onPress={() => handleManualAbsen(absensi.user.id, 'tidak_hadir')}
-                              startContent={<IconX className="w-3 h-3" />}
-                            >
-                              Tidak Hadir
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        onPress={openQRModal}
+                      >
+                        Presensi QR
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Download PDF Button - Available for all meeting statuses */}
+                  <Button
+                    color="primary"
+                    variant="bordered"
+                    startContent={<IconDownload />}
+                    onPress={downloadPDF}
+                    isLoading={isDownloadingPDF}
+                    className="font-semibold border-blue-500 text-blue-400 hover:bg-blue-500/10"
+                  >
+                    Download PDF
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Section 2: Statistik Kehadiran */}
+            <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
+              <CardHeader>
+                <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
+                  <IconUsers className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className='text-base sm:text-xl'>
+                  Statistik Kehadiran
+                  </span>
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white">{statistik.total_anggota}</div>
+                    <div className="text-sm text-gray-400">Total Anggota</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-400">{statistik.hadir}</div>
+                    <div className="text-sm text-gray-400">Hadir</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-yellow-400">{statistik.terlambat}</div>
+                    <div className="text-sm text-gray-400">Terlambat</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-red-400">{statistik.tidak_hadir}</div>
+                    <div className="text-sm text-gray-400">Tidak Hadir</div>
+                  </div>
+                </div>
+                
+                <AttendanceSlider statistik={statistik} />
+              </CardBody>
+            </Card>
+
+            {/* Section 3: List Anggota */}
+            <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
+              <CardHeader>
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
+                    <IconUsers className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span className="text-base sm:text-xl">List Anggota</span>
+                  </h2>
+                  
+                  <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                    <Input
+                      isClearable
+                      placeholder="Cari nama atau NIM..."
+                      startContent={<IconSearch className="w-4 h-4" />}
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      className="w-full"
+                      size="md"
+                      classNames={{
+                        input: "text-sm",
+                        inputWrapper: "h-10"
+                      }}
+                    />
+                    
+                    <div className="flex gap-2">
+                      <Dropdown>
+                        <DropdownTrigger>
+                          <Button variant="flat" startContent={<IconFilter className="w-4 h-4" />} size="sm" className="text-xs">
+                            Filter
+                          </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu 
+                          selectedKeys={[statusFilter]}
+                          onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as any)}
+                        >
+                          <DropdownItem key="all">Semua Status</DropdownItem>
+                          <DropdownItem key="hadir">Hadir</DropdownItem>
+                          <DropdownItem key="terlambat">Terlambat</DropdownItem>
+                          <DropdownItem key="tidak_hadir">Tidak Hadir</DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
+
+                      {pertemuan.status === 'berlangsung' && (
+                        <Button
+                          color="success"
+                          onPress={absenSemua}
+                          size="sm"
+                          className="font-semibold text-xs whitespace-nowrap"
+                        >
+                          Absen Semua
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody>
+                    {filteredAbsensi.length > 0 ? (
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block">
+                          <Table aria-label="Daftar Absensi Anggota">
+                            <TableHeader>
+                              <TableColumn>ANGGOTA</TableColumn>
+                              <TableColumn>NIM</TableColumn>
+                              <TableColumn>STATUS</TableColumn>
+                              <TableColumn>WAKTU HADIR</TableColumn>
+                              <TableColumn>AKSI</TableColumn>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredAbsensi.map((absensi) => (
+                                <TableRow key={absensi.id}>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                                        <img 
+                                          src={getUserAvatarUrl(absensi.user, 40, true) || '/logc.png'}
+                                          alt="Profile"
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            e.currentTarget.src = '/logc.png';
+                                          }}
+                                        />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-white">{absensi.user.nama_lengkap}</p>
+                                        <p className="text-xs text-gray-400">{absensi.user.email}</p>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="font-mono text-sm">{absensi.user.nim}</span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip color={getAttendanceStatusColor(absensi.status)} variant="flat" size="sm">
+                                      {getStatusText(absensi.status)}
+                                    </Chip>
+                                  </TableCell>
+                                  <TableCell>
+                                    {absensi.waktu_absen ? 
+                                      new Date(absensi.waktu_absen).toLocaleTimeString('id-ID', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      }) : '-'
+                                    }
+                                  </TableCell>
+                                  <TableCell>
+                                    {pertemuan.status === 'berlangsung' && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          size="sm"
+                                          color="success"
+                                          variant="flat"
+                                          onPress={() => handleManualAbsen(absensi.user.id, 'hadir')}
+                                          startContent={<IconCheck className="w-3 h-3" />}
+                                        >
+                                          Hadir
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          color="warning"
+                                          variant="flat"
+                                          onPress={() => handleManualAbsen(absensi.user.id, 'terlambat')}
+                                          startContent={<IconClock className="w-3 h-3" />}
+                                        >
+                                          Terlambat
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          color="danger"
+                                          variant="flat"
+                                          onPress={() => handleManualAbsen(absensi.user.id, 'tidak_hadir')}
+                                          startContent={<IconX className="w-3 h-3" />}
+                                        >
+                                          Tidak Hadir
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="sm:hidden space-y-3">
+                          {filteredAbsensi.map((absensi) => (
+                            <Card key={absensi.id} className="bg-gray-800/50 border border-gray-700 hover:border-yellow-400/50 transition-colors">
+                              <CardBody className="p-3">
+                                <div className="space-y-2.5">
+                                  {/* Header with Profile */}
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-10 h-10 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+                                      <img 
+                                        src={getUserAvatarUrl(absensi.user, 200, true) || '/logc.png'}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.src = '/logc.png';
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-sm font-semibold text-white truncate">{absensi.user.nama_lengkap}</h3>
+                                      <p className="text-xs text-gray-400">{absensi.user.nim}</p>
+                                    </div>
+                                    <Chip color={getAttendanceStatusColor(absensi.status)} variant="flat" size="sm" className="text-xs">
+                                      {getStatusText(absensi.status)}
+                                    </Chip>
+                                  </div>
+
+                                  {/* Details */}
+                                  <div className="space-y-1.5 text-xs">
+                                    <div>
+                                      <span className="text-gray-400">Email: </span>
+                                      <span className="text-gray-200 font-medium break-all">{absensi.user.email}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-400">Waktu: </span>
+                                      <span className="text-gray-200 font-medium">
+                                        {absensi.waktu_absen ? 
+                                          new Date(absensi.waktu_absen).toLocaleTimeString('id-ID', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          }) : '-'
+                                        }
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions for Mobile */}
+                                  {pertemuan.status === 'berlangsung' && (
+                                    <div className="flex gap-1.5 pt-2 border-t border-gray-700">
+                                      <Button
+                                        size="sm"
+                                        color="success"
+                                        variant="flat"
+                                        onPress={() => handleManualAbsen(absensi.user.id, 'hadir')}
+                                        startContent={<IconCheck className="w-3 h-3" />}
+                                        className="flex-1 text-xs"
+                                      >
+                                        Hadir
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        color="warning"
+                                        variant="flat"
+                                        onPress={() => handleManualAbsen(absensi.user.id, 'terlambat')}
+                                        startContent={<IconClock className="w-3 h-3" />}
+                                        className="flex-1 text-xs"
+                                      >
+                                        Terlambat
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        color="danger"
+                                        variant="flat"
+                                        onPress={() => handleManualAbsen(absensi.user.id, 'tidak_hadir')}
+                                        startContent={<IconX className="w-3 h-3" />}
+                                        className="flex-1 text-xs"
+                                      >
+                                        Tidak Hadir
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardBody>
+                            </Card>
+                          ))}
+                        </div>
+                      </>
             ) : (
-              <div className="text-center py-8">
-                <IconUsers className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-400 mb-2">
+              <div className="text-center py-12">
+                <IconUsers className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-400 text-lg mb-2">
                   {searchQuery || statusFilter !== 'all' ? 'Tidak ada anggota yang sesuai dengan filter' : 'Belum ada data absensi'}
                 </p>
                 <p className="text-sm text-gray-500">
@@ -778,20 +935,21 @@ export default function DetailPertemuanPage() {
                 </p>
               </div>
             )}
-          </CardBody>
-        </Card>
-      </div>
+              </CardBody>
+            </Card>
 
-        {/* QR Code Generator Modal */}
-        <QRCodeGenerator
-          pertemuanId={pertemuanId}
-          isOpen={isQRModalOpen}
-          onClose={closeQRModal}
-          onSuccess={() => {
-            showAlert('Success!', 'QR Code generated successfully', 'success');
-          }}
-        />
-      </div>
+            {/* QR Code Generator Modal */}
+            <QRCodeGenerator
+              pertemuanId={pertemuanId}
+              isOpen={isQRModalOpen}
+              onClose={closeQRModal}
+              onSuccess={() => {
+                showAlert('Success!', 'QR Code generated successfully', 'success');
+              }}
+            />
+          </div>
+        </div>
+      </ModeratorLayout>
     </>
   );
 }

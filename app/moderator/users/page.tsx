@@ -40,6 +40,24 @@ interface UserData {
   jabatan?: string;
   profile_image?: string;
   created_at: string;
+  attendance_count?: number;
+  total_meetings?: number;
+}
+
+interface AttendanceRecord {
+  id: string;
+  pertemuan_id: string;
+  status: 'hadir' | 'terlambat' | 'tidak_hadir';
+  jam: string;
+  hari: string;
+  jadwal_pertemuan: {
+    nama_topik: string;
+    tanggal: string;
+    hari: string;
+    kelas: string;
+    jam_mulai: string;
+    jam_akhir: string;
+  };
 }
 
 interface FormData {
@@ -65,6 +83,7 @@ const columns = [
   {name: "NIM", uid: "nim", sortable: true},
   {name: "ROLE", uid: "role", sortable: true},
   {name: "JABATAN", uid: "jabatan", sortable: true},
+  {name: "KEHADIRAN", uid: "attendance", sortable: true},
   {name: "ACTIONS", uid: "actions"},
 ];
 
@@ -74,7 +93,7 @@ const roleOptions = [
   {name: "Admin", uid: "admin"},
 ];
 
-const INITIAL_VISIBLE_COLUMNS = ["name", "email", "nim", "role", "jabatan", "actions"];
+const INITIAL_VISIBLE_COLUMNS = ["name", "email", "nim", "role", "jabatan", "attendance", "actions"];
 
 const roleColorMap = {
   user: "default" as const,
@@ -123,6 +142,18 @@ export default function UsersPage() {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isAttendanceOpen, onOpen: onAttendanceOpen, onClose: onAttendanceClose } = useDisclosure();
+
+  // Attendance modal state
+  const [selectedUserAttendance, setSelectedUserAttendance] = useState<{
+    user: UserData | null;
+    attendanceList: AttendanceRecord[];
+    loading: boolean;
+  }>({
+    user: null,
+    attendanceList: [],
+    loading: false
+  });
 
   // Fetch function
   const fetchUsers = useCallback(async (force = false) => {
@@ -511,6 +542,42 @@ export default function UsersPage() {
     }
   };
 
+  const handleViewAttendance = async (user: UserData) => {
+    setSelectedUserAttendance({
+      user,
+      attendanceList: [],
+      loading: true
+    });
+    onAttendanceOpen();
+
+    try {
+      const response = await fetch(`/api/moderator/users/${user.id}/attendance`);
+      const result = await response.json();
+
+      if (result.success) {
+        setSelectedUserAttendance({
+          user,
+          attendanceList: result.data.attendance || [],
+          loading: false
+        });
+      } else {
+        console.error('Failed to fetch attendance:', result.message);
+        setSelectedUserAttendance({
+          user,
+          attendanceList: [],
+          loading: false
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      setSelectedUserAttendance({
+        user,
+        attendanceList: [],
+        loading: false
+      });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -620,6 +687,23 @@ export default function UsersPage() {
           <div className="flex flex-col">
             <p className="text-bold text-small capitalize">
               {user.jabatan ? user.jabatan.replace('_', ' ') : '-'}
+            </p>
+          </div>
+        );
+      case "attendance":
+        return (
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => handleViewAttendance(user)}
+              className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium transition-colors"
+            >
+              {user.attendance_count || 0} / {user.total_meetings || 0}
+            </button>
+            <p className="text-xs text-gray-500">
+              {user.total_meetings && user.total_meetings > 0 
+                ? `${Math.round(((user.attendance_count || 0) / user.total_meetings) * 100)}%`
+                : '0%'
+              }
             </p>
           </div>
         );
@@ -994,6 +1078,19 @@ export default function UsersPage() {
                     <span className="text-default-500">Jabatan:</span>
                     <span>{user.jabatan || '-'}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-default-500">Kehadiran:</span>
+                    <button
+                      onClick={() => handleViewAttendance(user)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium transition-colors"
+                    >
+                      {user.attendance_count || 0} / {user.total_meetings || 0} 
+                      ({user.total_meetings && user.total_meetings > 0 
+                        ? `${Math.round(((user.attendance_count || 0) / user.total_meetings) * 100)}%`
+                        : '0%'
+                      })
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="flex gap-2 mt-4">
@@ -1276,6 +1373,127 @@ export default function UsersPage() {
                     isLoading={isSubmitting}
                   >
                     Ya, Hapus
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Attendance History Modal */}
+        <Modal
+          isOpen={isAttendanceOpen}
+          onClose={() => {
+            onAttendanceClose();
+            setSelectedUserAttendance({
+              user: null,
+              attendanceList: [],
+              loading: false
+            });
+          }}
+          placement="center"
+          size="2xl"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  <h3 className="text-lg font-semibold">
+                    Riwayat Kehadiran - {selectedUserAttendance.user?.nama_lengkap}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {selectedUserAttendance.user?.email} | {selectedUserAttendance.user?.nim || 'Tidak ada NIM'}
+                  </p>
+                </ModalHeader>
+                <ModalBody>
+                  {selectedUserAttendance.loading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <Spinner size="lg" />
+                    </div>
+                  ) : selectedUserAttendance.attendanceList.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-green-600">
+                            {selectedUserAttendance.attendanceList.filter(a => a.status === 'hadir').length}
+                          </p>
+                          <p className="text-xs text-gray-500">Hadir</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-yellow-600">
+                            {selectedUserAttendance.attendanceList.filter(a => a.status === 'terlambat').length}
+                          </p>
+                          <p className="text-xs text-gray-500">Terlambat</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-red-600">
+                            {selectedUserAttendance.attendanceList.filter(a => a.status === 'tidak_hadir').length}
+                          </p>
+                          <p className="text-xs text-gray-500">Tidak Hadir</p>
+                        </div>
+                      </div>
+                      
+                      <div className="max-h-96 overflow-y-auto">
+                        <div className="space-y-3">
+                          {selectedUserAttendance.attendanceList.map((attendance, index) => (
+                            <div key={attendance.id} className="border rounded-lg p-4 space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-semibold text-sm">
+                                    {attendance.jadwal_pertemuan?.nama_topik || 'Topik tidak tersedia'}
+                                  </h4>
+                                  <p className="text-xs text-gray-500">
+                                    {attendance.jadwal_pertemuan?.tanggal 
+                                      ? new Date(attendance.jadwal_pertemuan.tanggal).toLocaleDateString('id-ID', {
+                                          weekday: 'long',
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })
+                                      : 'Tanggal tidak tersedia'
+                                    }
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Kelas: {attendance.jadwal_pertemuan?.kelas || 'Tidak tersedia'}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <Chip
+                                    size="sm"
+                                    color={
+                                      attendance.status === 'hadir' ? 'success' :
+                                      attendance.status === 'terlambat' ? 'warning' : 'danger'
+                                    }
+                                    variant="flat"
+                                  >
+                                    {attendance.status === 'hadir' ? 'Hadir' :
+                                     attendance.status === 'terlambat' ? 'Terlambat' : 'Tidak Hadir'}
+                                  </Chip>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {attendance.jam 
+                                      ? new Date(attendance.jam).toLocaleTimeString('id-ID', {
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })
+                                      : 'Waktu tidak tersedia'
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Belum ada riwayat kehadiran</p>
+                    </div>
+                  )}
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="primary" variant="flat" onPress={onClose}>
+                    Tutup
                   </Button>
                 </ModalFooter>
               </>
