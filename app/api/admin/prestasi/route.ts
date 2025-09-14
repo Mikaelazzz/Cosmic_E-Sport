@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
         if (uploadError) {
           console.error('Error uploading image to Supabase:', uploadError);
         } else {
-          // Set temporary path that will be updated after getting the ID
-          gambar_url = `/src/prestasi/${tempFileName}`;
+          // Store just the filename for later renaming
+          gambar_url = tempFileName;
           console.log('Image uploaded temporarily to Supabase:', uploadData.path);
         }
       } catch (fileError) {
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     if (gambar_url && data?.id) {
       try {
         const fileExt = gambar_pemenang!.name.split('.').pop() || 'jpg';
-        const tempFileName = gambar_url.split('/').pop()!; // Get temp filename
+        const tempFileName = gambar_url; // This is now just the filename
         
         // New filename with prestasi ID
         const finalFileName = `Prestasi-${data.id}.${fileExt}`;
@@ -154,18 +154,17 @@ export async function POST(request: NextRequest) {
         } else {
           console.log('Image renamed in Supabase to:', finalFileName);
           
-          // Update the database with the correct filename
-          const finalImageUrl = `/src/prestasi/${finalFileName}`;
+          // Update the database with just the filename (no path prefix)
           const { error: updateError } = await supabaseAdmin
             .from('prestasi')
-            .update({ gambar_pemenang: finalImageUrl })
+            .update({ gambar_pemenang: finalFileName })
             .eq('id', data.id);
 
           if (updateError) {
             console.error('Error updating image URL:', updateError);
           } else {
-            data.gambar_pemenang = finalImageUrl;
-            console.log('Prestasi updated with final image URL:', finalImageUrl);
+            data.gambar_pemenang = finalFileName;
+            console.log('Prestasi updated with final filename:', finalFileName);
           }
         }
       } catch (renameError) {

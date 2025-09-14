@@ -12,6 +12,7 @@ import { Chip } from '@heroui/chip';
 import { Spinner } from '@heroui/spinner';
 import { IconTrophy, IconUpload, IconEdit, IconTrash, IconPlus, IconSearch } from '@/components/icons';
 import AdminLayout from '@/components/AdminLayout';
+import { getPrestasiImageUrl } from '@/lib/prestasi-image';
 
 interface Prestasi {
   id: number;
@@ -193,7 +194,8 @@ export default function PrestasiPage() {
     
     // Set existing image preview if available
     if (prestasiItem.gambar_pemenang) {
-      setImagePreview(prestasiItem.gambar_pemenang);
+      const imageUrl = getPrestasiImageUrl(prestasiItem.gambar_pemenang);
+      setImagePreview(imageUrl);
     } else {
       setImagePreview(null);
     }

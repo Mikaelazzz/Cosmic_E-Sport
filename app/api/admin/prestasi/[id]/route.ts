@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
+
+// Create Supabase client with service role key to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 interface RouteParams {
   params: Promise<{
@@ -32,7 +44,7 @@ export async function PATCH(
     }
 
     // Get current prestasi data
-    const { data: currentData, error: fetchError } = await supabase
+    const { data: currentData, error: fetchError } = await supabaseAdmin
       .from('prestasi')
       .select('gambar_pemenang')
       .eq('id', id)
@@ -50,33 +62,42 @@ export async function PATCH(
 
     // Handle image upload if new image provided
     if (gambar_pemenang && gambar_pemenang.size > 0) {
-      const fileExt = gambar_pemenang.name.split('.').pop();
-      const fileName = `prestasi_${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('prestasi-images')
-        .upload(fileName, gambar_pemenang);
-
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-      } else {
-        // Delete old image if exists
-        if (currentData.gambar_pemenang) {
-          const oldFileName = currentData.gambar_pemenang.split('/').pop();
-          await supabase.storage
-            .from('prestasi-images')
-            .remove([oldFileName || '']);
-        }
-
-        const { data: { publicUrl } } = supabase.storage
+      try {
+        const fileExt = gambar_pemenang.name.split('.').pop() || 'jpg';
+        const fileName = `Prestasi-${id}.${fileExt}`;
+        
+        // Convert file to buffer
+        const bytes = await gambar_pemenang.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        
+        // Upload to Supabase Storage (will overwrite if exists)
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
           .from('prestasi-images')
-          .getPublicUrl(fileName);
-        gambar_url = publicUrl;
+          .upload(fileName, buffer, {
+            contentType: gambar_pemenang.type,
+            upsert: true // Allow overwrite
+          });
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+        } else {
+          // Delete old image if it has different name
+          if (currentData.gambar_pemenang && currentData.gambar_pemenang !== fileName) {
+            await supabaseAdmin.storage
+              .from('prestasi-images')
+              .remove([currentData.gambar_pemenang]);
+          }
+
+          gambar_url = fileName; // Store just the filename
+          console.log('Image uploaded to Supabase:', fileName);
+        }
+      } catch (fileError) {
+        console.error('Error saving image:', fileError);
       }
     }
 
     // Update prestasi data
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('prestasi')
       .update({
         nama_tournament,
@@ -122,7 +143,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Get prestasi data to delete associated image
-    const { data: prestasiData, error: fetchError } = await supabase
+    const { data: prestasiData, error: fetchError } = await supabaseAdmin
       .from('prestasi')
       .select('gambar_pemenang')
       .eq('id', id)
@@ -138,14 +159,13 @@ export async function DELETE(
 
     // Delete image from storage if exists
     if (prestasiData.gambar_pemenang) {
-      const fileName = prestasiData.gambar_pemenang.split('/').pop();
-      await supabase.storage
+      await supabaseAdmin.storage
         .from('prestasi-images')
-        .remove([fileName || '']);
+        .remove([prestasiData.gambar_pemenang]);
     }
 
     // Delete prestasi record
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('prestasi')
       .delete()
       .eq('id', id);
