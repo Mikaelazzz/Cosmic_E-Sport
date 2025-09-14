@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 import { createClient } from '@supabase/supabase-js';
-import { writeFile, mkdir, rename } from 'fs/promises';
-import path from 'path';
 
 // Create Supabase client with service role key to bypass RLS
 const supabaseAdmin = createClient(
@@ -80,31 +78,34 @@ export async function POST(request: NextRequest) {
 
     let gambar_url = null;
 
-    // Handle image upload to local filesystem
+    // Handle image upload to Supabase Storage
     if (gambar_pemenang && gambar_pemenang.size > 0) {
       try {
         // Get file extension
         const fileExt = gambar_pemenang.name.split('.').pop() || 'jpg';
         
-        // Create directory if it doesn't exist
-        const uploadDir = path.join(process.cwd(), 'src', 'prestasi');
-        await mkdir(uploadDir, { recursive: true });
+        // Create a unique filename with timestamp first (will be updated with ID later)
+        const tempFileName = `prestasi-temp-${Date.now()}.${fileExt}`;
         
-        // Read file buffer
+        // Convert file to buffer
         const bytes = await gambar_pemenang.arrayBuffer();
         const buffer = Buffer.from(bytes);
         
-        // For now, use timestamp as temporary filename until we get the ID
-        const tempFileName = `prestasi-temp-${Date.now()}.${fileExt}`;
-        const tempFilePath = path.join(uploadDir, tempFileName);
-        
-        // Save file temporarily  
-        await writeFile(tempFilePath, new Uint8Array(buffer));
-        
-        // Set the temporary path for now, we'll rename it after getting the ID
-        gambar_url = `/src/prestasi/${tempFileName}`;
-        
-        console.log('Image saved temporarily to:', tempFilePath);
+        // Upload to Supabase Storage temporarily
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+          .from('prestasi-images')
+          .upload(tempFileName, buffer, {
+            contentType: gambar_pemenang.type,
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Error uploading image to Supabase:', uploadError);
+        } else {
+          // Set temporary path that will be updated after getting the ID
+          gambar_url = `/src/prestasi/${tempFileName}`;
+          console.log('Image uploaded temporarily to Supabase:', uploadData.path);
+        }
       } catch (fileError) {
         console.error('Error saving image:', fileError);
         // Continue without image if file save fails
@@ -138,29 +139,34 @@ export async function POST(request: NextRequest) {
     if (gambar_url && data?.id) {
       try {
         const fileExt = gambar_pemenang!.name.split('.').pop() || 'jpg';
-        const uploadDir = path.join(process.cwd(), 'src', 'prestasi');
-        const oldFileName = gambar_url.split('/').pop()!;
-        const oldFilePath = path.join(uploadDir, oldFileName);
+        const tempFileName = gambar_url.split('/').pop()!; // Get temp filename
         
         // New filename with prestasi ID
-        const newFileName = `Prestasi-${data.id}.${fileExt}`;
-        const newFilePath = path.join(uploadDir, newFileName);
+        const finalFileName = `Prestasi-${data.id}.${fileExt}`;
         
-        // Rename file
-        await rename(oldFilePath, newFilePath);
-        
-        // Update the database with the correct filename
-        const newImageUrl = `/src/prestasi/${newFileName}`;
-        const { error: updateError } = await supabaseAdmin
-          .from('prestasi')
-          .update({ gambar_pemenang: newImageUrl })
-          .eq('id', data.id);
+        // Move from temp name to final name in Supabase Storage
+        const { data: moveData, error: moveError } = await supabaseAdmin.storage
+          .from('prestasi-images')
+          .move(tempFileName, finalFileName);
 
-        if (updateError) {
-          console.error('Error updating image URL:', updateError);
+        if (moveError) {
+          console.error('Error renaming image in Supabase:', moveError);
         } else {
-          data.gambar_pemenang = newImageUrl;
-          console.log('Image renamed to:', newFilePath);
+          console.log('Image renamed in Supabase to:', finalFileName);
+          
+          // Update the database with the correct filename
+          const finalImageUrl = `/src/prestasi/${finalFileName}`;
+          const { error: updateError } = await supabaseAdmin
+            .from('prestasi')
+            .update({ gambar_pemenang: finalImageUrl })
+            .eq('id', data.id);
+
+          if (updateError) {
+            console.error('Error updating image URL:', updateError);
+          } else {
+            data.gambar_pemenang = finalImageUrl;
+            console.log('Prestasi updated with final image URL:', finalImageUrl);
+          }
         }
       } catch (renameError) {
         console.error('Error renaming image file:', renameError);
