@@ -16,6 +16,7 @@ import CardScrollAnimation from "@/components/CardScrollAnimation";
 import Preloader from "@/components/Preloader";
 import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
+import { getPrestasiImageUrl } from "@/lib/prestasi-image";
 
 interface PrestasiItem {
   id: number;
@@ -464,7 +465,7 @@ export default function Home() {
                 {/* Profile image */}
                 <div className="mb-4">
                   <img
-                    src={item.img}
+                    src={getPrestasiImageUrl(item.img) || '/logo.png'}
                     alt={item.title}
                     className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
                     onError={(e) => {

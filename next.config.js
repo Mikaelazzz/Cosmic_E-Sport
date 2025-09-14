@@ -7,7 +7,7 @@ const nextConfig = {
   compress: true,
   generateEtags: false,
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'hvksrxrjbjdynrsesmrk.supabase.co'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     formats: ['image/webp', 'image/avif'],
@@ -16,12 +16,7 @@ const nextConfig = {
     // optimizeCss: true, // Disabled temporarily due to critters dependency issue
   },
   async rewrites() {
-    return [
-      {
-        source: '/src/prestasi/:path*',
-        destination: '/api/images/prestasi/:path*'
-      }
-    ];
+    return [];
   },
   async headers() {
     return [
