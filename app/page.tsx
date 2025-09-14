@@ -60,7 +60,7 @@ export default function Home() {
             level: "Regional",
             date: "1 Januari 2025",
             players: "5 Players",
-            img: "/pengurus/download.jpg",
+            img: "/logo.png",
             badge: "1st"
           }
         ]);
@@ -75,7 +75,7 @@ export default function Home() {
           level: "Regional", 
           date: "1 Januari 2025",
           players: "5 Players",
-          img: "/pengurus/download.jpg",
+          img: "/logo.png",
           badge: "1st"
         }
       ]);
@@ -468,7 +468,7 @@ export default function Home() {
                     alt={item.title}
                     className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
                     onError={(e) => {
-                      e.currentTarget.src = '/pengurus/download.jpg'; // fallback image
+                      e.currentTarget.src = '/logo.png'; // fallback image
                     }}
                   />
                 </div>

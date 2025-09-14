@@ -42,7 +42,7 @@ export async function GET() {
         day: 'numeric'
       }),
       players: `${item.jumlah_anggota} Player${item.jumlah_anggota > 1 ? 's' : ''}`,
-      img: item.gambar_pemenang || '/pengurus/download.jpg', // fallback image
+      img: item.gambar_pemenang || '/logo.png', // fallback image
       badge: getJuaraBadge(item.juara),
       description: item.deskripsi,
       rawDate: item.tanggal_acara

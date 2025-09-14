@@ -9,7 +9,6 @@ import { Divider } from "@heroui/divider";
 import { Alert } from "@heroui/alert";
 import { Spinner } from "@heroui/spinner";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
-import { Slider } from "@heroui/slider";
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
 import ModeratorLayout from "@/components/ModeratorLayout";
@@ -37,234 +36,113 @@ const EyeIcon = ({ isVisible, onClick }: { isVisible: boolean; onClick: () => vo
   </button>
 );
 
-// Crop Editor Component dengan aspect ratio 1:1
-const CropEditor = ({ imageSrc, onCrop, onCancel }: {
+// Simple Image Converter Component dengan automatic 1:1 aspect ratio
+const ImageConverter = ({ imageSrc, onConvert, onCancel }: {
   imageSrc: string;
-  onCrop: (croppedImageBlob: Blob) => void;
+  onConvert: (convertedImageBlob: Blob) => void;
   onCancel: () => void;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Simplified state management using percentages
-  const [cropPosition, setCropPosition] = useState({ x: 25, y: 25 }); // Percentage position
-  const [cropSize, setCropSize] = useState(50); // Percentage size
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [displayDimensions, setDisplayDimensions] = useState({ width: 0, height: 0 });
-
-  // Simplified handler functions for sliders
-  const handlePositionChange = (axis: 'x' | 'y', value: number) => {
-    setCropPosition(prev => ({ ...prev, [axis]: value }));
-  };
-
-  const handleSizeChange = (value: number) => {
-    setCropSize(value);
-  };
-
-  // Calculate crop area in pixels from percentages
-  const getCropArea = () => {
-    const size = Math.min(displayDimensions.width, displayDimensions.height) * (cropSize / 100);
-    const maxX = displayDimensions.width - size;
-    const maxY = displayDimensions.height - size;
-    
-    return {
-      x: (cropPosition.x / 100) * maxX,
-      y: (cropPosition.y / 100) * maxY,
-      width: size,
-      height: size
-    };
-  };
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleImageLoad = () => {
-    const img = imageRef.current;
-    if (!img) return;
-
-    // Set container size based on available space
-    const containerWidth = Math.min(400, window.innerWidth - 80);
-    const containerHeight = containerWidth; // Square container
-    
-    setDisplayDimensions({ width: containerWidth, height: containerHeight });
     setImageLoaded(true);
   };
 
-  const handleCrop = () => {
+  const handleConvert = async () => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
     if (!canvas || !img || !imageLoaded) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    setIsProcessing(true);
 
-    // Set canvas size to square (1:1 aspect ratio)
-    const outputSize = 400;
-    canvas.width = outputSize;
-    canvas.height = outputSize;
+    try {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Get crop area from percentages
-    const cropArea = getCropArea();
+      // Set canvas size to square (1:1 aspect ratio)
+      const outputSize = 400;
+      canvas.width = outputSize;
+      canvas.height = outputSize;
 
-    // Calculate scaling factors from display to natural image size
-    const scaleX = img.naturalWidth / displayDimensions.width;
-    const scaleY = img.naturalHeight / displayDimensions.height;
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
-    // Calculate source crop area in natural image coordinates
-    const sourceX = cropArea.x * scaleX;
-    const sourceY = cropArea.y * scaleY;
-    const sourceWidth = cropArea.width * scaleX;
-    const sourceHeight = cropArea.height * scaleY;
+      // Calculate the square crop from center
+      const minDimension = Math.min(naturalWidth, naturalHeight);
+      const cropX = (naturalWidth - minDimension) / 2;
+      const cropY = (naturalHeight - minDimension) / 2;
 
-    // Clear canvas and draw cropped image
-    ctx.clearRect(0, 0, outputSize, outputSize);
-    ctx.drawImage(
-      img,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0, 0, outputSize, outputSize
-    );
+      // Clear canvas and draw square cropped image
+      ctx.clearRect(0, 0, outputSize, outputSize);
+      ctx.drawImage(
+        img,
+        cropX,
+        cropY,
+        minDimension,
+        minDimension,
+        0, 0, outputSize, outputSize
+      );
 
-    canvas.toBlob((blob) => {
-      if (blob) onCrop(blob);
-    }, 'image/jpeg', 0.9);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          onConvert(blob);
+        }
+        setIsProcessing(false);
+      }, 'image/jpeg', 0.9);
+    } catch (error) {
+      console.error('Error converting image:', error);
+      setIsProcessing(false);
+    }
   };
 
   return (
-    <div className="space-y-4 flex flex-col items-center">
-      <div className="text-center mb-4 px-4">
-        <p className="text-sm text-gray-400 mb-2">
-          Use sliders to adjust crop position and size
+    <div className="space-y-4">
+      {/* Preview */}
+      <div className="text-center">
+        <p className="text-sm text-gray-300 mb-3">
+          Preview gambar akan dikonversi ke aspect ratio 1:1 (persegi)
         </p>
-        <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
-      </div>
-      
-      <div
-        ref={containerRef}
-        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2"
-        style={{ 
-          width: `${displayDimensions.width}px`, 
-          height: `${displayDimensions.height}px`,
-          maxWidth: '90vw',
-          maxHeight: '60vh'
-        }}
-      >
-        <img
-          ref={imageRef}
-          src={imageSrc}
-          alt="Crop preview"
-          className="block"
-          onLoad={handleImageLoad}
-          style={{ 
-            width: `${displayDimensions.width}px`, 
-            height: `${displayDimensions.height}px`,
-            objectFit: 'contain'
-          }}
-          draggable={false}
-        />
-        {imageLoaded && (
-          <>
-            {/* Crop area visualization */}
-            <div
-              className="absolute border-2 border-yellow-400 pointer-events-none"
-              style={{
-                left: `${getCropArea().x}px`,
-                top: `${getCropArea().y}px`,
-                width: `${getCropArea().width}px`,
-                height: `${getCropArea().height}px`
-              }}
-            >
-              {/* Grid lines for better visualization */}
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className="border border-white border-opacity-20" />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Slider Controls */}
-      {imageLoaded && (
-        <div className="w-full max-w-md mx-auto px-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Horizontal Position: {Math.round(cropPosition.x)}%
-            </label>
-            <Slider
-              value={cropPosition.x}
-              onChange={(value) => handlePositionChange('x', value as number)}
-              minValue={0}
-              maxValue={100}
-              step={1}
-              className="w-full"
-              classNames={{
-                track: "bg-gray-700",
-                filler: "bg-yellow-400",
-                thumb: "bg-yellow-400"
-              }}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Vertical Position: {Math.round(cropPosition.y)}%
-            </label>
-            <Slider
-              value={cropPosition.y}
-              onChange={(value) => handlePositionChange('y', value as number)}
-              minValue={0}
-              maxValue={100}
-              step={1}
-              className="w-full"
-              classNames={{
-                track: "bg-gray-700",
-                filler: "bg-yellow-400",
-                thumb: "bg-yellow-400"
-              }}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Crop Size: {Math.round(cropSize)}%
-            </label>
-            <Slider
-              value={cropSize}
-              onChange={(value) => handleSizeChange(value as number)}
-              minValue={10}
-              maxValue={90}
-              step={1}
-              className="w-full"
-              classNames={{
-                track: "bg-gray-700",
-                filler: "bg-yellow-400",
-                thumb: "bg-yellow-400"
-              }}
-            />
-          </div>
+        <div className="relative inline-block rounded-lg overflow-hidden border border-gray-600 bg-gray-800">
+          <img
+            ref={imageRef}
+            src={imageSrc}
+            alt="Preview"
+            className="block max-w-[300px] max-h-[300px] object-contain"
+            onLoad={handleImageLoad}
+          />
         </div>
-      )}
+      </div>
       
-      <canvas ref={canvasRef} className="hidden" />
+      {/* Hidden canvas for processing */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
       
-      <div className="flex flex-col sm:flex-row gap-3 mt-6 px-4 w-full sm:w-auto">
-        <Button 
-          color="success" 
-          onPress={handleCrop} 
-          isDisabled={!imageLoaded}
-          className="px-8 w-full sm:w-auto"
-        >
-          Crop & Save
-        </Button>
-        <Button 
-          color="danger" 
-          variant="light" 
+      {/* Controls */}
+      <div className="flex justify-center gap-3 pt-2">
+        <Button
+          variant="light"
           onPress={onCancel}
-          className="px-8 w-full sm:w-auto"
+          className="text-gray-300"
+          disabled={isProcessing}
         >
-          Cancel
+          Batal
+        </Button>
+        <Button
+          color="primary"
+          onPress={handleConvert}
+          disabled={!imageLoaded || isProcessing}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {isProcessing ? (
+            <>
+              <Spinner size="sm" color="white" />
+              Memproses...
+            </>
+          ) : (
+            'Gunakan Gambar'
+          )}
         </Button>
       </div>
     </div>
@@ -941,13 +819,13 @@ export default function ModeratorProfilePage() {
       >
         <ModalContent>
           <ModalHeader className="text-white">
-            <h3>Crop Your Avatar</h3>
+            <h3>Convert Image to Square</h3>
           </ModalHeader>
           <ModalBody>
             {selectedImage && (
-              <CropEditor
+              <ImageConverter
                 imageSrc={selectedImage}
-                onCrop={handleCropSave}
+                onConvert={handleCropSave}
                 onCancel={() => setShowCropModal(false)}
               />
             )}
