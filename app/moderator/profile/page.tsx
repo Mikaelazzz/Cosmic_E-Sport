@@ -9,6 +9,7 @@ import { Divider } from "@heroui/divider";
 import { Alert } from "@heroui/alert";
 import { Spinner } from "@heroui/spinner";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
+import { Slider } from "@heroui/slider";
 import Lottie from "lottie-react";
 import { useAuth } from "@/context/AuthContext";
 import ModeratorLayout from "@/components/ModeratorLayout";
@@ -45,311 +46,46 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
+  
+  // Simplified state management using percentages
+  const [cropPosition, setCropPosition] = useState({ x: 25, y: 25 }); // Percentage position
+  const [cropSize, setCropSize] = useState(50); // Percentage size
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [imageDimensions, setImageDimensions] = useState({ width: 400, height: 400 });
-  const [displayDimensions, setDisplayDimensions] = useState({ width: 400, height: 400 });
-  const [lastPinchDistance, setLastPinchDistance] = useState(0);
-  const [isPinching, setIsPinching] = useState(false);
+  const [displayDimensions, setDisplayDimensions] = useState({ width: 0, height: 0 });
 
-  // Helper function to calculate distance between two touches
-  const calculateTouchDistance = (touch1: Touch | React.Touch, touch2: Touch | React.Touch) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
+  // Simplified handler functions for sliders
+  const handlePositionChange = (axis: 'x' | 'y', value: number) => {
+    setCropPosition(prev => ({ ...prev, [axis]: value }));
   };
 
-  // Document-level touch event handlers for better mobile support
-  const handleDocumentTouchMove = (e: TouchEvent) => {
-    if (!containerRef.current || e.touches.length === 0) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    // Handle pinch-to-resize with two fingers
-    if (e.touches.length === 2 && isPinching) {
-      const distance = calculateTouchDistance(e.touches[0], e.touches[1]);
-      
-      if (lastPinchDistance > 0) {
-        const scale = distance / lastPinchDistance;
-        const newSize = Math.max(50, Math.min(
-          Math.min(displayDimensions.width, displayDimensions.height) * 0.9,
-          cropArea.width * scale
-        ));
-        
-        // Center the resize operation
-        const centerX = cropArea.x + cropArea.width / 2;
-        const centerY = cropArea.y + cropArea.height / 2;
-        const newX = centerX - newSize / 2;
-        const newY = centerY - newSize / 2;
-        
-        // Constrain within bounds
-        const maxX = displayDimensions.width - newSize;
-        const maxY = displayDimensions.height - newSize;
-        
-        setCropArea({
-          x: Math.max(0, Math.min(maxX, newX)),
-          y: Math.max(0, Math.min(maxY, newY)),
-          width: newSize,
-          height: newSize,
-        });
-      }
-      
-      setLastPinchDistance(distance);
-      return;
-    }
-
-    // Handle single finger drag
-    if (e.touches.length === 1 && (isDragging || isResizing)) {
-      const touch = e.touches[0];
-
-      if (isDragging) {
-        const newX = touch.clientX - rect.left - dragStart.x;
-        const newY = touch.clientY - rect.top - dragStart.y;
-
-        // Constrain crop area within image boundaries
-        const maxX = displayDimensions.width - cropArea.width;
-        const maxY = displayDimensions.height - cropArea.height;
-
-        setCropArea(prev => ({
-          ...prev,
-          x: Math.max(0, Math.min(maxX, newX)),
-          y: Math.max(0, Math.min(maxY, newY)),
-        }));
-      } else if (isResizing) {
-        const deltaX = touch.clientX - dragStart.x;
-        const deltaY = touch.clientY - dragStart.y;
-        
-        // Use the maximum delta to maintain square aspect ratio
-        const delta = Math.max(deltaX, deltaY);
-        
-        // Calculate new size (always square)
-        const currentSize = cropArea.width; // Since it's square, width = height
-        const newSize = Math.max(50, currentSize + delta);
-        
-        // Maximum size is limited by the smallest image dimension and boundaries
-        const maxSize = Math.min(
-          displayDimensions.width - cropArea.x,
-          displayDimensions.height - cropArea.y,
-          displayDimensions.width,
-          displayDimensions.height
-        );
-        
-        const finalSize = Math.min(newSize, maxSize);
-        
-        // Adjust position to keep crop area within bounds
-        const maxX = displayDimensions.width - finalSize;
-        const maxY = displayDimensions.height - finalSize;
-        
-        setCropArea(prev => ({
-          x: Math.max(0, Math.min(maxX, prev.x)),
-          y: Math.max(0, Math.min(maxY, prev.y)),
-          width: finalSize,
-          height: finalSize, // Keep 1:1 aspect ratio
-        }));
-        
-        setDragStart({ x: touch.clientX, y: touch.clientY });
-      }
-    }
+  const handleSizeChange = (value: number) => {
+    setCropSize(value);
   };
 
-  const handleDocumentTouchEnd = (e: TouchEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    setIsResizing(false);
-    setIsPinching(false);
-    setLastPinchDistance(0);
+  // Calculate crop area in pixels from percentages
+  const getCropArea = () => {
+    const size = Math.min(displayDimensions.width, displayDimensions.height) * (cropSize / 100);
+    const maxX = displayDimensions.width - size;
+    const maxY = displayDimensions.height - size;
     
-    // Remove global touch listeners
-    document.removeEventListener('touchmove', handleDocumentTouchMove);
-    document.removeEventListener('touchend', handleDocumentTouchEnd);
-  };
-
-  // Cleanup effect for document event listeners
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('touchmove', handleDocumentTouchMove);
-      document.removeEventListener('touchend', handleDocumentTouchEnd);
+    return {
+      x: (cropPosition.x / 100) * maxX,
+      y: (cropPosition.y / 100) * maxY,
+      width: size,
+      height: size
     };
-  }, []);
+  };
 
   const handleImageLoad = () => {
     const img = imageRef.current;
-    const container = containerRef.current;
-    if (!img || !container) return;
+    if (!img) return;
 
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
+    // Set container size based on available space
+    const containerWidth = Math.min(400, window.innerWidth - 80);
+    const containerHeight = containerWidth; // Square container
     
-    // Calculate display dimensions while maintaining aspect ratio
-    // Make it responsive to screen size
-    const isSmallScreen = window.innerWidth < 640; // sm breakpoint
-    const maxContainerSize = isSmallScreen ? Math.min(300, window.innerWidth - 40) : 500;
-    const aspectRatio = naturalWidth / naturalHeight;
-    
-    let displayWidth, displayHeight;
-    
-    if (aspectRatio > 1) {
-      // Landscape image
-      displayWidth = Math.min(maxContainerSize, naturalWidth);
-      displayHeight = displayWidth / aspectRatio;
-    } else {
-      // Portrait or square image
-      displayHeight = Math.min(maxContainerSize, naturalHeight);
-      displayWidth = displayHeight * aspectRatio;
-    }
-    
-    setImageDimensions({ width: naturalWidth, height: naturalHeight });
-    setDisplayDimensions({ width: displayWidth, height: displayHeight });
-    
-    // Set initial crop area (square in the center with maximum possible size)
-    const minDimension = Math.min(displayWidth, displayHeight);
-    const maxCropSize = minDimension * 0.8; // 80% of the smaller dimension
-    
-    setCropArea({
-      x: (displayWidth - maxCropSize) / 2,
-      y: (displayHeight - maxCropSize) / 2,
-      width: maxCropSize,
-      height: maxCropSize, // Always square (1:1 aspect ratio)
-    });
-    
+    setDisplayDimensions({ width: containerWidth, height: containerHeight });
     setImageLoaded(true);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent, action: 'drag' | 'resize' = 'drag') => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-
-    if (action === 'resize') {
-      setIsResizing(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    } else {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - rect.left - cropArea.x,
-        y: e.clientY - rect.top - cropArea.y,
-      });
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent, action: 'drag' | 'resize' = 'drag') => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    // Handle pinch-to-resize with two fingers
-    if (e.touches.length === 2) {
-      setIsPinching(true);
-      setLastPinchDistance(calculateTouchDistance(e.touches[0], e.touches[1]));
-      
-      // Add global touch listeners for pinch
-      document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-      document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
-      return;
-    }
-
-    // Handle single touch for drag/resize
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const rect = container.getBoundingClientRect();
-
-      if (action === 'resize') {
-        setIsResizing(true);
-        setDragStart({ x: touch.clientX, y: touch.clientY });
-      } else {
-        setIsDragging(true);
-        setDragStart({
-          x: touch.clientX - rect.left - cropArea.x,
-          y: touch.clientY - rect.top - cropArea.y,
-        });
-      }
-
-      // Add global touch listeners to handle movement outside the container
-      document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-      document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current || (!isDragging && !isResizing)) return;
-
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    if (isDragging) {
-      const newX = e.clientX - rect.left - dragStart.x;
-      const newY = e.clientY - rect.top - dragStart.y;
-
-      // Constrain crop area within image boundaries
-      const maxX = displayDimensions.width - cropArea.width;
-      const maxY = displayDimensions.height - cropArea.height;
-
-      setCropArea(prev => ({
-        ...prev,
-        x: Math.max(0, Math.min(maxX, newX)),
-        y: Math.max(0, Math.min(maxY, newY)),
-      }));
-    } else if (isResizing) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-      
-      // Use the maximum delta to maintain square aspect ratio
-      const delta = Math.max(deltaX, deltaY);
-      
-      // Calculate new size (always square)
-      const currentSize = cropArea.width; // Since it's square, width = height
-      const newSize = Math.max(50, currentSize + delta);
-      
-      // Maximum size is limited by the smallest image dimension and boundaries
-      const maxSize = Math.min(
-        displayDimensions.width - cropArea.x,
-        displayDimensions.height - cropArea.y,
-        displayDimensions.width,
-        displayDimensions.height
-      );
-      
-      const finalSize = Math.min(newSize, maxSize);
-      
-      // Adjust position to keep crop area within bounds
-      const maxX = displayDimensions.width - finalSize;
-      const maxY = displayDimensions.height - finalSize;
-      
-      setCropArea(prev => ({
-        x: Math.max(0, Math.min(maxX, prev.x)),
-        y: Math.max(0, Math.min(maxY, prev.y)),
-        width: finalSize,
-        height: finalSize, // Keep 1:1 aspect ratio
-      }));
-      
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    
-    // Remove global touch listeners
-    document.removeEventListener('touchmove', handleDocumentTouchMove);
-    document.removeEventListener('touchend', handleDocumentTouchEnd);
   };
 
   const handleCrop = () => {
@@ -365,9 +101,12 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     canvas.width = outputSize;
     canvas.height = outputSize;
 
+    // Get crop area from percentages
+    const cropArea = getCropArea();
+
     // Calculate scaling factors from display to natural image size
-    const scaleX = imageDimensions.width / displayDimensions.width;
-    const scaleY = imageDimensions.height / displayDimensions.height;
+    const scaleX = img.naturalWidth / displayDimensions.width;
+    const scaleY = img.naturalHeight / displayDimensions.height;
 
     // Calculate source crop area in natural image coordinates
     const sourceX = cropArea.x * scaleX;
@@ -395,43 +134,20 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     <div className="space-y-4 flex flex-col items-center">
       <div className="text-center mb-4 px-4">
         <p className="text-sm text-gray-400 mb-2">
-          <span className="hidden sm:inline">Drag to move, use corner handles to resize, or scroll to zoom</span>
-          <span className="sm:hidden">Touch and drag to move, use corner handles to resize, or pinch to zoom</span>
+          Use sliders to adjust crop position and size
         </p>
         <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
-        <p className="text-xs text-gray-500 sm:hidden mt-1">Use two fingers to pinch and resize the crop area</p>
       </div>
       
       <div
         ref={containerRef}
-        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2 select-none"
+        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2"
         style={{ 
           width: `${displayDimensions.width}px`, 
           height: `${displayDimensions.height}px`,
           maxWidth: '90vw',
-          maxHeight: '60vh',
-          touchAction: 'none',
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-          WebkitTouchCallout: 'none',
-          WebkitTapHighlightColor: 'transparent'
+          maxHeight: '60vh'
         }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={(e) => {
-          // Allow pinch gesture on container
-          if (e.touches.length === 2) {
-            e.preventDefault();
-            setIsPinching(true);
-            setLastPinchDistance(calculateTouchDistance(e.touches[0], e.touches[1]));
-            document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-            document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
-          }
-        }}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        onContextMenu={(e) => e.preventDefault()}
       >
         <img
           ref={imageRef}
@@ -448,164 +164,88 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
         />
         {imageLoaded && (
           <>
-            {/* Overlay to darken non-crop areas */}
-            <div className="absolute inset-0 pointer-events-none">
-              {/* Top overlay */}
-              <div 
-                className="absolute bg-black bg-opacity-50"
-                style={{
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: `${cropArea.y}px`
-                }}
-              />
-              {/* Bottom overlay */}
-              <div 
-                className="absolute bg-black bg-opacity-50"
-                style={{
-                  top: `${cropArea.y + cropArea.height}px`,
-                  left: 0,
-                  width: '100%',
-                  height: `${displayDimensions.height - cropArea.y - cropArea.height}px`
-                }}
-              />
-              {/* Left overlay */}
-              <div 
-                className="absolute bg-black bg-opacity-50"
-                style={{
-                  top: `${cropArea.y}px`,
-                  left: 0,
-                  width: `${cropArea.x}px`,
-                  height: `${cropArea.height}px`
-                }}
-              />
-              {/* Right overlay */}
-              <div 
-                className="absolute bg-black bg-opacity-50"
-                style={{
-                  top: `${cropArea.y}px`,
-                  left: `${cropArea.x + cropArea.width}px`,
-                  width: `${displayDimensions.width - cropArea.x - cropArea.width}px`,
-                  height: `${cropArea.height}px`
-                }}
-              />
-            </div>
-
-            {/* Crop area */}
+            {/* Crop area visualization */}
             <div
-              className="absolute border-2 border-yellow-400 cursor-move bg-transparent touch-manipulation select-none"
+              className="absolute border-2 border-yellow-400 pointer-events-none"
               style={{
-                left: `${cropArea.x}px`,
-                top: `${cropArea.y}px`,
-                width: `${cropArea.width}px`,
-                height: `${cropArea.height}px`,
-                touchAction: 'none',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none',
-                WebkitTapHighlightColor: 'transparent',
-                minWidth: '40px',
-                minHeight: '40px'
-              }}
-              onMouseDown={(e) => handleMouseDown(e, 'drag')}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                handleTouchStart(e, 'drag');
+                left: `${getCropArea().x}px`,
+                top: `${getCropArea().y}px`,
+                width: `${getCropArea().width}px`,
+                height: `${getCropArea().height}px`
               }}
             >
               {/* Grid lines for better visualization */}
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
                 {Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} className="border border-white border-opacity-20" />
                 ))}
               </div>
-              
-              {/* Corner resize handles */}
-              <div 
-                className="absolute bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white touch-manipulation select-none" 
-                style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  top: '-16px', 
-                  left: '-16px',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleTouchStart(e, 'resize');
-                }}
-              />
-              <div 
-                className="absolute bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white touch-manipulation select-none" 
-                style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  top: '-16px', 
-                  right: '-16px',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleTouchStart(e, 'resize');
-                }}
-              />
-              <div 
-                className="absolute bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white touch-manipulation select-none" 
-                style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  bottom: '-16px', 
-                  left: '-16px',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleTouchStart(e, 'resize');
-                }}
-              />
-              <div 
-                className="absolute bg-yellow-400 rounded-full cursor-se-resize border-2 border-white touch-manipulation select-none" 
-                style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  bottom: '-16px', 
-                  right: '-16px',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleTouchStart(e, 'resize');
-                }}
-              />
             </div>
           </>
         )}
       </div>
+
+      {/* Slider Controls */}
+      {imageLoaded && (
+        <div className="w-full max-w-md mx-auto px-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-300">
+              Horizontal Position: {Math.round(cropPosition.x)}%
+            </label>
+            <Slider
+              value={cropPosition.x}
+              onChange={(value) => handlePositionChange('x', value as number)}
+              minValue={0}
+              maxValue={100}
+              step={1}
+              className="w-full"
+              classNames={{
+                track: "bg-gray-700",
+                filler: "bg-yellow-400",
+                thumb: "bg-yellow-400"
+              }}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-300">
+              Vertical Position: {Math.round(cropPosition.y)}%
+            </label>
+            <Slider
+              value={cropPosition.y}
+              onChange={(value) => handlePositionChange('y', value as number)}
+              minValue={0}
+              maxValue={100}
+              step={1}
+              className="w-full"
+              classNames={{
+                track: "bg-gray-700",
+                filler: "bg-yellow-400",
+                thumb: "bg-yellow-400"
+              }}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-300">
+              Crop Size: {Math.round(cropSize)}%
+            </label>
+            <Slider
+              value={cropSize}
+              onChange={(value) => handleSizeChange(value as number)}
+              minValue={10}
+              maxValue={90}
+              step={1}
+              className="w-full"
+              classNames={{
+                track: "bg-gray-700",
+                filler: "bg-yellow-400",
+                thumb: "bg-yellow-400"
+              }}
+            />
+          </div>
+        </div>
+      )}
       
       <canvas ref={canvasRef} className="hidden" />
       
