@@ -465,19 +465,23 @@ export default function ImageUpload({
       )}
 
       {/* Crop Adjustment Modal */}
-      <Modal isOpen={showCropModal} onClose={handleModalClose} size="lg">
+      <Modal isOpen={showCropModal} onClose={handleModalClose} size="full" classNames={{
+        base: "sm:max-w-2xl sm:max-h-[90vh] sm:mx-auto sm:my-auto",
+        body: "px-4 sm:px-6",
+        footer: "px-4 sm:px-6"
+      }}>
         <ModalContent>
-          <ModalHeader>
+          <ModalHeader className="px-4 sm:px-6">
             <h3 className="text-lg font-semibold">Sesuaikan Posisi Gambar</h3>
           </ModalHeader>
           <ModalBody>
             {originalFile && (
               <div className="space-y-6">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 px-2">
                   Sesuaikan posisi crop untuk mendapatkan bagian gambar yang diinginkan dalam rasio 16:9
                 </div>
                 
-                <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden mx-2" style={{ aspectRatio: '16/9' }}>
                   <img
                     src={cropPreview || URL.createObjectURL(originalFile)}
                     alt="Preview"
@@ -486,7 +490,7 @@ export default function ImageUpload({
                   <div className="absolute inset-0 border-2 border-primary border-dashed"></div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 px-2">
                   <div>
                     <label className="block text-sm font-medium mb-2">
                       Posisi Horizontal: {cropPosition.x}%
@@ -518,16 +522,18 @@ export default function ImageUpload({
               </div>
             )}
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="light"
               onPress={handleModalClose}
+              className="w-full sm:w-auto order-2 sm:order-1"
             >
               Batal
             </Button>
             <Button
               color="primary"
               onPress={handleCropAdjustment}
+              className="w-full sm:w-auto order-1 sm:order-2"
             >
               Terapkan
             </Button>

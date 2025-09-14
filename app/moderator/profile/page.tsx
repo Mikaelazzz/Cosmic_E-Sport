@@ -62,7 +62,9 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     const naturalHeight = img.naturalHeight;
     
     // Calculate display dimensions while maintaining aspect ratio
-    const maxContainerSize = 500; // Increased for better visibility
+    // Make it responsive to screen size
+    const isSmallScreen = window.innerWidth < 640; // sm breakpoint
+    const maxContainerSize = isSmallScreen ? Math.min(300, window.innerWidth - 40) : 500;
     const aspectRatio = naturalWidth / naturalHeight;
     
     let displayWidth, displayHeight;
@@ -216,19 +218,19 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
 
   return (
     <div className="space-y-4 flex flex-col items-center">
-      <div className="text-center mb-4">
+      <div className="text-center mb-4 px-4">
         <p className="text-sm text-gray-400 mb-2">Drag to move, use corner handles to resize</p>
         <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
       </div>
       
       <div
         ref={containerRef}
-        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900"
+        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2"
         style={{ 
           width: `${displayDimensions.width}px`, 
           height: `${displayDimensions.height}px`,
           maxWidth: '90vw',
-          maxHeight: '70vh'
+          maxHeight: '60vh'
         }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -323,12 +325,12 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
       
       <canvas ref={canvasRef} className="hidden" />
       
-      <div className="flex gap-3 mt-6">
+      <div className="flex flex-col sm:flex-row gap-3 mt-6 px-4 w-full sm:w-auto">
         <Button 
           color="success" 
           onPress={handleCrop} 
           isDisabled={!imageLoaded}
-          className="px-8"
+          className="px-8 w-full sm:w-auto"
         >
           Crop & Save
         </Button>
@@ -336,7 +338,7 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
           color="danger" 
           variant="light" 
           onPress={onCancel}
-          className="px-8"
+          className="px-8 w-full sm:w-auto"
         >
           Cancel
         </Button>
@@ -1002,15 +1004,15 @@ export default function ModeratorProfilePage() {
       </div>
 
       {/* Crop Modal */}
-      <Modal 
-        isOpen={showCropModal} 
+      <Modal
+        isOpen={showCropModal}
         onClose={() => setShowCropModal(false)}
-        size="lg"
+        size="full"
         classNames={{
-          base: "bg-black",
+          base: "bg-black sm:max-w-lg sm:max-h-[90vh] sm:mx-auto sm:my-auto",
           header: "border-b border-gray-700",
-          body: "py-6",
-          footer: "border-t border-gray-700"
+          body: "py-6 px-4 sm:px-6",
+          footer: "border-t border-gray-700 px-4 sm:px-6"
         }}
       >
         <ModalContent>
