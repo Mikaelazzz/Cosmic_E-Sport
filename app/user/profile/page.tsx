@@ -50,6 +50,82 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   const [imageDimensions, setImageDimensions] = useState({ width: 400, height: 400 });
   const [displayDimensions, setDisplayDimensions] = useState({ width: 400, height: 400 });
 
+  // Document-level touch event handlers for better mobile support
+  const handleDocumentTouchMove = (e: TouchEvent) => {
+    if (!containerRef.current || (!isDragging && !isResizing) || e.touches.length === 0) return;
+    
+    e.preventDefault();
+    
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const touch = e.touches[0];
+
+    if (isDragging) {
+      const newX = touch.clientX - rect.left - dragStart.x;
+      const newY = touch.clientY - rect.top - dragStart.y;
+
+      // Constrain crop area within image boundaries
+      const maxX = displayDimensions.width - cropArea.width;
+      const maxY = displayDimensions.height - cropArea.height;
+
+      setCropArea(prev => ({
+        ...prev,
+        x: Math.max(0, Math.min(maxX, newX)),
+        y: Math.max(0, Math.min(maxY, newY)),
+      }));
+    } else if (isResizing) {
+      const deltaX = touch.clientX - dragStart.x;
+      const deltaY = touch.clientY - dragStart.y;
+      
+      // Use the maximum delta to maintain square aspect ratio
+      const delta = Math.max(deltaX, deltaY);
+      
+      // Calculate new size (always square)
+      const currentSize = cropArea.width; // Since it's square, width = height
+      const newSize = Math.max(50, currentSize + delta);
+      
+      // Maximum size is limited by the smallest image dimension and boundaries
+      const maxSize = Math.min(
+        displayDimensions.width - cropArea.x,
+        displayDimensions.height - cropArea.y,
+        displayDimensions.width,
+        displayDimensions.height
+      );
+      
+      const finalSize = Math.min(newSize, maxSize);
+      
+      // Adjust position to keep crop area within bounds
+      const maxX = displayDimensions.width - finalSize;
+      const maxY = displayDimensions.height - finalSize;
+      
+      setCropArea(prev => ({
+        x: Math.max(0, Math.min(maxX, prev.x)),
+        y: Math.max(0, Math.min(maxY, prev.y)),
+        width: finalSize,
+        height: finalSize, // Keep 1:1 aspect ratio
+      }));
+      
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleDocumentTouchEnd = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    
+    // Remove global touch listeners
+    document.removeEventListener('touchmove', handleDocumentTouchMove);
+    document.removeEventListener('touchend', handleDocumentTouchEnd);
+  };
+
+  // Cleanup effect for document event listeners
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('touchmove', handleDocumentTouchMove);
+      document.removeEventListener('touchend', handleDocumentTouchEnd);
+    };
+  }, []);
+
   const handleImageLoad = () => {
     const img = imageRef.current;
     const container = containerRef.current;
@@ -114,6 +190,32 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent, action: 'drag' | 'resize' = 'drag') => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const container = containerRef.current;
+    if (!container || e.touches.length === 0) return;
+
+    const touch = e.touches[0];
+    const rect = container.getBoundingClientRect();
+
+    if (action === 'resize') {
+      setIsResizing(true);
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    } else {
+      setIsDragging(true);
+      setDragStart({
+        x: touch.clientX - rect.left - cropArea.x,
+        y: touch.clientY - rect.top - cropArea.y,
+      });
+    }
+
+    // Add global touch listeners to handle movement outside the container
+    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+    document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current || (!isDragging && !isResizing)) return;
 
@@ -174,6 +276,15 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     setIsResizing(false);
   };
 
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    
+    // Remove global touch listeners
+    document.removeEventListener('touchmove', handleDocumentTouchMove);
+    document.removeEventListener('touchend', handleDocumentTouchEnd);
+  };
+
   const handleCrop = () => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
@@ -216,22 +327,30 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   return (
     <div className="space-y-4 flex flex-col items-center">
       <div className="text-center mb-4 px-4">
-        <p className="text-sm text-gray-400 mb-2">Drag to move, use corner handles to resize</p>
+        <p className="text-sm text-gray-400 mb-2">
+          <span className="hidden sm:inline">Drag to move, use corner handles to resize</span>
+          <span className="sm:hidden">Touch and drag to move, use corner handles to resize</span>
+        </p>
         <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
       </div>
       
       <div
         ref={containerRef}
-        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2"
+        className="relative rounded-lg overflow-hidden border-2 border-gray-600 bg-gray-900 mx-2 select-none"
         style={{ 
           width: `${displayDimensions.width}px`, 
           height: `${displayDimensions.height}px`,
           maxWidth: '90vw',
-          maxHeight: '60vh'
+          maxHeight: '60vh',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none'
         }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <img
           ref={imageRef}
@@ -294,14 +413,21 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
 
             {/* Crop area */}
             <div
-              className="absolute border-2 border-yellow-400 cursor-move bg-transparent"
+              className="absolute border-2 border-yellow-400 cursor-move bg-transparent touch-manipulation select-none"
               style={{
                 left: `${cropArea.x}px`,
                 top: `${cropArea.y}px`,
                 width: `${cropArea.width}px`,
                 height: `${cropArea.height}px`,
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none'
               }}
               onMouseDown={(e) => handleMouseDown(e, 'drag')}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleTouchStart(e, 'drag');
+              }}
             >
               {/* Grid lines for better visualization */}
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
@@ -311,10 +437,78 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
               </div>
               
               {/* Corner resize handles */}
-              <div className="absolute -top-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-              <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-              <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
-              <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full cursor-se-resize border-2 border-white" onMouseDown={(e) => handleMouseDown(e, 'resize')} />
+              <div 
+                className="absolute bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white touch-manipulation select-none" 
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  top: '-12px', 
+                  left: '-12px',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }}
+                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleTouchStart(e, 'resize');
+                }}
+              />
+              <div 
+                className="absolute bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white touch-manipulation select-none" 
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  top: '-12px', 
+                  right: '-12px',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }}
+                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleTouchStart(e, 'resize');
+                }}
+              />
+              <div 
+                className="absolute bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white touch-manipulation select-none" 
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  bottom: '-12px', 
+                  left: '-12px',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }}
+                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleTouchStart(e, 'resize');
+                }}
+              />
+              <div 
+                className="absolute bg-yellow-400 rounded-full cursor-se-resize border-2 border-white touch-manipulation select-none" 
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  bottom: '-12px', 
+                  right: '-12px',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }}
+                onMouseDown={(e) => handleMouseDown(e, 'resize')} 
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleTouchStart(e, 'resize');
+                }}
+              />
             </div>
           </>
         )}
