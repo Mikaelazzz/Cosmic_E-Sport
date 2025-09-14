@@ -121,6 +121,17 @@ export async function GET() {
       console.error('Error fetching daily members:', dailyMembersError);
     }
 
+    // Get total members before 30 days ago for proper cumulative calculation
+    const { count: membersBeforeThirtyDays, error: beforeMembersError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .lt('created_at', thirtyDaysAgo.toISOString())
+      .neq('role', 'admin');
+
+    if (beforeMembersError) {
+      console.error('Error fetching members before 30 days:', beforeMembersError);
+    }
+
     // Process daily members data for chart
     interface Member {
       created_at: string;
@@ -145,7 +156,7 @@ export async function GET() {
     }
 
     // Count members per day
-    let cumulativeCount = 0;
+    let cumulativeCount = membersBeforeThirtyDays || 0; // Start with members before 30 days ago
     last30Days.forEach(date => {
       const membersOnDate = dailyMembers?.filter(member => 
         member.created_at.split('T')[0] === date
