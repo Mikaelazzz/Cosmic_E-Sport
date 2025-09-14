@@ -49,69 +49,120 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imageDimensions, setImageDimensions] = useState({ width: 400, height: 400 });
   const [displayDimensions, setDisplayDimensions] = useState({ width: 400, height: 400 });
+  const [lastPinchDistance, setLastPinchDistance] = useState(0);
+  const [isPinching, setIsPinching] = useState(false);
+
+  // Helper function to calculate distance between two touches
+  // Accept both DOM Touch and React.Touch to avoid type mismatches between native and React events.
+  const calculateTouchDistance = (touch1: Touch | React.Touch, touch2: Touch | React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
 
   // Document-level touch event handlers for better mobile support
   const handleDocumentTouchMove = (e: TouchEvent) => {
-    if (!containerRef.current || (!isDragging && !isResizing) || e.touches.length === 0) return;
+    if (!containerRef.current || e.touches.length === 0) return;
     
     e.preventDefault();
+    e.stopPropagation();
     
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
-    const touch = e.touches[0];
 
-    if (isDragging) {
-      const newX = touch.clientX - rect.left - dragStart.x;
-      const newY = touch.clientY - rect.top - dragStart.y;
+    // Handle pinch-to-resize with two fingers
+    if (e.touches.length === 2 && isPinching) {
+      const distance = calculateTouchDistance(e.touches[0], e.touches[1]);
+      
+      if (lastPinchDistance > 0) {
+        const scale = distance / lastPinchDistance;
+        const newSize = Math.max(50, Math.min(
+          Math.min(displayDimensions.width, displayDimensions.height) * 0.9,
+          cropArea.width * scale
+        ));
+        
+        // Center the resize operation
+        const centerX = cropArea.x + cropArea.width / 2;
+        const centerY = cropArea.y + cropArea.height / 2;
+        const newX = centerX - newSize / 2;
+        const newY = centerY - newSize / 2;
+        
+        // Constrain within bounds
+        const maxX = displayDimensions.width - newSize;
+        const maxY = displayDimensions.height - newSize;
+        
+        setCropArea({
+          x: Math.max(0, Math.min(maxX, newX)),
+          y: Math.max(0, Math.min(maxY, newY)),
+          width: newSize,
+          height: newSize,
+        });
+      }
+      
+      setLastPinchDistance(distance);
+      return;
+    }
 
-      // Constrain crop area within image boundaries
-      const maxX = displayDimensions.width - cropArea.width;
-      const maxY = displayDimensions.height - cropArea.height;
+    // Handle single finger drag
+    if (e.touches.length === 1 && (isDragging || isResizing)) {
+      const touch = e.touches[0];
 
-      setCropArea(prev => ({
-        ...prev,
-        x: Math.max(0, Math.min(maxX, newX)),
-        y: Math.max(0, Math.min(maxY, newY)),
-      }));
-    } else if (isResizing) {
-      const deltaX = touch.clientX - dragStart.x;
-      const deltaY = touch.clientY - dragStart.y;
-      
-      // Use the maximum delta to maintain square aspect ratio
-      const delta = Math.max(deltaX, deltaY);
-      
-      // Calculate new size (always square)
-      const currentSize = cropArea.width; // Since it's square, width = height
-      const newSize = Math.max(50, currentSize + delta);
-      
-      // Maximum size is limited by the smallest image dimension and boundaries
-      const maxSize = Math.min(
-        displayDimensions.width - cropArea.x,
-        displayDimensions.height - cropArea.y,
-        displayDimensions.width,
-        displayDimensions.height
-      );
-      
-      const finalSize = Math.min(newSize, maxSize);
-      
-      // Adjust position to keep crop area within bounds
-      const maxX = displayDimensions.width - finalSize;
-      const maxY = displayDimensions.height - finalSize;
-      
-      setCropArea(prev => ({
-        x: Math.max(0, Math.min(maxX, prev.x)),
-        y: Math.max(0, Math.min(maxY, prev.y)),
-        width: finalSize,
-        height: finalSize, // Keep 1:1 aspect ratio
-      }));
-      
-      setDragStart({ x: touch.clientX, y: touch.clientY });
+      if (isDragging) {
+        const newX = touch.clientX - rect.left - dragStart.x;
+        const newY = touch.clientY - rect.top - dragStart.y;
+
+        // Constrain crop area within image boundaries
+        const maxX = displayDimensions.width - cropArea.width;
+        const maxY = displayDimensions.height - cropArea.height;
+
+        setCropArea(prev => ({
+          ...prev,
+          x: Math.max(0, Math.min(maxX, newX)),
+          y: Math.max(0, Math.min(maxY, newY)),
+        }));
+      } else if (isResizing) {
+        const deltaX = touch.clientX - dragStart.x;
+        const deltaY = touch.clientY - dragStart.y;
+        
+        // Use the maximum delta to maintain square aspect ratio
+        const delta = Math.max(deltaX, deltaY);
+        
+        // Calculate new size (always square)
+        const currentSize = cropArea.width; // Since it's square, width = height
+        const newSize = Math.max(50, currentSize + delta);
+        
+        // Maximum size is limited by the smallest image dimension and boundaries
+        const maxSize = Math.min(
+          displayDimensions.width - cropArea.x,
+          displayDimensions.height - cropArea.y,
+          displayDimensions.width,
+          displayDimensions.height
+        );
+        
+        const finalSize = Math.min(newSize, maxSize);
+        
+        // Adjust position to keep crop area within bounds
+        const maxX = displayDimensions.width - finalSize;
+        const maxY = displayDimensions.height - finalSize;
+        
+        setCropArea(prev => ({
+          x: Math.max(0, Math.min(maxX, prev.x)),
+          y: Math.max(0, Math.min(maxY, prev.y)),
+          width: finalSize,
+          height: finalSize, // Keep 1:1 aspect ratio
+        }));
+        
+        setDragStart({ x: touch.clientX, y: touch.clientY });
+      }
     }
   };
 
-  const handleDocumentTouchEnd = () => {
+  const handleDocumentTouchEnd = (e: TouchEvent) => {
+    e.preventDefault();
     setIsDragging(false);
     setIsResizing(false);
+    setIsPinching(false);
+    setLastPinchDistance(0);
     
     // Remove global touch listeners
     document.removeEventListener('touchmove', handleDocumentTouchMove);
@@ -195,25 +246,39 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     e.stopPropagation();
 
     const container = containerRef.current;
-    if (!container || e.touches.length === 0) return;
+    if (!container) return;
 
-    const touch = e.touches[0];
-    const rect = container.getBoundingClientRect();
-
-    if (action === 'resize') {
-      setIsResizing(true);
-      setDragStart({ x: touch.clientX, y: touch.clientY });
-    } else {
-      setIsDragging(true);
-      setDragStart({
-        x: touch.clientX - rect.left - cropArea.x,
-        y: touch.clientY - rect.top - cropArea.y,
-      });
+    // Handle pinch-to-resize with two fingers
+    if (e.touches.length === 2) {
+      setIsPinching(true);
+      setLastPinchDistance(calculateTouchDistance(e.touches[0], e.touches[1]));
+      
+      // Add global touch listeners for pinch
+      document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+      document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
+      return;
     }
 
-    // Add global touch listeners to handle movement outside the container
-    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-    document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
+    // Handle single touch for drag/resize
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const rect = container.getBoundingClientRect();
+
+      if (action === 'resize') {
+        setIsResizing(true);
+        setDragStart({ x: touch.clientX, y: touch.clientY });
+      } else {
+        setIsDragging(true);
+        setDragStart({
+          x: touch.clientX - rect.left - cropArea.x,
+          y: touch.clientY - rect.top - cropArea.y,
+        });
+      }
+
+      // Add global touch listeners to handle movement outside the container
+      document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+      document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -328,10 +393,11 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
     <div className="space-y-4 flex flex-col items-center">
       <div className="text-center mb-4 px-4">
         <p className="text-sm text-gray-400 mb-2">
-          <span className="hidden sm:inline">Drag to move, use corner handles to resize</span>
-          <span className="sm:hidden">Touch and drag to move, use corner handles to resize</span>
+          <span className="hidden sm:inline">Drag to move, use corner handles to resize, or scroll to zoom</span>
+          <span className="sm:hidden">Touch and drag to move, use corner handles to resize, or pinch to zoom</span>
         </p>
         <p className="text-xs text-gray-500">Crop area will maintain 1:1 aspect ratio</p>
+        <p className="text-xs text-gray-500 sm:hidden mt-1">Use two fingers to pinch and resize the crop area</p>
       </div>
       
       <div
@@ -344,13 +410,26 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
           maxHeight: '60vh',
           touchAction: 'none',
           userSelect: 'none',
-          WebkitUserSelect: 'none'
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitTapHighlightColor: 'transparent'
         }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={(e) => {
+          // Allow pinch gesture on container
+          if (e.touches.length === 2) {
+            e.preventDefault();
+            setIsPinching(true);
+            setLastPinchDistance(calculateTouchDistance(e.touches[0], e.touches[1]));
+            document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+            document.addEventListener('touchend', handleDocumentTouchEnd, { passive: false });
+          }
+        }}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <img
           ref={imageRef}
@@ -421,13 +500,17 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                 height: `${cropArea.height}px`,
                 touchAction: 'none',
                 userSelect: 'none',
-                WebkitUserSelect: 'none'
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+                WebkitTapHighlightColor: 'transparent'
               }}
               onMouseDown={(e) => handleMouseDown(e, 'drag')}
               onTouchStart={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleTouchStart(e, 'drag');
               }}
+              onContextMenu={(e) => e.preventDefault()}
             >
               {/* Grid lines for better visualization */}
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
@@ -436,17 +519,19 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                 ))}
               </div>
               
-              {/* Corner resize handles */}
+              {/* Corner resize handles with larger touch targets */}
               <div 
-                className="absolute bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white touch-manipulation select-none" 
+                className="absolute bg-yellow-400 rounded-full cursor-nw-resize border-2 border-white touch-manipulation select-none z-10" 
                 style={{ 
-                  width: '24px', 
-                  height: '24px', 
-                  top: '-12px', 
-                  left: '-12px',
+                  width: '32px', 
+                  height: '32px', 
+                  top: '-16px', 
+                  left: '-16px',
                   touchAction: 'none',
                   userSelect: 'none',
-                  WebkitUserSelect: 'none'
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseDown={(e) => handleMouseDown(e, 'resize')} 
                 onTouchStart={(e) => {
@@ -454,17 +539,20 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                   e.stopPropagation();
                   handleTouchStart(e, 'resize');
                 }}
+                onContextMenu={(e) => e.preventDefault()}
               />
               <div 
-                className="absolute bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white touch-manipulation select-none" 
+                className="absolute bg-yellow-400 rounded-full cursor-ne-resize border-2 border-white touch-manipulation select-none z-10" 
                 style={{ 
-                  width: '24px', 
-                  height: '24px', 
-                  top: '-12px', 
-                  right: '-12px',
+                  width: '32px', 
+                  height: '32px', 
+                  top: '-16px', 
+                  right: '-16px',
                   touchAction: 'none',
                   userSelect: 'none',
-                  WebkitUserSelect: 'none'
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseDown={(e) => handleMouseDown(e, 'resize')} 
                 onTouchStart={(e) => {
@@ -472,17 +560,20 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                   e.stopPropagation();
                   handleTouchStart(e, 'resize');
                 }}
+                onContextMenu={(e) => e.preventDefault()}
               />
               <div 
-                className="absolute bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white touch-manipulation select-none" 
+                className="absolute bg-yellow-400 rounded-full cursor-sw-resize border-2 border-white touch-manipulation select-none z-10" 
                 style={{ 
-                  width: '24px', 
-                  height: '24px', 
-                  bottom: '-12px', 
-                  left: '-12px',
+                  width: '32px', 
+                  height: '32px', 
+                  bottom: '-16px', 
+                  left: '-16px',
                   touchAction: 'none',
                   userSelect: 'none',
-                  WebkitUserSelect: 'none'
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseDown={(e) => handleMouseDown(e, 'resize')} 
                 onTouchStart={(e) => {
@@ -490,17 +581,20 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                   e.stopPropagation();
                   handleTouchStart(e, 'resize');
                 }}
+                onContextMenu={(e) => e.preventDefault()}
               />
               <div 
-                className="absolute bg-yellow-400 rounded-full cursor-se-resize border-2 border-white touch-manipulation select-none" 
+                className="absolute bg-yellow-400 rounded-full cursor-se-resize border-2 border-white touch-manipulation select-none z-10" 
                 style={{ 
-                  width: '24px', 
-                  height: '24px', 
-                  bottom: '-12px', 
-                  right: '-12px',
+                  width: '32px', 
+                  height: '32px', 
+                  bottom: '-16px', 
+                  right: '-16px',
                   touchAction: 'none',
                   userSelect: 'none',
-                  WebkitUserSelect: 'none'
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent'
                 }}
                 onMouseDown={(e) => handleMouseDown(e, 'resize')} 
                 onTouchStart={(e) => {
@@ -508,6 +602,7 @@ const CropEditor = ({ imageSrc, onCrop, onCancel }: {
                   e.stopPropagation();
                   handleTouchStart(e, 'resize');
                 }}
+                onContextMenu={(e) => e.preventDefault()}
               />
             </div>
           </>
