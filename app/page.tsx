@@ -439,7 +439,6 @@ export default function Home() {
         </div>
       ) : prestasiList.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="text-6xl mb-4">🏆</div>
           <h3 className="text-xl font-bold text-white mb-2">Belum Ada Prestasi</h3>
           <p className="text-white/70">Prestasi akan ditampilkan di sini ketika sudah tersedia</p>
         </div>
