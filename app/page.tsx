@@ -197,7 +197,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/No.png" 
           alt="Lwie Jaya" 
@@ -236,7 +236,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Ce.png" 
           alt="Lwie Jaya" 
@@ -261,7 +261,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Qu.png" 
           alt="Member 2" 
@@ -286,7 +286,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Re.png" 
           alt="Member 3" 
@@ -311,7 +311,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Pa.png" 
           alt="Lwie Jaya" 
@@ -336,7 +336,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/St.png" 
           alt="Member 2" 
@@ -361,7 +361,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Ar.png" 
           alt="Member 3" 
@@ -386,7 +386,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Ni.png" 
           alt="Member 2" 
@@ -411,7 +411,7 @@ export default function Home() {
       </div>
       
       {/* Profile image */}
-      <div className="mb-4">
+      <div className="mb-4 select-none pointer-events-none">
         <img 
           src="/pengurus/Ho.png" 
           alt="Member 3" 
@@ -462,7 +462,7 @@ export default function Home() {
                   {item.badge}
                 </div>
                 {/* Profile image */}
-                <div className="mb-4">
+                <div className="mb-4 select-none pointer-events-none">
                   <img
                     src={getPrestasiImageUrl(item.img) || '/logo.png'}
                     alt={item.title}
@@ -503,10 +503,6 @@ export default function Home() {
         </>
       )}
     </section>
-
-    
-      
-      
       </>
       )}
     </>
