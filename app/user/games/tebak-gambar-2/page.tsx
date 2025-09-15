@@ -210,7 +210,7 @@ export default function KuisGambarPage() {
               {/* Gambar Hero */}
               {showAnswer ? (
                 // Tampilkan gambar asli setelah jawaban benar dengan ratio 9:16
-                <div className="w-64 h-[28rem] border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative" style={{ aspectRatio: '9/16' }}>
+                <div className="w-64 h-[28rem] border-2 border-yellow-500 rounded-xl select-none pointer-events-none overflow-hidden bg-gray-800 relative" style={{ aspectRatio: '9/16' }}>
                   <img
                     src={`https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/${current.image_hero}`}
                     alt={current.hero}
@@ -226,7 +226,7 @@ export default function KuisGambarPage() {
                 </div>
               ) : (
                 // Tampilkan gambar yang diperbesar untuk menebak dengan ratio 1:1
-                <div className="w-64 h-64 border-2 border-yellow-500 rounded-xl overflow-hidden bg-gray-800 relative">
+                <div className="w-64 h-64 border-2 border-yellow-500 rounded-xl overflow-hidden select-none pointer-events-none bg-gray-800 relative">
                   <div className="w-full h-full overflow-hidden">
                     <img
                       src={`https://raw.githubusercontent.com/Mikaelaazz/assets/master/src/${current.image_hero}`}
