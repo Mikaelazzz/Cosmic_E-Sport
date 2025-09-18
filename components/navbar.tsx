@@ -35,6 +35,7 @@ export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [avatarKey, setAvatarKey] = useState(0);
+  const [mobileGamesOpen, setMobileGamesOpen] = useState(false);
 
 
   // Force avatar refresh when user changes
@@ -43,6 +44,11 @@ export const Navbar = () => {
       setAvatarKey((prev: number) => prev + 1);
     }
   }, [user?.id, user?.nama_lengkap]);
+
+  // Close mobile games dropdown when pathname changes
+  useEffect(() => {
+    setMobileGamesOpen(false);
+  }, [pathname]);
 
   // Get current role context based on pathname
   const getCurrentRoleContext = () => {
@@ -80,8 +86,8 @@ export const Navbar = () => {
       case 'user':
         return [
           { label: "Dashboard", href: "/user" },
-          { label: "Event", href: "/user/events" },
-          { label: "Team", href: "/user/team" },
+          // { label: "Event", href: "/user/events" },
+          // { label: "Team", href: "/user/team" },
           { 
             label: "Games", 
             href: "/user/games",
@@ -128,13 +134,20 @@ export const Navbar = () => {
       case 'user':
         return [
           { label: "Dashboard", href: "/user" },
-          { label: "Event", href: "/user/events" },
-          { label: "Team", href: "/user/team" },
-          { label: "Shuffle", href: "/user/games/shuffle" },
-          { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
-          { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
-          { label: "Cek Region", href: "/user/games/cek-region" },
-          { label: "First Purchase", href: "/user/games/fp" }
+          // { label: "Event", href: "/user/events" },
+          // { label: "Team", href: "/user/team" },
+         { 
+            label: "Games", 
+            href: "/user/games",
+            isDropdown: true,
+            dropdownItems: [
+              { label: "Shuffle", href: "/user/games/shuffle" },
+              { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
+              { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
+              { label: "Cek Region", href: "/user/games/cek-region" },
+              { label: "First Purchase", href: "/user/games/fp" }
+            ]
+          }
         ];
       default:
         return siteConfig.navMenuItems;
@@ -440,7 +453,58 @@ export const Navbar = () => {
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
           {getNavMenuItems().map((item, index) => {
-            const isActive = pathname === item.href ;
+            const isActive = pathname === item.href;
+            
+            // Handle dropdown items (like Games)
+            if (item.isDropdown && item.dropdownItems) {
+              return (
+                <div key={`${item.label}-${index}`} className="flex flex-col">
+                  <NavbarMenuItem>
+                    <Button
+                      variant="light"
+                      className={clsx(
+                        "w-full justify-start text-lg px-0",
+                        mobileGamesOpen ? "text-primary" : "text-foreground"
+                      )}
+                      onPress={() => setMobileGamesOpen(!mobileGamesOpen)}
+                      endContent={
+                        <span className={clsx(
+                          "transition-transform duration-200",
+                          mobileGamesOpen ? "rotate-180" : "rotate-0"
+                        )}>
+                          ▼
+                        </span>
+                      }
+                    >
+                      {item.label}
+                    </Button>
+                  </NavbarMenuItem>
+                  
+                  {/* Dropdown items */}
+                  {mobileGamesOpen && (
+                    <div className="flex flex-col ml-4 mt-1 gap-1">
+                      {item.dropdownItems.map((subItem, subIndex) => {
+                        const isSubActive = pathname === subItem.href;
+                        return (
+                          <NavbarMenuItem key={`${subItem.label}-${subIndex}`}>
+                            <Link
+                              color={isSubActive ? "primary" : "foreground"}
+                              href={subItem.href}
+                              size="md"
+                              className="pl-2"
+                            >
+                              {subItem.label}
+                            </Link>
+                          </NavbarMenuItem>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            
+            // Regular menu items
             return (
               <NavbarMenuItem key={`${item.label}-${index}`}>
                 <Link
