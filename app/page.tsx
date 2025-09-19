@@ -185,7 +185,6 @@ export default function Home() {
   <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
     Pendamping <span className="text-[#FFD700]">Cosmic</span>
   </h1>
-  <CardScrollAnimation>
     {/* Card 1 */}
     <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-72 rounded-lg p-4 overflow-hidden group card-animate">
       <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
@@ -210,20 +209,13 @@ export default function Home() {
         Novi
       </h3>
     </div>
-
-  </CardScrollAnimation>
   <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)] mt-6">
     Pengurus <span className="text-[#FFD700]">Cosmic</span>
   </h1>
   
   
-  <CardScrollAnimation 
+  <div 
     className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl w-full"
-    animationDuration={0.8}
-    ease="back.out(1.7)"
-    scrollStart="top bottom-=150px"
-    scrollEnd="bottom top+=50px"
-    stagger={0.15}
   >
     {/* Card 1 */}
     <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-72 rounded-lg p-4 overflow-hidden group card-animate">
@@ -424,7 +416,7 @@ export default function Home() {
         Hosea
       </h3>
     </div>
-  </CardScrollAnimation>
+  </div>
 </section>
 
 
@@ -444,13 +436,8 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <CardScrollAnimation
+          <div
             className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full mt-6"
-            animationDuration={0.8}
-            ease="back.out(1.7)"
-            scrollStart="top bottom-=150px"
-            scrollEnd="bottom top+=50px"
-            stagger={0.15}
           >
             {prestasiList.slice(0, showCount).map((item, idx) => (
               <div key={item.id || idx} className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] max-w-screen md:max-w-screen rounded-lg p-4 overflow-hidden group card-animate">
@@ -487,7 +474,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </CardScrollAnimation>
+          </div>
           {showCount < prestasiList.length && (
             <Button
               className="mt-8 flex items-center gap-2"
