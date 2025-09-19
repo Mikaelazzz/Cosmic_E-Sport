@@ -388,12 +388,11 @@ export default function JadwalPertemuanPage() {
     setDeleteModal(prev => ({ ...prev, isDeleting: true }));
     
     try {
-      const response = await fetch('/api/moderator/jadwal-pertemuan', {
+      const response = await fetch(`/api/moderator/jadwal-pertemuan?id=${deleteModal.jadwal.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id: deleteModal.jadwal.id }),
       });
 
       const result = await response.json();
