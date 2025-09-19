@@ -26,6 +26,24 @@ import {
   Cell
 } from 'recharts';
 
+// Custom hook for responsive design
+const useResponsive = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  return { isMobile };
+};
+
 // Custom icons
 const IconDownload = ({ className }: { className?: string }) => (
   <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -105,6 +123,7 @@ const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function ModeratorReportsPage() {
   const { user } = useAuth();
+  const { isMobile } = useResponsive();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadLoading, setDownloadLoading] = useState(false);
@@ -250,13 +269,14 @@ export default function ModeratorReportsPage() {
       description="Analisis data kehadiran dan pertemuan organisasi"
     >
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <Button
           color="primary"
           variant="solid"
           startContent={<IconDownload className="w-4 h-4" />}
           onPress={downloadPDFReport}
           isLoading={downloadLoading}
+          className="w-full sm:w-auto"
         >
           Download PDF
         </Button>
@@ -282,40 +302,45 @@ export default function ModeratorReportsPage() {
           </CardHeader>
           <Divider />
           <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Input
                 type="date"
                 label="Tanggal Mulai"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                className="w-full"
               />
               <Input
                 type="date"
                 label="Tanggal Akhir"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                className="w-full"
               />
               <Select
                 label="Status Pertemuan"
                 selectedKeys={[filters.status]}
                 onSelectionChange={(keys) => handleFilterChange('status', Array.from(keys)[0] as string)}
+                className="w-full"
               >
                 <SelectItem key="all">Semua Status</SelectItem>
-                <SelectItem key="selesai">Selesai</SelectItem>
+                <SelectItem key="belum_mulai">Belum Mulai</SelectItem>
                 <SelectItem key="berlangsung">Berlangsung</SelectItem>
+                <SelectItem key="selesai">Selesai</SelectItem>
                 <SelectItem key="dibatalkan">Dibatalkan</SelectItem>
               </Select>
-              <div className="flex gap-2">
-                <Button
-                  color="primary"
-                  variant="solid"
-                  onPress={applyFilters}
-                  className="flex-1"
-                  isLoading={loading}
-                >
-                  Terapkan Filter
-                </Button>
-              </div>
+              <Select
+                label="Periode"
+                selectedKeys={[filters.period]}
+                onSelectionChange={(keys) => handleFilterChange('period', Array.from(keys)[0] as string)}
+                className="w-full"
+              >
+                <SelectItem key="7">7 Hari Terakhir</SelectItem>
+                <SelectItem key="30">30 Hari Terakhir</SelectItem>
+                <SelectItem key="90">3 Bulan Terakhir</SelectItem>
+                <SelectItem key="180">6 Bulan Terakhir</SelectItem>
+                <SelectItem key="365">1 Tahun Terakhir</SelectItem>
+              </Select>
             </div>
           </CardBody>
         </Card>
@@ -324,15 +349,15 @@ export default function ModeratorReportsPage() {
         {loading && (
           <div className="flex justify-center items-center py-12">
             <Spinner size="lg" />
-            <span className="ml-2">Loading analytics...</span>
+            <span className="ml-3 text-lg">Memuat laporan...</span>
           </div>
         )}
 
-        {/* Analytics Content */}
+        {/* Report Content */}
         {!loading && reportData && (
           <>
-            {/* Summary Statistics */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
                 <CardBody className="text-center">
                   <IconCalendar className="w-8 h-8 text-blue-600 mx-auto mb-2" />
@@ -375,23 +400,26 @@ export default function ModeratorReportsPage() {
             </div>
 
             {/* Charts Grid */}
-            <div className="grid gap-8 lg:grid-cols-2 mb-8">
+            <div className="grid gap-8 xl:grid-cols-2 mb-8">
               {/* Monthly Attendance Trend */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-xl font-semibold">Tren Kehadiran Bulanan</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold">Tren Kehadiran Bulanan</h3>
                 </CardHeader>
                 <Divider />
                 <CardBody>
-                  <div className="w-full h-80">
+                  <div className="w-full h-64 sm:h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={reportData.monthlyData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="month" 
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 10 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
                         <Tooltip />
                         <Legend />
                         <Line 
@@ -417,11 +445,11 @@ export default function ModeratorReportsPage() {
               {/* Attendance by Status (Pie Chart) */}
               <Card>
                 <CardHeader>
-                  <h3 className="text-xl font-semibold">Distribusi Status Kehadiran</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold">Distribusi Status Kehadiran</h3>
                 </CardHeader>
                 <Divider />
                 <CardBody>
-                  <div className="w-full h-80">
+                  <div className="w-full h-64 sm:h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -438,7 +466,7 @@ export default function ModeratorReportsPage() {
                                 : 0;
                             return `${labelName} (${pct.toFixed(1)}%)`;
                           }}
-                          outerRadius={80}
+                          outerRadius={isMobile ? 60 : 80}
                           fill="#8884d8"
                           dataKey="count"
                         >
@@ -457,22 +485,22 @@ export default function ModeratorReportsPage() {
             {/* Weekly Attendance Pattern */}
             <Card className="mb-8">
               <CardHeader>
-                <h3 className="text-xl font-semibold">Pola Kehadiran Mingguan</h3>
+                <h3 className="text-lg sm:text-xl font-semibold">Pola Kehadiran Mingguan</h3>
               </CardHeader>
               <Divider />
               <CardBody>
-                <div className="w-full h-80">
+                <div className="w-full h-64 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={reportData.weeklyAttendance}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="week" 
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 10 }}
                         angle={-45}
                         textAnchor="end"
-                        height={60}
+                        height={80}
                       />
-                      <YAxis tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
                       <Legend />
                       <Bar dataKey="hadir" stackId="a" fill={COLORS.success} name="Hadir" />
@@ -484,14 +512,15 @@ export default function ModeratorReportsPage() {
               </CardBody>
             </Card>
 
-            {/* Topic Analysis Table */}
+            {/* Topic Analysis - Responsive Layout */}
             <Card>
               <CardHeader>
                 <h3 className="text-xl font-semibold">Analisis Berdasarkan Topik Pertemuan</h3>
               </CardHeader>
               <Divider />
               <CardBody>
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
@@ -523,6 +552,70 @@ export default function ModeratorReportsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {reportData.topicAnalysis.map((topic, index) => (
+                    <Card key={index} className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
+                      <CardBody className="p-4">
+                        <div className="space-y-3">
+                          {/* Topic Title */}
+                          <div className="border-b border-gray-200 dark:border-gray-600 pb-2">
+                            <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                              {topic.topic}
+                            </h4>
+                          </div>
+                          
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                {topic.meetings}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Jumlah Pertemuan
+                              </p>
+                            </div>
+                            
+                            <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {topic.totalAttendance}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Total Kehadiran
+                              </p>
+                            </div>
+                            
+                            <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                                {topic.averageAttendance.toFixed(1)}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Rata-rata Kehadiran
+                              </p>
+                            </div>
+                            
+                            <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                              <div className="mb-1">
+                                <Chip
+                                  color={topic.averageAttendance >= 15 ? 'success' : 
+                                         topic.averageAttendance >= 10 ? 'warning' : 'danger'}
+                                  size="md"
+                                  variant="flat"
+                                >
+                                  {((topic.averageAttendance / 20) * 100).toFixed(1)}%
+                                </Chip>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Tingkat Kehadiran
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  ))}
                 </div>
               </CardBody>
             </Card>
