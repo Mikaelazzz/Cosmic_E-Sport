@@ -13,7 +13,7 @@ export const siteConfig = {
       href: "/#tentang",
     },
     {
-      label: "Pengurus",
+      label: "Organisasi",
       href: "/#pengurus",
     },
     {
@@ -31,7 +31,7 @@ export const siteConfig = {
       href: "/#tentang",
     },
     {
-      label: "Pengurus",
+      label: "Organisasi",
       href: "/#pengurus",
     },
     {
