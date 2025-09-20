@@ -192,7 +192,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
       {/* Yellow badge */}
       <div className="absolute top-6 right-6 bg-[#FFD700] text-black text-xs font-bold px-2 py-1 rounded">
-        Ketua
+        Pendamping
       </div>
       
       {/* Profile image */}
@@ -206,7 +206,7 @@ export default function Home() {
       
       {/* Name */}
       <h3 className="text-center text-white text-lg font-[orbitron] font-bold">
-        Novi
+        Bu Novi
       </h3>
     </div>
   <h1 className="text-3xl md:text-5xl font-bold mb-12 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)] mt-6">
@@ -431,7 +431,7 @@ export default function Home() {
         </div>
       ) : prestasiList.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center">
-          <h3 className="text-xl font-bold text-white mb-2">Belum Ada Prestasi</h3>
+          {/* <h3 className="text-xl font-bold text-white mb-2">Belum Ada Prestasi</h3> */}
           <p className="text-white/70">Prestasi akan ditampilkan di sini ketika sudah tersedia</p>
         </div>
       ) : (
