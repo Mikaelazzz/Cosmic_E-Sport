@@ -71,14 +71,13 @@ export default function RootLayout({
                 {children}
               </main>
               <footer className="w-full border-t border-blue-900 pt-8 pb-2 px-4 mt-4">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-white pb-4">
                   {/* Tentang */}
-                  <div>
-                    <h3 className="text-[#FFD700] font-bold text-lg mb-2">Cosmic</h3>
-                    <p className="text-sm leading-relaxed text-gray-200 text-justify">
+                  <div className="max-w-6xl mx-auto mb-4">
+                    <p className="text-sm leading-relaxed text-gray-200 text-center">
                       COSMIC didirikan pada tahun 2023 sebagai wadah bagi para gamer kampus untuk mengembangkan bakat dan meraih prestasi di dunia e-sport. Kami percaya bahwa setiap pemain memiliki potensi untuk menjadi bintang.
                     </p>
                   </div>
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-white pb-4">
                   {/* Quick Links */}
                   <div>
                     <h3 className="text-[#FFD700] font-bold text-sm mb-2">Quick Links</h3>
@@ -88,10 +87,17 @@ export default function RootLayout({
                       <li><a href="/#prestasi" className="hover:text-[#FFD700] transition-colors">Prestasi</a></li>
                     </ul>
                   </div>
+                  {/* Alamat */}
+                  <div>
+                    <h3 className="text-[#FFD700] font-bold text-sm mb-2">Alamat</h3>
+                    <p className="text-sm leading-relaxed text-gray-200 text-justify">
+                      Jl. Dr. Ir. H. Soekarno No.201, Klampis Ngasem, Kec. Sukolilo, Kota SBY, Jawa Timur 60117
+                    </p>
+                  </div>
                   {/* Follow Us */}
                   <div>
                     <h3 className="text-[#FFD700] font-bold text-sm mb-2">Follow Us</h3>
-                    <div className="flex flex-col text-lg space-x-4 mt-2">
+                    <div className="flex flex-col space-x-4 mt-2">
                       <ul className="space-y-1">
                       <li><a href="https://www.instagram.com/cosmic.ukdc/" target="blank" className="hover:text-[#FFD700] transition-colors">Instagram Cosmic</a></li>
                       <li><a href="#" target="blank" className="hover:text-[#FFD700] transition-colors">Whatsapp Cosmic</a></li>

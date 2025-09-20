@@ -150,12 +150,6 @@ export default function Home() {
       <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
         Tentang <span className="text-[#FFD700]">Cosmic</span>
       </h1>
-      
-      <p className="text-center max-w-4xl mb-12 text-sm md:text-base leading-relaxed text-gray-300">
-        COSMIC didirikan pada tahun 2023 sebagai wadah bagi para gamer kampus untuk 
-        mengembangkan bakat dan meraih prestasi di dunia e-sport. Kami percaya bahwa setiap pemain 
-        memiliki potensi untuk menjadi bintang.
-      </p>
 
       <div className="grid md:grid-cols-2 gap-8 max-w-6xl w-full">
         {/* Visi Card */}
