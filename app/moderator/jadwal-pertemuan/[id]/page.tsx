@@ -777,7 +777,7 @@ export default function DetailPertemuanPage() {
                                       </div>
                                       <div>
                                         <p className="font-medium text-white">{absensi.user.nama_lengkap}</p>
-                                        <p className="text-xs text-gray-400">{absensi.user.email}</p>
+                                        {/* <p className="text-xs text-gray-400">{absensi.user.email}</p> */}
                                       </div>
                                     </div>
                                   </TableCell>
@@ -865,10 +865,10 @@ export default function DetailPertemuanPage() {
 
                                   {/* Details */}
                                   <div className="space-y-1.5 text-xs">
-                                    <div>
+                                    {/* <div>
                                       <span className="text-gray-400">Email: </span>
                                       <span className="text-gray-200 font-medium break-all">{absensi.user.email}</span>
-                                    </div>
+                                    </div> */}
                                     <div>
                                       <span className="text-gray-400">Waktu: </span>
                                       <span className="text-gray-200 font-medium">
