@@ -96,8 +96,8 @@ export const Navbar = () => {
               { label: "Shuffle", href: "/user/games/shuffle" },
               { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
               { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
-              { label: "Cek Region", href: "/user/games/cek-region" },
-              { label: "First Purchase", href: "/user/games/fp" }
+              // { label: "Cek Region", href: "/user/games/cek-region" },
+              // { label: "First Purchase", href: "/user/games/fp" }
             ]
           }
         ];
@@ -144,8 +144,8 @@ export const Navbar = () => {
               { label: "Shuffle", href: "/user/games/shuffle" },
               { label: "Tebak Gambar", href: "/user/games/tebak-gambar" },
               { label: "Tebak Gambar 2", href: "/user/games/tebak-gambar-2" },
-              { label: "Cek Region", href: "/user/games/cek-region" },
-              { label: "First Purchase", href: "/user/games/fp" }
+              // { label: "Cek Region", href: "/user/games/cek-region" },
+              // { label: "First Purchase", href: "/user/games/fp" }
             ]
           }
         ];
