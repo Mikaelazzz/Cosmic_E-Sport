@@ -539,142 +539,35 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     }
  
     try {
-      // Prepare request data
-      const pertemuanIdNumber = parseInt(pertemuanId, 10);
-      
-      if (isNaN(pertemuanIdNumber)) {
-        console.error('❌ Invalid pertemuan ID:', pertemuanId);
-        setError('ID pertemuan tidak valid');
-        setIsSubmitting(false);
-        setIsScanning(true);
-        startScanning();
-        return;
+      // Call parent component's onSuccess handler instead of direct API call
+      console.log('📤 Calling parent onSuccess with QR data');
+      if (onSuccess) {
+        await onSuccess(qrData);
       }
       
-      const requestData = {
-        qr_data: String(qrData), // Pastikan selalu dikirim sebagai string
-        pertemuan_id: pertemuanIdNumber
-      };
+      // Mark as successful
+      setScanSuccess(true);
+      setShowSuccessOverlay(true);
       
- 
-      const response = await fetch('/api/user/absen', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
- 
-      const result = await response.json();
- 
-      if (response.ok && result.success) {
-        
-        // IMMEDIATELY stop all scanning to prevent response being read as QR
-        setIsScanning(false);
-        setIsSubmitting(false);
-        setScanSuccess(true);
-        setShowSuccessOverlay(true); // Tampilkan overlay
-        
-        // Stop the scan animation permanently
-        if (scanAnimationRef.current) {
-          cancelAnimationFrame(scanAnimationRef.current);
-          scanAnimationRef.current = null;
-        }
-        
-        // Berhenti streaming video sepenuhnya
-        if (stream) {
-          stream.getTracks().forEach(track => {
-            track.stop();
-          });
-          setStream(null);
-        }
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
-        
-        setScanResult(result);
-        
-        // Set attendance status for display based on operation
-        if (result.operation === 'update' && result.previous_status === 'tidak_hadir') {
-          setAttendanceStatus('updated_from_absent');
-        } else if (result.operation === 'insert') {
-          setAttendanceStatus('new_attendance');
-        } else if (result.operation === 'already_present') {
-          setAttendanceStatus('already_attended');
-        } else if (result.operation === 'update') {
-          setAttendanceStatus('already_present');
-        } else {
-          setAttendanceStatus('success');
-        }
-        
-        onSuccess?.(result);
-        
-        // Show success for 4 seconds then close
-        setTimeout(() => {
-          onClose();
-        }, 4000);
-      } else {
-        const errorMsg = result.message || result.error || 'Gagal melakukan absensi';
-        console.error('❌ Attendance error:', errorMsg);
- 
-        
-        // For 409 or already attended cases, treat as success
-        if (response.status === 409 || errorMsg.includes('sudah melakukan absensi')) {
-          
-          // IMMEDIATELY stop scanning
-          setIsScanning(false);
-          setIsSubmitting(false);
-          setScanSuccess(true);
-          setShowSuccessOverlay(true);
-          
-          if (scanAnimationRef.current) {
-            cancelAnimationFrame(scanAnimationRef.current);
-            scanAnimationRef.current = null;
-          }
-          
-          // Berhenti streaming video sepenuhnya
-          if (stream) {
-            stream.getTracks().forEach(track => {
-              track.stop();
-            });
-            setStream(null);
-          }
-          
-          if (videoRef.current) {
-            videoRef.current.srcObject = null;
-          }
-          
-          setAttendanceStatus('already_attended');
-          setScanResult(result);
-          
-          // Show message for 4 seconds then close
-          setTimeout(() => {
-            onClose();
-          }, 4000);
-        } else {
-          setError(errorMsg);
-          
-          // Resume scanning after error
-          setTimeout(() => {
-            setIsSubmitting(false);
-            setIsScanning(true);
-            startScanning();
-          }, 2000);
-        }
+      // Stop streaming video
+      if (stream) {
+        stream.getTracks().forEach(track => {
+          track.stop();
+        });
+        setStream(null);
       }
- 
-    } catch (err: any) {
-      console.error('❌ Network error:', err);
-      setError('Gagal terhubung ke server. Periksa koneksi internet.');
       
-      // Resume scanning after network error
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setIsScanning(true);
-        startScanning();
-      }, 2000);
-    }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      
+} catch (error) {
+  console.error('❌ Attendance error:', error);
+  setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat melakukan absensi');
+  setIsSubmitting(false);
+  setIsScanning(true);
+  startScanning();
+}
   };
  
   // Retry on error

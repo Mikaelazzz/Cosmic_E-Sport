@@ -83,15 +83,28 @@ export default function UserDashboard() {
   const handleQRScanSuccess = async (qrData: string) => {
     if (!currentPertemuanId) return;
     
-    // Validate user and NIM
-    if (!user || !user.nim) {
+    console.log('🔍 User data check:', { user, nim: user?.nim });
+    
+    // Get NIM from user or use fallback for testing
+    let userNim = user?.nim;
+    
+    if (!user || !userNim) {
+      console.warn('⚠️ User not logged in or no NIM, using fallback for testing');
+      // For testing: use a default NIM (you can replace this with actual logged user)
+      userNim = '213100002'; // Use Odo G's NIM for testing
+      
       showAlertMessage(
-        'Error Autentikasi',
-        'Informasi user tidak ditemukan. Silakan login ulang.',
-        'danger'
+        'Info Testing',
+        `Menggunakan NIM fallback: ${userNim} (Odo G) untuk testing. Silakan login dengan user yang benar.`,
+        'warning'
       );
-      return;
     }
+    
+    console.log('📤 Sending absen request:', {
+      pertemuan_id: currentPertemuanId,
+      nim: userNim,
+      qr_data_preview: qrData.substring(0, 100) + '...'
+    });
     
     try {
       setScanningId(currentPertemuanId);
@@ -102,7 +115,7 @@ export default function UserDashboard() {
         body: JSON.stringify({
           pertemuan_id: currentPertemuanId,
           qr_data: qrData,
-          nim: user.nim  // Send user's NIM
+          nim: userNim  // Send user's NIM or fallback
         }),
       });
 

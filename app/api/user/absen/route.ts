@@ -9,11 +9,14 @@ export async function POST(request: NextRequest) {
     console.log('📥 Received absen request:', {
       pertemuan_id: pertemuan_id,
       nim: nim,
-      qr_data_type: typeof qr_data,
-      qr_data_value: qr_data
+      nim_type: typeof nim,
+      nim_length: nim?.length,
+      body_keys: Object.keys(body),
+      qr_data_type: typeof qr_data
     });
 
     if (!pertemuan_id || qr_data === null || qr_data === undefined) {
+      console.log('❌ Missing pertemuan_id or qr_data');
       return NextResponse.json({
         success: false,
         message: 'Data pertemuan dan QR code diperlukan'
@@ -21,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate NIM is provided
-    if (!nim) {
+    if (!nim || nim.trim() === '') {
+      console.log('❌ NIM missing or empty:', { nim, body });
       return NextResponse.json({
         success: false,
         message: 'NIM diperlukan untuk absensi'
