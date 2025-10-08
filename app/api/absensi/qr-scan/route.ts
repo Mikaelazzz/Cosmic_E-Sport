@@ -125,11 +125,18 @@ export async function POST(request: NextRequest) {
       .single();
 
     let result;
+    let operation;
+    let previousStatus = null;
+    
     if (existingAbsen) {
-      // Update existing attendance
+      previousStatus = existingAbsen.status;
+      operation = 'update';
+      
+      // Update existing attendance - include nim update
       const { data, error } = await supabase
         .from('absen')
         .update({
+          nim, // Update NIM to match current user
           status,
           jam: currentTime.toISOString(),
           hari: currentTime.getDay(),
@@ -144,6 +151,8 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       result = data;
     } else {
+      operation = 'create';
+      
       // Create new attendance record
       const { data, error } = await supabase
         .from('absen')
@@ -165,28 +174,24 @@ export async function POST(request: NextRequest) {
       result = data;
     }
 
+    // Create appropriate message
+    let message;
+    if (operation === 'update') {
+      if (previousStatus !== status) {
+        message = `Absensi berhasil diupdate dari ${previousStatus} menjadi ${status}`;
+      } else {
+        message = `Absensi berhasil diupdate dengan status ${status}`;
+      }
+    } else {
+      message = `Absensi berhasil dicatat dengan status ${status}`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Attendance recorded as ${status}`,
-      data: {
-        attendance: result,
-        user: {
-          id: user.id,
-          nim: user.nim,
-          nama_lengkap: user.nama_lengkap
-        },
-        meeting: {
-          id: pertemuan.id,
-          title: pertemuan.judul
-        },
-        status,
-        timestamp: currentTime.toISOString(),
-        qr_info: {
-          time_slot: qrTimeSlot,
-          current_slot: currentTimeSlot,
-          is_current: qrTimeSlot === currentTimeSlot
-        }
-      }
+      message,
+      operation,
+      ...(previousStatus && { previous_status: previousStatus }),
+      data: result
     });
 
   } catch (error) {
