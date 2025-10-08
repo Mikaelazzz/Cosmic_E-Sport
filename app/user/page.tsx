@@ -83,7 +83,7 @@ export default function UserDashboard() {
   const handleQRScanSuccess = async (qrData: string) => {
     if (!currentPertemuanId) return;
     
-    console.log('🔍 User data check:', { user, nim: user?.nim });
+    // console.log('🔍 User data check:', { user, nim: user?.nim });
     
     // Get NIM from user or use fallback for testing
     let userNim = user?.nim;
@@ -100,11 +100,11 @@ export default function UserDashboard() {
       );
     }
     
-    console.log('📤 Sending absen request:', {
-      pertemuan_id: currentPertemuanId,
-      nim: userNim,
-      qr_data_preview: qrData.substring(0, 100) + '...'
-    });
+    // console.log('📤 Sending absen request:', {
+    //   pertemuan_id: currentPertemuanId,
+    //   nim: userNim,
+    //   qr_data_preview: qrData.substring(0, 100) + '...'
+    // });
     
     try {
       setScanningId(currentPertemuanId);
@@ -127,6 +127,21 @@ export default function UserDashboard() {
           'Kehadiran Anda telah berhasil dicatat dalam sistem.',
           'success'
         );
+        
+        // Emit real-time event untuk update moderator dashboard
+        if (result.real_time?.pertemuan_id) {
+          // console.log('🔔 Broadcasting attendance update event');
+          const customEvent = new CustomEvent('absensi-updated', {
+            detail: { 
+              pertemuanId: result.real_time.pertemuan_id,
+              timestamp: result.real_time.timestamp,
+              nim: userNim,
+              status: result.data?.status
+            }
+          });
+          window.dispatchEvent(customEvent);
+        }
+        
         fetchDashboardData();
       } else {
         showAlertMessage(

@@ -205,9 +205,9 @@ export async function POST(request: NextRequest) {
         // Validate pertemuan_id matches
         if (qrParsed.pertemuan_id === pertemuanIdNum) {
           isValidQR = true;
-          console.log('✅ Valid attendance QR with matching meeting ID');
+          // console.log('✅ Valid attendance QR with matching meeting ID');
         } else {
-          console.log('❌ QR code for different meeting:', qrParsed.pertemuan_id, 'vs', pertemuanIdNum);
+          // console.log('❌ QR code for different meeting:', qrParsed.pertemuan_id, 'vs', pertemuanIdNum);
           return NextResponse.json({
             success: false,
             message: `QR Code ini untuk pertemuan ${qrParsed.pertemuan_id}, bukan pertemuan ${pertemuanIdNum}. Gunakan QR code yang sesuai.`
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
 
     // User data should already be set above
     if (!userData.user_id) {
-      console.log('❌ Critical error: User data not properly set');
+      // console.log('❌ Critical error: User data not properly set');
       return NextResponse.json({
         success: false,
         message: 'Gagal mengidentifikasi user dari QR code'
@@ -451,7 +451,8 @@ export async function POST(request: NextRequest) {
 
     // console.log(`✅ Absensi berhasil ${operation === 'insert' ? 'dicatat' : 'diupdate'}:`, absenData);
 
-    return NextResponse.json({
+    // Broadcast real-time update event
+    const responseData = {
       success: true,
       message: `Absensi berhasil ${operation === 'insert' ? 'tercatat' : 'diupdate'} sebagai ${attendanceStatus}`,
       operation: operation,
@@ -465,8 +466,17 @@ export async function POST(request: NextRequest) {
         waktu_absen: absenData.jam,
         created_at: absenData.created_at,
         updated_at: absenData.updated_at || absenData.update_at
+      },
+      // Real-time metadata
+      real_time: {
+        event_type: 'attendance_updated',
+        pertemuan_id: pertemuanIdNum,
+        timestamp: new Date().toISOString(),
+        trigger_polling: true
       }
-    });
+    };
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Absen API error:', error);

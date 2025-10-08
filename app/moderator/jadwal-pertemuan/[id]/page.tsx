@@ -138,6 +138,12 @@ export default function DetailPertemuanPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'hadir' | 'tidak_hadir' | 'terlambat'>('all');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  
+  // Real-time state
+  const [isPollingActive, setIsPollingActive] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [recentUpdates, setRecentUpdates] = useState<string[]>([]);
+  const [newlyUpdatedIds, setNewlyUpdatedIds] = useState<Set<string>>(new Set());
 
   // Alert state
   const [alertConfig, setAlertConfig] = useState<{
@@ -250,14 +256,95 @@ export default function DetailPertemuanPage() {
     }
   }, [pertemuanId, fetchPertemuanDetail, fetchAbsensiData]);
 
+  // Real-time polling untuk update otomatis
+  useEffect(() => {
+    let pollingInterval: NodeJS.Timeout;
+    
+    const startPolling = () => {
+      setIsPollingActive(true);
+      // Polling setiap 2.5 detik untuk update real-time
+      pollingInterval = setInterval(async () => {
+        try {
+          // Fetch data absensi terbaru tanpa loading indicator
+          const response = await fetch(`/api/moderator/absensi/${pertemuanId}`);
+          const result = await response.json();
+          
+          if (result.success) {
+            // Update data jika ada perubahan
+            setAbsensiList(prevList => {
+              const hasChanges = JSON.stringify(prevList) !== JSON.stringify(result.data.absensi);
+              if (hasChanges) {
+                // console.log('🔄 Real-time update: Data absensi diperbarui');
+                setLastUpdateTime(new Date());
+                setStatistik(result.data.statistik);
+                
+                // Find newly updated records
+                const newIds = new Set<string>();
+                result.data.absensi.forEach((newRecord: any) => {
+                  const oldRecord = prevList.find((old: any) => old.id === newRecord.id);
+                  if (!oldRecord || oldRecord.status !== newRecord.status) {
+                    newIds.add(newRecord.id);
+                  }
+                });
+                setNewlyUpdatedIds(newIds);
+                
+                // Clear highlights after 2.5 seconds
+                setTimeout(() => {
+                  setNewlyUpdatedIds(new Set());
+                }, 2500);
+                
+                // Track recent updates
+                setRecentUpdates(prev => {
+                  const newUpdate = `Data diperbarui pada ${new Date().toLocaleTimeString()}`;
+                  return [newUpdate, ...prev.slice(0, 4)]; // Keep last 5 updates
+                });
+                
+                return result.data.absensi;
+              }
+              return prevList;
+            });
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 5000); // Update setiap 5 detik
+    };
+
+    // Mulai polling jika pertemuan sedang berlangsung
+    if (pertemuan?.status === 'berlangsung') {
+      // console.log('🚀 Starting real-time polling for meeting', pertemuanId);
+      startPolling();
+    } else {
+      setIsPollingActive(false);
+    }
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setIsPollingActive(false);
+        // console.log('⏹️ Stopped real-time polling');
+      }
+    };
+  }, [pertemuanId, pertemuan?.status]);
+
   // Real-time update listener for QR scan success
   useEffect(() => {
     const handleAbsensiUpdate = (event: CustomEvent) => {
-      const { pertemuanId: updatedPertemuanId } = event.detail;
+      const { pertemuanId: updatedPertemuanId, nim, status } = event.detail;
       
       // Only refresh if the update is for this pertemuan
       if (updatedPertemuanId.toString() === pertemuanId) {
+        // console.log('🎯 Triggered immediate refresh from QR scan event');
+        
+        // Add instant notification
+        setRecentUpdates(prev => {
+          const newUpdate = `${nim} baru saja ${status === 'hadir' ? 'hadir' : status === 'terlambat' ? 'terlambat' : 'absen'} - ${new Date().toLocaleTimeString()}`;
+          return [newUpdate, ...prev.slice(0, 4)];
+        });
+        
+        // Immediate data refresh
         fetchAbsensiData();
+        setLastUpdateTime(new Date());
       }
     };
 
@@ -660,12 +747,29 @@ export default function DetailPertemuanPage() {
             {/* Section 2: Statistik Kehadiran */}
             <Card className="border-2 border-[#FFD700]/30 bg-slate-800/50 backdrop-blur">
               <CardHeader>
-                <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
-                  <IconUsers className="w-5 h-5 sm:w-6 sm:h-6" />
-                  <span className='text-base sm:text-xl'>
-                  Statistik Kehadiran
-                  </span>
-                </h2>
+                <div className="flex justify-between items-center w-full">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
+                    <IconUsers className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span className='text-base sm:text-xl'>
+                      Statistik Kehadiran
+                    </span>
+                  </h2>
+                  
+                  {/* Real-time indicator */}
+                  <div className="flex items-center gap-2">
+                    {isPollingActive && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-400">Live</span>
+                      </div>
+                    )}
+                    {lastUpdateTime && (
+                      <span className="text-xs text-gray-400">
+                        Update: {lastUpdateTime.toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardBody>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -762,10 +866,21 @@ export default function DetailPertemuanPage() {
                             </TableHeader>
                             <TableBody>
                               {filteredAbsensi.map((absensi) => (
-                                <TableRow key={absensi.id}>
+                                <TableRow 
+                                  key={absensi.id}
+                                  className={`
+                                    ${newlyUpdatedIds.has(absensi.id) 
+                                      ? 'bg-green-900/30 border border-green-500/50 animate-pulse' 
+                                      : 'hover:bg-slate-700/50'
+                                    }
+                                  `}
+                                >
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center">
+                                      <div className="w-10 h-10 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center relative">
+                                        {newlyUpdatedIds.has(absensi.id) && (
+                                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+                                        )}
                                         <img 
                                           src={getUserAvatarUrl(absensi.user, 40, true) || '/logc.png'}
                                           alt="Profile"
@@ -776,7 +891,14 @@ export default function DetailPertemuanPage() {
                                         />
                                       </div>
                                       <div>
-                                        <p className="font-medium text-white">{absensi.user.nama_lengkap}</p>
+                                        <p className="font-medium text-white flex items-center gap-2">
+                                          {absensi.user.nama_lengkap}
+                                          {newlyUpdatedIds.has(absensi.id) && (
+                                            <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce">
+                                              Baru Update!
+                                            </span>
+                                          )}
+                                        </p>
                                         {/* <p className="text-xs text-gray-400">{absensi.user.email}</p> */}
                                       </div>
                                     </div>
