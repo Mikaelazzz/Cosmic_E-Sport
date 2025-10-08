@@ -4,10 +4,11 @@ import supabase from '@/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pertemuan_id, qr_data } = body;
+    const { pertemuan_id, qr_data, nim } = body;
 
     console.log('📥 Received absen request:', {
       pertemuan_id: pertemuan_id,
+      nim: nim,
       qr_data_type: typeof qr_data,
       qr_data_value: qr_data
     });
@@ -16,6 +17,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         message: 'Data pertemuan dan QR code diperlukan'
+      }, { status: 400 });
+    }
+
+    // Validate NIM is provided
+    if (!nim) {
+      return NextResponse.json({
+        success: false,
+        message: 'NIM diperlukan untuk absensi'
       }, { status: 400 });
     }
 
@@ -32,82 +41,40 @@ export async function POST(request: NextRequest) {
     const authToken = request.cookies.get('auth-token')?.value;
     console.log('🔐 Auth token from cookies:', authToken);
 
-    // Get user data from auth token or use fallback
-    let userData: { user_id: number | null, nim: string | null } = { user_id: null, nim: null };
+    // Get user data from provided NIM (primary source)
+    let userData: { user_id: number | null, nim: string | null } = { user_id: null, nim: nim };
     
-    try {
-      if (authToken) {
-        // Try to get user data from token
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select('id, nim')
-          .eq('auth_token', authToken)
-          .single();
-          
-        if (user && !userError) {
-          userData.user_id = user.id;
-          userData.nim = user.nim;
-          console.log('✅ User data from token:', userData);
-        }
-      }
+    console.log('📋 Using NIM from frontend:', nim);
+    
+    // Find user by NIM
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, nim, nama_lengkap, role')
+      .eq('nim', nim)
+      .single();
       
-      // If no token or no user found, use fallback
-      if (!userData.user_id) {
-        console.log('⚠️ No auth token or user not found, using development fallback...');
-        
-        // For development: get any real user from database
-        const { data: fallbackUser, error: fallbackError } = await supabase
-          .from('users')
-          .select('id, nim, nama_lengkap')
-          .neq('id', 6) // Avoid user 6 that already exists
-          .limit(1)
-          .single();
-          
-        if (fallbackUser && !fallbackError) {
-          userData.user_id = fallbackUser.id;
-          userData.nim = fallbackUser.nim;
-          console.log('🔧 Using real user from database:', userData);
-        } else {
-          // If no other users found, get any user (including user 6)
-          const { data: anyUser, error: anyUserError } = await supabase
-            .from('users')
-            .select('id, nim, nama_lengkap')
-            .limit(1)
-            .single();
-            
-          if (anyUser && !anyUserError) {
-            userData.user_id = anyUser.id;
-            userData.nim = anyUser.nim;
-            console.log('🔧 Using any available user from database:', userData);
-          } else {
-            console.log('❌ No users found in database at all');
-            return NextResponse.json({
-              success: false,
-              message: 'Tidak ada user ditemukan di database'
-            }, { status: 500 });
-          }
-        }
-      }
-    } catch (authError) {
-      console.error('❌ Auth error:', authError);
-      // Use development fallback with real user from database
-      const { data: anyUser, error: anyUserError } = await supabase
-        .from('users')
-        .select('id, nim, nama_lengkap')
-        .limit(1)
-        .single();
-        
-      if (anyUser && !anyUserError) {
-        userData.user_id = anyUser.id;
-        userData.nim = anyUser.nim;
-        console.log('🔧 Using development fallback with real user:', userData);
-      } else {
-        console.log('❌ No users found for fallback');
-        return NextResponse.json({
-          success: false,
-          message: 'Tidak ada user ditemukan di database'
-        }, { status: 500 });
-      }
+    if (userError || !user) {
+      console.log('❌ User not found for NIM:', nim, userError);
+      return NextResponse.json({
+        success: false,
+        message: `User dengan NIM ${nim} tidak ditemukan di database`
+      }, { status: 404 });
+    }
+    
+    userData.user_id = user.id;
+    userData.nim = user.nim;
+    console.log('✅ User found:', { 
+      user_id: userData.user_id, 
+      nim: userData.nim, 
+      nama: user.nama_lengkap 
+    });
+    
+    // Prevent admin from scanning QR for attendance
+    if (user.role === 'admin') {
+      return NextResponse.json({
+        success: false,
+        message: 'Admin tidak dapat melakukan absensi'
+      }, { status: 403 });
     }
 
     // Verifikasi pertemuan exists
@@ -229,8 +196,8 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
       
-      // ONLY accept attendance QR codes with proper structure
-      if (qrParsed.type === 'attendance' && qrParsed.pertemuan_id && qrParsed.token) {
+      // ONLY accept attendance QR codes with proper structure  
+      if (qrParsed.type === 'attendance' && qrParsed.pertemuan_id && qrParsed.time_slot) {
         // Validate pertemuan_id matches
         if (qrParsed.pertemuan_id === pertemuanIdNum) {
           isValidQR = true;
@@ -243,10 +210,14 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
       } else {
-        console.log('❌ QR code missing required attendance fields');
+        console.log('❌ QR code missing required attendance fields:', {
+          type: qrParsed.type,
+          pertemuan_id: qrParsed.pertemuan_id,
+          time_slot: qrParsed.time_slot
+        });
         return NextResponse.json({
           success: false,
-          message: 'Format QR Code tidak valid. Harus berisi type "attendance", pertemuan_id, dan token.'
+          message: 'Format QR Code tidak valid. Harus berisi type "attendance", pertemuan_id, dan time_slot.'
         }, { status: 400 });
       }
       
@@ -265,22 +236,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Update user data from QR code if available (override auth data)
-    try {
-      const qrParsed = JSON.parse(qr_data);
-      if (qrParsed.user_data) {
-        userData = { ...userData, ...qrParsed.user_data };
-      }
-      if (qrParsed.user_id) {
-        userData.user_id = qrParsed.user_id;
-      }
-      if (qrParsed.nim) {
-        userData.nim = qrParsed.nim;
-      }
-      console.log('🔄 Updated user data from QR:', userData);
-    } catch {
-      // If QR is not JSON, use default values
-    }
+    // User data is already properly set from QR code above
+    console.log('👤 Final user data:', userData);
 
     // Get current timestamp in Indonesia timezone (WIB)
     const now = new Date();
@@ -328,25 +285,13 @@ export async function POST(request: NextRequest) {
       wib_offset: '+07:00'
     });
 
-    // Ensure user_id is set (final fallback)
+    // User data should already be set above
     if (!userData.user_id) {
-      console.log('⚠️ Final fallback: getting any user from database');
-      const { data: finalUser, error: finalError } = await supabase
-        .from('users')
-        .select('id, nim, nama_lengkap')
-        .limit(1)
-        .single();
-        
-      if (finalUser && !finalError) {
-        userData.user_id = finalUser.id;
-        userData.nim = finalUser.nim || 'UNKNOWN';
-        console.log('🎲 Final fallback user:', userData);
-      } else {
-        return NextResponse.json({
-          success: false,
-          message: 'Tidak ada user ditemukan di database'
-        }, { status: 500 });
-      }
+      console.log('❌ Critical error: User data not properly set');
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal mengidentifikasi user dari QR code'
+      }, { status: 500 });
     }
 
     console.log('📝 Final data to insert/update:', {
@@ -356,13 +301,19 @@ export async function POST(request: NextRequest) {
       status: attendanceStatus
     });
 
-    // Check if absensi record already exists
+    // Check if absensi record already exists for this NIM and meeting
     const { data: existingAbsen, error: checkError } = await supabase
       .from('absen')
       .select('*')
       .eq('pertemuan_id', pertemuanIdNum)
-      .eq('user_id', userData.user_id)
+      .eq('nim', userData.nim)  // Use NIM as primary identifier
       .single();
+
+    console.log('🔍 Checking existing attendance for:', { 
+      pertemuan_id: pertemuanIdNum, 
+      nim: userData.nim,
+      found: !!existingAbsen 
+    });
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found, which is okay
       console.error('❌ Error checking existing absen:', checkError);
@@ -422,25 +373,17 @@ export async function POST(request: NextRequest) {
           }
         });
       } else {
-        // Record exists and status is already 'hadir' or other
-        console.log('⚠️ User already has attendance with status:', existingAbsen.status);
+        // Record exists with status hadir/terlambat - prevent duplicate scan
+        console.log('⚠️ NIM already has attendance with status:', existingAbsen.status);
         
-        // Return success for already present users instead of error
         return NextResponse.json({
-          success: true,
-          message: `Anda sudah melakukan absensi untuk pertemuan ini`,
-          operation: 'already_present',
-          previous_status: existingAbsen.status,
+          success: false,
+          message: `NIM ${userData.nim} sudah melakukan absensi untuk pertemuan ini dengan status: ${existingAbsen.status}`,
           data: {
-            ...existingAbsen,
-            pertemuan_id: existingAbsen.pertemuan_id,
-            user_id: existingAbsen.user_id,
-            nim: existingAbsen.nim,
-            status: existingAbsen.status,
-            jam: existingAbsen.jam,
-            hari: existingAbsen.hari
+            existing_record: existingAbsen,
+            message: 'Absensi sudah tercatat sebelumnya'
           }
-        });
+        }, { status: 409 }); // 409 Conflict
       }
     } else {
       // No existing record, create new one

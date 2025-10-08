@@ -7,6 +7,7 @@ import { Divider } from '@heroui/divider';
 import { Chip } from '@heroui/chip';
 import QRScannerModal from '@/components/QRScannerModal';
 import UserLayout from '@/components/UserLayout';
+import { useAuth } from '@/context/AuthContext';
 import { Calendar, Clock, Users, RefreshCcw, QrCode, Loader2 } from "lucide-react";
 
 interface Pertemuan {
@@ -30,6 +31,7 @@ interface DashboardData {
 }
 
 export default function UserDashboard() {
+  const { user } = useAuth(); // Get current user with NIM
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +83,16 @@ export default function UserDashboard() {
   const handleQRScanSuccess = async (qrData: string) => {
     if (!currentPertemuanId) return;
     
+    // Validate user and NIM
+    if (!user || !user.nim) {
+      showAlertMessage(
+        'Error Autentikasi',
+        'Informasi user tidak ditemukan. Silakan login ulang.',
+        'danger'
+      );
+      return;
+    }
+    
     try {
       setScanningId(currentPertemuanId);
       
@@ -89,7 +101,8 @@ export default function UserDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pertemuan_id: currentPertemuanId,
-          qr_data: qrData
+          qr_data: qrData,
+          nim: user.nim  // Send user's NIM
         }),
       });
 
