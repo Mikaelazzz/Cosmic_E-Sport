@@ -293,9 +293,16 @@ export default function DetailPertemuanPage() {
                   setNewlyUpdatedIds(new Set());
                 }, 2500);
                 
-                // Track recent updates
+                // Track recent updates dengan timezone Indonesia
                 setRecentUpdates(prev => {
-                  const newUpdate = `Data diperbarui pada ${new Date().toLocaleTimeString()}`;
+                  const now = new Date();
+                  const timeString = now.toLocaleTimeString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  });
+                  const newUpdate = `Data diperbarui pada ${timeString} WIB`;
                   return [newUpdate, ...prev.slice(0, 4)]; // Keep last 5 updates
                 });
                 
@@ -336,9 +343,16 @@ export default function DetailPertemuanPage() {
       if (updatedPertemuanId.toString() === pertemuanId) {
         // console.log('🎯 Triggered immediate refresh from QR scan event');
         
-        // Add instant notification
+        // Add instant notification dengan timezone Indonesia
         setRecentUpdates(prev => {
-          const newUpdate = `${nim} baru saja ${status === 'hadir' ? 'hadir' : status === 'terlambat' ? 'terlambat' : 'absen'} - ${new Date().toLocaleTimeString()}`;
+          const now = new Date();
+          const timeString = now.toLocaleTimeString('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          const newUpdate = `${nim} baru saja ${status === 'hadir' ? 'hadir' : status === 'terlambat' ? 'terlambat' : 'absen'} - ${timeString} WIB`;
           return [newUpdate, ...prev.slice(0, 4)];
         });
         
@@ -566,22 +580,70 @@ export default function DetailPertemuanPage() {
     );
   };
 
-  // Format time
+  // Format time dengan timezone Indonesia (WIB)
   const formatTime = (timeString: string) => {
     if (!timeString || timeString === '00:00' || timeString === '00:00:00') {
       return '-';
     }
-    return timeString.substring(0, 5);
+    
+    try {
+      // Jika timeString sudah format HH:MM, langsung gunakan
+      if (timeString.length === 5 && timeString.includes(':')) {
+        return timeString;
+      }
+      
+      // Jika timeString adalah ISO string atau dengan timezone
+      if (timeString.includes('T') || timeString.includes('+')) {
+        const date = new Date(timeString);
+        return date.toLocaleTimeString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      }
+      
+      // Fallback untuk format lain
+      return timeString.substring(0, 5);
+    } catch (error) {
+      console.warn('Error formatting time:', error);
+      return timeString.substring(0, 5);
+    }
   };
 
-  // Format date
+  // Format date dengan timezone Indonesia
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return dateString;
+    }
+  };
+
+  // Format waktu absen dengan timezone Indonesia (WIB)
+  const formatAttendanceTime = (timeString: string) => {
+    if (!timeString) return '-';
+    
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (error) {
+      console.warn('Error formatting attendance time:', error);
+      return '-';
+    }
   };
 
   // Get status color
@@ -682,11 +744,17 @@ export default function DetailPertemuanPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
                   <div>
                     <p className="text-xs sm:text-sm text-gray-400">Jam Mulai</p>
-                    <p className="font-semibold text-white">{formatTime(pertemuan.jam_mulai)}</p>
+                    <p className="font-semibold text-white font-mono">
+                      {formatTime(pertemuan.jam_mulai)}
+                      <span className="text-gray-400 text-xs ml-1">WIB</span>
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400">Jam Akhir</p>
-                    <p className="font-semibold text-white">{formatTime(pertemuan.jam_akhir)}</p>
+                    <p className="font-semibold text-white font-mono">
+                      {formatTime(pertemuan.jam_akhir)}
+                      <span className="text-gray-400 text-xs ml-1">WIB</span>
+                    </p>
                   </div>
                 </div>
 
@@ -765,7 +833,12 @@ export default function DetailPertemuanPage() {
                     )}
                     {lastUpdateTime && (
                       <span className="text-xs text-gray-400">
-                        Update: {lastUpdateTime.toLocaleTimeString()}
+                        Update: {lastUpdateTime.toLocaleTimeString('id-ID', {
+                          timeZone: 'Asia/Jakarta',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        })} WIB
                       </span>
                     )}
                   </div>
@@ -912,12 +985,12 @@ export default function DetailPertemuanPage() {
                                     </Chip>
                                   </TableCell>
                                   <TableCell>
-                                    {absensi.waktu_absen ? 
-                                      new Date(absensi.waktu_absen).toLocaleTimeString('id-ID', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      }) : '-'
-                                    }
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-sm">
+                                        {formatAttendanceTime(absensi.waktu_absen)}
+                                      </span>
+                                      <span className="text-xs text-gray-400">WIB</span>
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     {pertemuan.status === 'berlangsung' && (
@@ -993,13 +1066,9 @@ export default function DetailPertemuanPage() {
                                     </div> */}
                                     <div>
                                       <span className="text-gray-400">Waktu: </span>
-                                      <span className="text-gray-200 font-medium">
-                                        {absensi.waktu_absen ? 
-                                          new Date(absensi.waktu_absen).toLocaleTimeString('id-ID', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                          }) : '-'
-                                        }
+                                      <span className="text-gray-200 font-medium font-mono">
+                                        {formatAttendanceTime(absensi.waktu_absen)}
+                                        <span className="text-gray-400 ml-1">WIB</span>
                                       </span>
                                     </div>
                                   </div>
