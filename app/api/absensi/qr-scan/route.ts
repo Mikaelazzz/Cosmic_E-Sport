@@ -98,12 +98,12 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    console.log('User found:', { 
-      provided_user_id: user_id, 
-      actual_user_id: user.id, 
-      nim: user.nim, 
-      nama: user.nama_lengkap 
-    });
+    // console.log('User found:', { 
+    //   provided_user_id: user_id, 
+    //   actual_user_id: user.id, 
+    //   nim: user.nim, 
+    //   nama: user.nama_lengkap 
+    // });
 
     // Additional check: verify user_id matches the NIM if provided
     if (user_id && parseInt(user_id) !== user.id) {
@@ -144,11 +144,11 @@ export async function POST(request: NextRequest) {
       .eq('pertemuan_id', pertemuanId)
       .single();
 
-    console.log('Existing absen check:', { 
-      nim, 
-      pertemuanId, 
-      existingAbsen: existingAbsen ? { id: existingAbsen.id, nim: existingAbsen.nim, status: existingAbsen.status } : null 
-    });
+    // console.log('Existing absen check:', { 
+    //   nim, 
+    //   pertemuanId, 
+    //   existingAbsen: existingAbsen ? { id: existingAbsen.id, nim: existingAbsen.nim, status: existingAbsen.status } : null 
+    // });
 
     let result;
     let operation;
@@ -214,11 +214,11 @@ export async function POST(request: NextRequest) {
       }
       
       result = data;
-      console.log('New attendance record created:', { 
-        nim: result.nim, 
-        user_id: result.user_id, 
-        status: result.status 
-      });
+      // console.log('New attendance record created:', { 
+      //   nim: result.nim, 
+      //   user_id: result.user_id, 
+      //   status: result.status 
+      // });
     }
 
     // Create success message

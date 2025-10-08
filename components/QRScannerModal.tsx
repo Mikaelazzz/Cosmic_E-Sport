@@ -540,7 +540,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
  
     try {
       // Call parent component's onSuccess handler instead of direct API call
-      console.log('📤 Calling parent onSuccess with QR data');
+      // console.log('📤 Calling parent onSuccess with QR data');
       if (onSuccess) {
         await onSuccess(qrData);
       }

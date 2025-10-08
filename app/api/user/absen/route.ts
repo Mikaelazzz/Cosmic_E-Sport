@@ -6,17 +6,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { pertemuan_id, qr_data, nim } = body;
 
-    console.log('📥 Received absen request:', {
-      pertemuan_id: pertemuan_id,
-      nim: nim,
-      nim_type: typeof nim,
-      nim_length: nim?.length,
-      body_keys: Object.keys(body),
-      qr_data_type: typeof qr_data
-    });
+    // console.log('📥 Received absen request:', {
+    //   pertemuan_id: pertemuan_id,
+    //   nim: nim,
+    //   nim_type: typeof nim,
+    //   nim_length: nim?.length,
+    //   body_keys: Object.keys(body),
+    //   qr_data_type: typeof qr_data
+    // });
 
     if (!pertemuan_id || qr_data === null || qr_data === undefined) {
-      console.log('❌ Missing pertemuan_id or qr_data');
+      // console.log('❌ Missing pertemuan_id or qr_data');
       return NextResponse.json({
         success: false,
         message: 'Data pertemuan dan QR code diperlukan'
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Validate NIM is provided
     if (!nim || nim.trim() === '') {
-      console.log('❌ NIM missing or empty:', { nim, body });
+      // console.log('❌ NIM missing or empty:', { nim, body });
       return NextResponse.json({
         success: false,
         message: 'NIM diperlukan untuk absensi'
@@ -43,12 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Get user authentication from cookies (optional)
     const authToken = request.cookies.get('auth-token')?.value;
-    console.log('🔐 Auth token from cookies:', authToken);
+    // console.log('🔐 Auth token from cookies:', authToken);
 
     // Get user data from provided NIM (primary source)
     let userData: { user_id: number | null, nim: string | null } = { user_id: null, nim: nim };
     
-    console.log('📋 Using NIM from frontend:', nim);
+    // console.log('📋 Using NIM from frontend:', nim);
     
     // Find user by NIM
     const { data: user, error: userError } = await supabase
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       .single();
       
     if (userError || !user) {
-      console.log('❌ User not found for NIM:', nim, userError);
+      // console.log('❌ User not found for NIM:', nim, userError);
       return NextResponse.json({
         success: false,
         message: `User dengan NIM ${nim} tidak ditemukan di database`
@@ -67,11 +67,11 @@ export async function POST(request: NextRequest) {
     
     userData.user_id = user.id;
     userData.nim = user.nim;
-    console.log('✅ User found:', { 
-      user_id: userData.user_id, 
-      nim: userData.nim, 
-      nama: user.nama_lengkap 
-    });
+    // console.log('✅ User found:', { 
+    //   user_id: userData.user_id, 
+    //   nim: userData.nim, 
+    //   nama: user.nama_lengkap 
+    // });
     
     // Prevent admin from scanning QR for attendance
     if (user.role === 'admin') {
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
     // Verifikasi QR code dengan validasi yang lebih ketat
     let isValidQR = false;
     
-    console.log('🔍 QR data received:', {
-      type: typeof qr_data,
-      value: qr_data,
-      pertemuan_id: pertemuanIdNum
-    });
+    // console.log('🔍 QR data received:', {
+    //   type: typeof qr_data,
+    //   value: qr_data,
+    //   pertemuan_id: pertemuanIdNum
+    // });
     
     // Pastikan qr_data adalah string
     let qrString = '';
@@ -112,9 +112,9 @@ export async function POST(request: NextRequest) {
       // Coba konversi objek ke string JSON
       try {
         qrString = JSON.stringify(qr_data);
-        console.log('🔄 Converted object QR data to string:', qrString);
+        // console.log('🔄 Converted object QR data to string:', qrString);
       } catch (stringifyError) {
-        console.log('❌ Failed to stringify QR object:', stringifyError);
+        // console.log('❌ Failed to stringify QR object:', stringifyError);
         return NextResponse.json({
           success: false,
           message: 'QR Code tidak valid. Gagal mengonversi data objek ke string.'
@@ -133,17 +133,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Log untuk debugging
-    console.log('🔍 Processing QR string:', {
-      length: qrString.length,
-      preview: qrString.substring(0, 100) + '...',
-      type: typeof qrString
-    });
+    // console.log('🔍 Processing QR string:', {
+    //   length: qrString.length,
+    //   preview: qrString.substring(0, 100) + '...',
+    //   type: typeof qrString
+    // });
     
     // STRICT validation - only accept valid attendance QR codes
     try {
       // Try JSON format first
       const qrParsed = JSON.parse(qrString);
-      console.log('🔍 Parsed QR data:', qrParsed);
+      // console.log('🔍 Parsed QR data:', qrParsed);
       
       // Deteksi khusus untuk response API yang sudah di-scan sebelumnya
       if (qrParsed.success !== undefined || 
@@ -151,26 +151,26 @@ export async function POST(request: NextRequest) {
           qrParsed.operation !== undefined ||
           qrParsed.data !== undefined) {
         
-        console.log('❌ Detected API response pattern - QR Code Source Investigation:');
-        console.log('   - QR contains success field:', qrParsed.success !== undefined);
-        console.log('   - QR contains message field:', qrParsed.message !== undefined);
-        console.log('   - QR contains operation field:', qrParsed.operation !== undefined);
-        console.log('   - QR contains data field:', qrParsed.data !== undefined);
-        console.log('   - Full QR structure keys:', Object.keys(qrParsed));
+        // console.log('❌ Detected API response pattern - QR Code Source Investigation:');
+        // console.log('   - QR contains success field:', qrParsed.success !== undefined);
+        // console.log('   - QR contains message field:', qrParsed.message !== undefined);
+        // console.log('   - QR contains operation field:', qrParsed.operation !== undefined);
+        // console.log('   - QR contains data field:', qrParsed.data !== undefined);
+        // console.log('   - Full QR structure keys:', Object.keys(qrParsed));
         
-        // Enhanced security check - log potential security violation
-        console.log('🚨 SECURITY ALERT: Someone attempted to scan API response as QR code');
-        console.log('   - Timestamp:', new Date().toISOString());
-        console.log('   - Pertemuan ID:', pertemuanIdNum);
-        console.log('   - User Data:', userData);
-        console.log('   - QR Data Sample:', JSON.stringify(qrParsed).substring(0, 200) + '...');
+        // // Enhanced security check - log potential security violation
+        // console.log('🚨 SECURITY ALERT: Someone attempted to scan API response as QR code');
+        // console.log('   - Timestamp:', new Date().toISOString());
+        // console.log('   - Pertemuan ID:', pertemuanIdNum);
+        // console.log('   - User Data:', userData);
+        // console.log('   - QR Data Sample:', JSON.stringify(qrParsed).substring(0, 200) + '...');
         
         // Cek apakah ini response dari absensi yang sama
         if ((qrParsed.operation === 'already_present' || qrParsed.operation === 'update') && 
             qrParsed.data && 
             qrParsed.data.pertemuan_id === pertemuanIdNum) {
           
-          console.log('ℹ️ User scanned their own previous attendance response');
+          // console.log('ℹ️ User scanned their own previous attendance response');
           
           // Jika response adalah update dari tidak_hadir ke hadir, tetap kembalikan sebagai success
           if (qrParsed.operation === 'update' && qrParsed.previous_status === 'tidak_hadir') {
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       }
       
     } catch (parseError: any) {
-      console.log('❌ JSON parse failed - rejecting non-JSON QR codes');
+      // console.log('❌ JSON parse failed - rejecting non-JSON QR codes');
       return NextResponse.json({
         success: false,
         message: 'QR Code harus dalam format JSON yang valid untuk presensi.'
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
     }
 
     // User data is already properly set from QR code above
-    console.log('👤 Final user data:', userData);
+    // console.log('👤 Final user data:', userData);
 
     // Get current timestamp in Indonesia timezone (WIB)
     const now = new Date();
@@ -259,10 +259,10 @@ export async function POST(request: NextRequest) {
     // If current time is more than 15 minutes after start, mark as late
     if (indonesiaTime > lateThreshold) {
       attendanceStatus = 'terlambat';
-      console.log('🕐 Auto-marking as late: current time is more than 15 minutes after meeting start');
-      console.log('   Meeting start:', meetingDate.toISOString());
-      console.log('   Late threshold:', lateThreshold.toISOString());
-      console.log('   Current time:', indonesiaTime.toISOString());
+      // console.log('🕐 Auto-marking as late: current time is more than 15 minutes after meeting start');
+      // console.log('   Meeting start:', meetingDate.toISOString());
+      // console.log('   Late threshold:', lateThreshold.toISOString());
+      // console.log('   Current time:', indonesiaTime.toISOString());
     } else {
       console.log('✅ Marking as on-time: within 15 minutes of meeting start');
     }
@@ -298,12 +298,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('📝 Final data to insert/update:', {
-      pertemuan_id: pertemuanIdNum,
-      user_id: userData.user_id,
-      nim: userData.nim,
-      status: attendanceStatus
-    });
+    // console.log('📝 Final data to insert/update:', {
+    //   pertemuan_id: pertemuanIdNum,
+    //   user_id: userData.user_id,
+    //   nim: userData.nim,
+    //   status: attendanceStatus
+    // });
 
     // Check if absensi record already exists for this NIM and meeting
     const { data: existingAbsen, error: checkError } = await supabase
@@ -313,11 +313,11 @@ export async function POST(request: NextRequest) {
       .eq('nim', userData.nim)  // Use NIM as primary identifier
       .single();
 
-    console.log('🔍 Checking existing attendance for:', { 
-      pertemuan_id: pertemuanIdNum, 
-      nim: userData.nim,
-      found: !!existingAbsen 
-    });
+    // console.log('🔍 Checking existing attendance for:', { 
+    //   pertemuan_id: pertemuanIdNum, 
+    //   nim: userData.nim,
+    //   found: !!existingAbsen 
+    // });
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found, which is okay
       console.error('❌ Error checking existing absen:', checkError);
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
       // Record exists, check if we can update it
       if (existingAbsen.status === 'tidak_hadir') {
         // Allow update from tidak_hadir to attendanceStatus (hadir/terlambat)
-        console.log(`🔄 Updating existing absen from tidak_hadir to ${attendanceStatus}:`, existingAbsen.id);
+        // console.log(`🔄 Updating existing absen from tidak_hadir to ${attendanceStatus}:`, existingAbsen.id);
         operation = 'update';
         
         const { data: updateData, error: updateError } = await supabase
@@ -378,7 +378,7 @@ export async function POST(request: NextRequest) {
         });
       } else {
         // Record exists with status hadir/terlambat - prevent duplicate scan
-        console.log('⚠️ NIM already has attendance with status:', existingAbsen.status);
+        // console.log('⚠️ NIM already has attendance with status:', existingAbsen.status);
         
         return NextResponse.json({
           success: false,
@@ -391,7 +391,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // No existing record, create new one
-      console.log('📝 Creating new absen record');
+      // console.log('📝 Creating new absen record');
       operation = 'insert';
       
       const { data: insertData, error: insertError } = await supabase
@@ -449,7 +449,7 @@ export async function POST(request: NextRequest) {
       absenData = insertData;
     }
 
-    console.log(`✅ Absensi berhasil ${operation === 'insert' ? 'dicatat' : 'diupdate'}:`, absenData);
+    // console.log(`✅ Absensi berhasil ${operation === 'insert' ? 'dicatat' : 'diupdate'}:`, absenData);
 
     return NextResponse.json({
       success: true,
