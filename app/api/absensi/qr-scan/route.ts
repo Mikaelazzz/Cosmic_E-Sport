@@ -13,11 +13,18 @@ export async function POST(request: NextRequest) {
   try {
     const { qr_data, user_id, nim } = await request.json();
 
+    // Debug logging
+    console.log('QR Scan Request:', { 
+      user_id, 
+      nim, 
+      qr_data: typeof qr_data === 'string' ? qr_data.substring(0, 100) + '...' : qr_data 
+    });
+
     // Validate required fields
-    if (!qr_data || !user_id || !nim) {
+    if (!qr_data || !nim) {
       return NextResponse.json({
         success: false,
-        message: 'Missing required fields: qr_data, user_id, nim'
+        message: 'Missing required fields: qr_data and nim are required'
       }, { status: 400 });
     }
 
@@ -76,19 +83,32 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Verify user exists and get role
+    // Verify user exists by NIM first (NIM is the primary identifier)
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, nim, nama_lengkap, role')
-      .eq('id', user_id)
       .eq('nim', nim)
       .single();
 
     if (userError || !user) {
+      console.log('User lookup failed:', { nim, userError });
       return NextResponse.json({
         success: false,
-        message: 'User not found or NIM mismatch'
+        message: 'User with this NIM not found'
       }, { status: 404 });
+    }
+
+    console.log('User found:', { 
+      provided_user_id: user_id, 
+      actual_user_id: user.id, 
+      nim: user.nim, 
+      nama: user.nama_lengkap 
+    });
+
+    // Additional check: verify user_id matches the NIM if provided
+    if (user_id && parseInt(user_id) !== user.id) {
+      console.warn(`User ID mismatch: provided ${user_id}, but NIM ${nim} belongs to user ${user.id}`);
+      // We'll use the correct user ID from NIM lookup
     }
 
     // Prevent admin from scanning QR for attendance
@@ -116,50 +136,54 @@ export async function POST(request: NextRequest) {
       scan_time_slot: currentTimeSlot
     });
 
-    // Check if attendance already exists
+    // Check if attendance already exists for this specific NIM and meeting
     const { data: existingAbsen } = await supabase
       .from('absen')
-      .select('id, status')
-      .eq('user_id', user_id)
+      .select('id, status, user_id, nim')
+      .eq('nim', nim)
       .eq('pertemuan_id', pertemuanId)
       .single();
+
+    console.log('Existing absen check:', { 
+      nim, 
+      pertemuanId, 
+      existingAbsen: existingAbsen ? { id: existingAbsen.id, nim: existingAbsen.nim, status: existingAbsen.status } : null 
+    });
 
     let result;
     let operation;
     let previousStatus = null;
     
     if (existingAbsen) {
+      // User with this NIM already has attendance record for this meeting
       previousStatus = existingAbsen.status;
-      operation = 'update';
       
-      // Update existing attendance - include nim update
-      const { data, error } = await supabase
-        .from('absen')
-        .update({
-          nim, // Update NIM to match current user
-          status,
-          jam: currentTime.toISOString(),
-          hari: currentTime.getDay(),
-          qr_code: qrCodeString,
-          updated_at: currentTime.toISOString()
-        })
-        .eq('user_id', user_id)
-        .eq('pertemuan_id', pertemuanId)
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      result = data;
+      // Check if they're trying to scan again (which should be prevented)
+      console.log('Duplicate scan attempt:', { 
+        nim, 
+        existingStatus: existingAbsen.status,
+        newStatus: status 
+      });
+      
+      return NextResponse.json({
+        success: false,
+        message: `NIM ${nim} sudah melakukan absensi untuk pertemuan ini dengan status: ${existingAbsen.status}`,
+        data: {
+          existing_record: existingAbsen,
+          message: 'Absensi sudah tercatat sebelumnya'
+        }
+      }, { status: 409 }); // 409 Conflict
+      
     } else {
       operation = 'create';
       
-      // Create new attendance record
+      // Create new attendance record for this NIM
       const { data, error } = await supabase
         .from('absen')
         .insert({
-          user_id: parseInt(user_id),
+          user_id: user.id,     // Use correct user_id from NIM lookup
           pertemuan_id: pertemuanId,
-          nim,
+          nim: user.nim,        // Use correct NIM from user lookup
           status,
           jam: currentTime.toISOString(),
           hari: currentTime.getDay(),
@@ -170,27 +194,40 @@ export async function POST(request: NextRequest) {
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        
+        // Check if it's a unique constraint violation (duplicate)
+        if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+          return NextResponse.json({
+            success: false,
+            message: `NIM ${nim} sudah melakukan absensi untuk pertemuan ini`,
+            data: {
+              error_type: 'duplicate_attendance',
+              nim,
+              pertemuan_id: pertemuanId
+            }
+          }, { status: 409 });
+        }
+        
+        throw error;
+      }
+      
       result = data;
+      console.log('New attendance record created:', { 
+        nim: result.nim, 
+        user_id: result.user_id, 
+        status: result.status 
+      });
     }
 
-    // Create appropriate message
-    let message;
-    if (operation === 'update') {
-      if (previousStatus !== status) {
-        message = `Absensi berhasil diupdate dari ${previousStatus} menjadi ${status}`;
-      } else {
-        message = `Absensi berhasil diupdate dengan status ${status}`;
-      }
-    } else {
-      message = `Absensi berhasil dicatat dengan status ${status}`;
-    }
+    // Create success message
+    const message = `Absensi berhasil dicatat untuk NIM ${nim} dengan status ${status}`;
 
     return NextResponse.json({
       success: true,
       message,
       operation,
-      ...(previousStatus && { previous_status: previousStatus }),
       data: result
     });
 
