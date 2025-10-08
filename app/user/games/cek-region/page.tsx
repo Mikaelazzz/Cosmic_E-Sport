@@ -38,56 +38,87 @@ const CekRegion = () => {
     setError('')
     setResult(null)
     
-    try {
-      const response = await fetch(
-        `https://ceknickname.com/api/mlbb/region?userId=${encodeURIComponent(idAkun.trim())}&zoneId=${encodeURIComponent(serverAkun.trim())}`,
-        {
-          method: 'GET',
+    const requestData = {
+      user_id: idAkun.trim(),
+      zone_id: serverAkun.trim()
+    };
+
+    // Try direct API first, then fallback to proxy
+    const apiEndpoints = [
+      '/api/games/check-region', // Use proxy first to avoid CORS issues
+      'https://hexagameidn.com/id/check-region-api' // Direct API as fallback
+    ];
+
+    for (let i = 0; i < apiEndpoints.length; i++) {
+      try {
+        const response = await fetch(apiEndpoints[i], {
+          method: 'POST',
+          mode: i === 1 ? 'cors' : 'same-origin',
+          credentials: i === 1 ? 'omit' : 'same-origin',
+          referrerPolicy: 'no-referrer-when-downgrade',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            ...(i === 1 && { 
+              'Referer': window.location.origin,
+              'Sec-Fetch-Mode': 'cors',
+              'Sec-Fetch-Site': 'cross-site'
+            }),
+          },
+          body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          if (i === 1 && (response.status === 0 || response.type === 'opaque')) {
+            // CORS error on direct API, skip to next endpoint
+            continue;
           }
+          setResult({
+            success: false,
+            message: data.message || `HTTP Error: ${response.status}`,
+            data: null
+          });
+          return;
         }
-      )
-      
-      const data = await response.json()
-      
-      
-      if (!response.ok) {
-        // Jika HTTP status bukan 2xx
-        setResult({
-          success: false,
-          message: data.message || `HTTP Error: ${response.status}`,
-          data: null
-        })
-        return
+        
+        if ((data.status === 'success' || data.status === true) && data.data) {
+          // Sukses
+          setResult({
+            success: true,
+            data: {
+              id: data.data.user_id || idAkun.trim(),
+              server: data.data.zone_id || serverAkun.trim(),
+              nickname: data.data.username || data.data.nickname || data.data.nick,
+              country: data.data.country || data.data.region
+            }
+          });
+        } else {
+          // Error dari API
+          setResult({
+            success: false,
+            message: data.message || 'Data tidak ditemukan',
+            data: null
+          });
+        }
+        
+        // If we reach here, request was successful, break the loop
+        break;
+        
+      } catch (err) {
+        console.error(`Error with endpoint ${apiEndpoints[i]}:`, err);
+        
+        // If this is the last endpoint, show error
+        if (i === apiEndpoints.length - 1) {
+          setError('Terjadi kesalahan saat mengecek region. Silakan coba lagi.');
+        }
+        // Otherwise, continue to next endpoint
       }
-      
-      if (data.status === true && data.data) {
-        // Sukses
-        setResult({
-          success: true,
-          data: {
-            id: data.data.id_game || idAkun.trim(),
-            server: serverAkun.trim(),
-            nickname: data.data.nickname,
-            country: data.data.region
-          }
-        })
-      } else {
-        // Error dari API
-        setResult({
-          success: false,
-          message: data.message || 'Data tidak ditemukan',
-          data: null
-        })
-      }
-      
-    } catch (err) {
-      console.error('Error fetching region:', err)
-      setError('Terjadi kesalahan saat mengecek region. Silakan coba lagi.')
-    } finally {
-      setLoading(false)
     }
+    
+    setLoading(false);
   }
   
   // Handle Enter key press
@@ -188,11 +219,11 @@ const CekRegion = () => {
                     <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>ID :</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.id}</span>
                   </div>
-{/*                   
+                  
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                     <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>Server:</span>
                     <span className='text-yellow-300 font-bold text-lg'>{result.data.server}</span>
-                  </div> */}
+                  </div>
                   
                   <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                     <span className='text-yellow-400 font-medium mb-1 sm:mb-0'>NickName :</span>
@@ -224,30 +255,23 @@ const CekRegion = () => {
                   <div className='grid gap-4 sm:gap-5 opacity-60'>
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-gray-300 font-medium mb-1 sm:mb-0'>Username:</span>
-                      <span className='text-gray-400 font-bold text-lg'>{result.data.username}</span>
+                      <span className='text-gray-400 font-bold text-lg'>{result.data.nickname || result.data.username || 'N/A'}</span>
                     </div>
                     
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-gray-300 font-medium mb-1 sm:mb-0'>User ID:</span>
-                      <span className='text-gray-400 font-bold text-lg'>{result.data.user_id}</span>
+                      <span className='text-gray-400 font-bold text-lg'>{result.data.id || idAkun}</span>
                     </div>
                     
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-gray-300 font-medium mb-1 sm:mb-0'>Zone:</span>
-                      <span className='text-gray-400 font-bold text-lg'>{result.data.zone}</span>
+                      <span className='text-gray-400 font-bold text-lg'>{result.data.server || serverAkun}</span>
                     </div>
                     
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-700 rounded-lg'>
                       <span className='text-gray-300 font-medium mb-1 sm:mb-0'>Country:</span>
-                      <span className='text-gray-400 font-bold text-lg'>{result.data.country}</span>
+                      <span className='text-gray-400 font-bold text-lg'>{result.data.country || 'N/A'}</span>
                     </div>
-                    
-                    {result.data.status && (
-                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-red-900/30 border border-red-500 rounded-lg'>
-                        <span className='text-gray-300 font-medium mb-1 sm:mb-0'>Status:</span>
-                        <span className='text-red-400 font-bold text-lg uppercase'>{result.data.status}</span>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
