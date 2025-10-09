@@ -489,50 +489,26 @@ export default function DetailPertemuanPage() {
     }
   };
 
-  // Download PDF
-  const downloadPDF = async () => {
-    if (!pertemuan) return;
+  // Download PDF - Direct download in place
+  const downloadPDF = () => {
+    if (!pertemuan || isDownloadingPDF) return;
     
     setIsDownloadingPDF(true);
-    try {
-      const response = await fetch(`/api/moderator/absensi/${pertemuanId}/pdf`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
-
-      // Get the PDF blob
-      const blob = await response.blob();
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      
-      // Get filename from Content-Disposition header or create default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'laporan-absensi.pdf';
-      
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/);
-        if (match) filename = match[1];
-      }
-      
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      showAlert('Berhasil!', 'Laporan PDF berhasil didownload', 'success');
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      showAlert('Error!', 'Gagal mendownload laporan PDF', 'danger');
-    } finally {
+    
+    // Create invisible link for direct download
+    const link = document.createElement('a');
+    link.href = `/api/moderator/absensi/${pertemuanId}/pdf`;
+    
+    // Add to DOM, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Reset loading state after a short delay
+    setTimeout(() => {
       setIsDownloadingPDF(false);
-    }
+      showAlert('Berhasil!', 'PDF berhasil didownload', 'success');
+    }, 500);
   };
 
   // Attendance Slider Component
@@ -804,9 +780,10 @@ export default function DetailPertemuanPage() {
                     startContent={<IconDownload />}
                     onPress={downloadPDF}
                     isLoading={isDownloadingPDF}
+                    isDisabled={isDownloadingPDF}
                     className="font-semibold border-blue-500 text-blue-400 hover:bg-blue-500/10"
                   >
-                    Download PDF
+                    {isDownloadingPDF ? 'Mengunduh...' : 'Download PDF'}
                   </Button>
                 </div>
               </CardBody>
