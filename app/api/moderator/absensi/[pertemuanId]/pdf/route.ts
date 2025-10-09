@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 import jsPDF from 'jspdf';
+import fs from 'fs';
+import path from 'path';
 
 // Types
 interface AttendanceRecord {
@@ -34,6 +36,49 @@ interface MeetingData {
 function addFont(doc: jsPDF) {
   // Set up font for Indonesian text
   doc.setFont('helvetica');
+}
+
+// Function to add logo to PDF
+async function addLogo(doc: jsPDF, x: number, y: number, width: number, height: number) {
+  try {
+    // Read the logo file from public directory
+    const logoPath = path.join(process.cwd(), 'public', 'logc.png');
+    
+    // Check if file exists
+    if (fs.existsSync(logoPath)) {
+      // Read the image file and convert to base64
+      const logoBuffer = fs.readFileSync(logoPath);
+      const logoBase64 = logoBuffer.toString('base64');
+      const logoDataUrl = `data:image/png;base64,${logoBase64}`;
+      
+      // Add the logo image to PDF
+      doc.addImage(logoDataUrl, 'PNG', x, y, width, height);
+      
+      console.log(`[PDF] Logo berhasil ditambahkan dari: ${logoPath}`);
+    } else {
+      console.warn(`[PDF] Logo file not found at: ${logoPath}`);
+      // Fallback to text logo
+      addTextLogo(doc, x, y, width, height);
+    }
+  } catch (error) {
+    console.error('Error adding logo:', error);
+    // Fallback to text logo
+    addTextLogo(doc, x, y, width, height);
+  }
+}
+
+// Fallback text logo function
+function addTextLogo(doc: jsPDF, x: number, y: number, width: number, height: number) {
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1);
+  doc.circle(x + width/2, y + height/2, width/2, 'S');
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('COSMIC', x + width/2, y + height/2 - 2, { align: 'center' });
+  doc.setFontSize(6);
+  doc.text('E-SPORT', x + width/2, y + height/2 + 3, { align: 'center' });
 }
 
 // Function to format date to Indonesian format
@@ -91,7 +136,9 @@ export async function GET(
   context: { params: Promise<{ pertemuanId: string }> }
 ) {
   try {
+    console.log('[PDF] Route dipanggil!');
     const { pertemuanId } = await context.params;
+    console.log(`[PDF] PertemuanId: ${pertemuanId}`);
 
     if (!pertemuanId) {
       return NextResponse.json(
@@ -99,6 +146,8 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    console.log(`[PDF] Generating PDF for pertemuan: ${pertemuanId}`);
 
     // Get meeting details
     const { data: meeting, error: meetingError } = await supabase
@@ -152,6 +201,20 @@ export async function GET(
 
     const attendance: any[] = attendanceData || [];
 
+    // Generate PDF using the extracted function
+    return await generatePDF(meeting, attendance);
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Gagal membuat PDF' },
+      { status: 500 }
+    );
+  }
+}
+
+// Extracted PDF generation function
+async function generatePDF(meeting: any, attendance: any[]) {
+  try {
     // Calculate statistics
     const totalAttendees = attendance.length;
     const hadirCount = attendance.filter(a => a.status === 'hadir').length;
@@ -163,23 +226,42 @@ export async function GET(
     const doc = new jsPDF();
     addFont(doc);
 
-    let yPosition = 20;
+    let yPosition = 15;
 
-    // Header - Logo or Organization name
-    doc.setFontSize(18);
+    // Header with logo
+    // Left side - University info
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('UKM COSMIC E-SPORT', 105, yPosition, { align: 'center' });
+    doc.text('UKM - ESPORT', 100, yPosition, { align: 'center' });
+    yPosition += 6;
+    doc.text('UNIVERSITAS KATOLIK DARMA CENDIKA', 100, yPosition, { align: 'center' });
+    yPosition += 5;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Jl. Dr. Ir. H. Soekarno No.201 Surabaya Telp. (031) 5914157, 5946482', 100, yPosition, { align: 'center' });
+    
+    // Right side - Logo (positioned to align with header content)
+    await addLogo(doc, 165, 10, 20, 20);
+    
     yPosition += 8;
     
+    // Add line separator
+    doc.setLineWidth(0.5);
+    doc.line(20, yPosition, 190, yPosition);
+    yPosition += 10;
+
+    // Title
     doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
     doc.text('LAPORAN ABSENSI PERTEMUAN', 105, yPosition, { align: 'center' });
-    yPosition += 20;
+    yPosition += 15;
 
     // Meeting Information
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('INFORMASI PERTEMUAN', 20, yPosition);
-    yPosition += 15;
+    yPosition += 10;
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
@@ -197,54 +279,34 @@ export async function GET(
     const jamAkhir = formatTimeIndonesian(meeting.jam_akhir);
     doc.text(`Waktu : ${jamMulai} - ${jamAkhir}`, 20, yPosition);
     yPosition += 8;
-    doc.text(`Status Pertemuan : ${meeting.status.replace('_', ' ').toUpperCase()}`, 20, yPosition);
-    yPosition += 20;
-
-    // Generate PDF 
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('LAPORAN', 20, yPosition);
+    doc.text(`Status : ${meeting.status.replace('_', ' ')}`, 20, yPosition);
     yPosition += 15;
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Laporan Absen dibuat pada : ${formatDateIndonesian(new Date().toISOString().split('T')[0])}`, 20, yPosition);
-    yPosition += 8;
-    doc.text(`Jam : ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`, 20, yPosition);
-    yPosition += 20;
-
-    // // Generation info
-    // yPosition += 10;
-    // doc.setFontSize(9);
-    // doc.setFont('helvetica', 'normal');
-
-    // yPosition += 5;
 
     // Statistics
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('STATISTIK KEHADIRAN', 20, yPosition);
-    yPosition += 15;
+    yPosition += 10;
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total Peserta : ${totalAttendees}`, 20, yPosition);
+    doc.text(`Total Peserta : ${totalAttendees} orang`, 20, yPosition);
     yPosition += 8;
-    doc.text(`Hadir : ${hadirCount}`, 20, yPosition);
+    doc.text(`Hadir : ${hadirCount} orang`, 20, yPosition);
     yPosition += 8;
-    doc.text(`Terlambat : ${terlambatCount}`, 20, yPosition);
+    doc.text(`Terlambat : ${terlambatCount} orang`, 20, yPosition);
     yPosition += 8;
-    doc.text(`Tidak Hadir : ${tidakHadirCount}`, 20, yPosition);
+    doc.text(`Tidak Hadir : ${tidakHadirCount} orang`, 20, yPosition);
     yPosition += 8;
     doc.text(`Persentase Kehadiran : ${persentaseKehadiran}%`, 20, yPosition);
-    yPosition += 20;
+    yPosition += 15;
 
     // Attendance List
     if (attendance.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('DAFTAR KEHADIRAN', 20, yPosition);
-      yPosition += 15;
+      yPosition += 10;
 
       // Table headers
       doc.setFontSize(10);
@@ -271,12 +333,12 @@ export async function GET(
 
         const nama = record.users?.nama_lengkap || 'N/A';
         const nim = record.nim || record.users?.nim || 'N/A';
-        const waktuAbsen = record.jam ? formatTimeIndonesian(record.jam) : 'N/A';
+        const waktuAbsen = record.jam ? formatTimeIndonesian(record.jam) : '-';
 
         doc.text((index + 1).toString(), 20, yPosition);
         
         // Truncate long names
-        const namaText = nama.length > 25 ? nama.substring(0, 22) + '...' : nama;
+        const namaText = nama.length > 35 ? nama.substring(0, 30) + '...' : nama;
         doc.text(namaText, 35, yPosition);
         
         doc.text(nim, 100, yPosition);
@@ -299,8 +361,8 @@ export async function GET(
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Halaman ${i} dari ${pageCount}`, 105, 290, { align: 'center' });
-      doc.text('UKM Cosmic E-Sport', 105, 295, { align: 'center' });
+      doc.text(`Halaman ${i} dari ${pageCount}`, 105, 285, { align: 'center' });
+      doc.text('UKM Cosmic E-Sport', 105, 290, { align: 'center' });
     }
 
     // Generate PDF buffer
@@ -311,6 +373,8 @@ export async function GET(
     const meetingDate = new Date(meeting.tanggal).toISOString().split('T')[0];
     const topicName = meeting.nama_topik.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
     const filename = `absensi-${topicName}-${meetingDate}.pdf`;
+
+    console.log(`[PDF] Generated filename: ${filename}`);
 
     // Return PDF response
     return new NextResponse(pdfBuffer, {
