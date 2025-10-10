@@ -88,23 +88,6 @@ export default function UserDashboard() {
     // Get NIM from user or use fallback for testing
     let userNim = user?.nim;
     
-    if (!user || !userNim) {
-      console.warn('⚠️ User not logged in or no NIM, using fallback for testing');
-      // For testing: use a default NIM (you can replace this with actual logged user)
-      userNim = '213100002'; // Use Odo G's NIM for testing
-      
-      showAlertMessage(
-        'Info Testing',
-        `Menggunakan NIM fallback: ${userNim} (Odo G) untuk testing. Silakan login dengan user yang benar.`,
-        'warning'
-      );
-    }
-    
-    // console.log('📤 Sending absen request:', {
-    //   pertemuan_id: currentPertemuanId,
-    //   nim: userNim,
-    //   qr_data_preview: qrData.substring(0, 100) + '...'
-    // });
     
     try {
       setScanningId(currentPertemuanId);
