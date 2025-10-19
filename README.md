@@ -278,7 +278,7 @@ SOFTWARE.
 Untuk pertanyaan, masalah, atau permintaan kolaborasi, silakan hubungi:
 
   * **Pengembang Utama:** [Mikaelaazz](https://www.google.com/search?q=https://github.com/Mikaelaazz)
-  * **Email UKM Cosmic E-Sport :** [cosmic e-sport](mailto:cosmic.esport@ukdc.ac.id)
+  * **Email UKM Cosmic E-Sport:** [cosmic.esport@ukdc.ac.id](mailto:cosmic.esport@ukdc.ac.id)
   * **Instagram:** [@cosmic.ukdc](https://www.instagram.com/cosmic.ukdc/)
 
 -----
