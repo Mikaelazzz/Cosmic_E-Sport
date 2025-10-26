@@ -36,11 +36,18 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [scanResult, setScanResult] = useState<any>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState<boolean>(false);
+  const [browserType, setBrowserType] = useState<string>('');
  
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scanAnimationRef = useRef<number | null>(null);
+
+  // Detect browser on mount
+  useEffect(() => {
+    const browser = detectBrowser();
+    setBrowserType(browser);
+  }, []);
  
   // Cleanup function
   const cleanup = () => {
@@ -96,10 +103,37 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     }
   };
  
-  // Check browser compatibility and camera support
+  // Check browser compatibility and camera support with polyfill
   const checkBrowserSupport = () => {
-    if (!navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError('Browser tidak mendukung akses kamera. Pastikan menggunakan HTTPS dan browser modern.');
+    // Add polyfill for older browsers
+    if (navigator.mediaDevices === undefined) {
+      (navigator as any).mediaDevices = {};
+    }
+
+    // Polyfill for getUserMedia - support older browser APIs
+    if (navigator.mediaDevices.getUserMedia === undefined) {
+      navigator.mediaDevices.getUserMedia = function(constraints) {
+        // Check for legacy getUserMedia API
+        const getUserMedia = (navigator as any).getUserMedia || 
+                           (navigator as any).webkitGetUserMedia || 
+                           (navigator as any).mozGetUserMedia || 
+                           (navigator as any).msGetUserMedia;
+
+        // If no getUserMedia support at all
+        if (!getUserMedia) {
+          return Promise.reject(new Error('getUserMedia is not implemented in this browser'));
+        }
+
+        // Wrap the legacy API in a Promise
+        return new Promise((resolve, reject) => {
+          getUserMedia.call(navigator, constraints, resolve, reject);
+        });
+      };
+    }
+
+    // Final check if getUserMedia is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError('Browser tidak mendukung akses kamera.');
       setIsLoading(false);
       setNeedsPermission(false);
       return false;
@@ -116,15 +150,36 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     
     return isMobile || isTablet || (isTouchDevice && window.innerWidth <= 1024);
   };
+
+  // Detect if device is iOS
+  const isIOS = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(userAgent) || 
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad Pro detection
+  };
+
+  // Detect browser type
+  const detectBrowser = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    if (userAgent.includes('edg')) return 'Edge';
+    if (userAgent.includes('chrome') && !userAgent.includes('edg')) return 'Chrome';
+    if (userAgent.includes('firefox')) return 'Firefox';
+    if (userAgent.includes('safari') && !userAgent.includes('chrome')) return 'Safari';
+    if (userAgent.includes('opera') || userAgent.includes('opr')) return 'Opera';
+    if (userAgent.includes('samsungbrowser')) return 'Samsung Internet';
+    
+    return 'Unknown';
+  };
  
-  // Check camera permission status
+  // Check camera permission status with enhanced browser compatibility
   const checkPermissionStatus = async () => {
     
     try {
       if (!checkBrowserSupport()) return;
  
-      // Check permission status if available
-      if (navigator.permissions) {
+      // Check permission status if available (modern browsers)
+      if (navigator.permissions && typeof navigator.permissions.query === 'function') {
         try {
           const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
           
@@ -138,9 +193,16 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
             setIsLoading(false);
             setNeedsPermission(false);
           }
+          
+          // Listen for permission changes
+          permission.onchange = () => {
+            if (permission.state === 'granted') {
+              startCamera();
+            }
+          };
         } catch (permErr) {
-          console.warn('⚠️ Permission query failed, trying direct approach:', permErr);
-          // Try direct camera access
+          console.warn('Permission query failed (browser may not support), trying direct approach:', permErr);
+          // Try direct camera access for browsers that don't support permission query
           try {
             await startCamera();
           } catch (directErr) {
@@ -149,7 +211,8 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
           }
         }
       } else {
-        // Try direct camera access for older browsers
+        // Direct camera access for browsers without Permissions API (Safari iOS, older browsers)
+        console.log('Permissions API not available, attempting direct camera access');
         try {
           await startCamera();
         } catch (directErr) {
@@ -158,14 +221,18 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         }
       }
     } catch (err) {
-      console.error('❌ Error checking permission:', err);
-      setError('Gagal memeriksa izin kamera');
-      setIsLoading(false);
-      setNeedsPermission(false);
+      console.error('Error checking permission:', err);
+      // Don't show error, instead try to start camera directly
+      try {
+        await startCamera();
+      } catch (startErr) {
+        setNeedsPermission(true);
+        setIsLoading(false);
+      }
     }
   };
  
-  // Start camera
+  // Start camera with enhanced browser compatibility
   const startCamera = async () => {
     
     try {
@@ -179,64 +246,132 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
       // Detect device type and configure camera accordingly
       const isDevice = isMobileOrTablet();
       
-      // Configure video constraints based on device type
-      const videoConstraints: any = {
-        width: { ideal: 1280, min: 640 },
-        height: { ideal: 720, min: 480 },
-        frameRate: { ideal: 30, min: 15 }
-      };
+      // Multiple constraint configurations for better compatibility
+      const constraintConfigs = [
+        // Configuration 1: Ideal settings with environment camera for mobile
+        {
+          video: {
+            facingMode: isDevice ? { ideal: 'environment' } : 'user',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 15 }
+          }
+        },
+        // Configuration 2: Simplified settings without frameRate
+        {
+          video: {
+            facingMode: isDevice ? { ideal: 'environment' } : 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        },
+        // Configuration 3: Basic settings with facingMode only
+        {
+          video: {
+            facingMode: isDevice ? 'environment' : 'user'
+          }
+        },
+        // Configuration 4: Most basic - just request video
+        {
+          video: true
+        }
+      ];
 
-      // For mobile/tablet devices, prefer back camera (environment)
-      if (isDevice) {
-        videoConstraints.facingMode = { ideal: 'environment' };
+      let mediaStream: MediaStream | null = null;
+      let lastError: any = null;
+
+      // Try each configuration until one works
+      for (const constraints of constraintConfigs) {
+        try {
+          console.log('Attempting camera access with constraints:', constraints);
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log('Camera access granted with constraints:', constraints);
+          break; // Success! Exit loop
+        } catch (err: any) {
+          console.warn('Failed with constraints:', constraints, 'Error:', err.name);
+          lastError = err;
+          // Continue to next configuration
+        }
       }
 
-      // Request camera access with appropriate configuration
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints
-      });
+      // If all configurations failed
+      if (!mediaStream) {
+        throw lastError || new Error('Failed to access camera with all constraint configurations');
+      }
 
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.setAttribute('playsinline', 'true');
         
+        // Set multiple attributes for better cross-browser compatibility
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        videoRef.current.setAttribute('muted', 'true');
+        videoRef.current.setAttribute('autoplay', 'true');
+        videoRef.current.muted = true; // Also set as property
+        
+        // Handle metadata loaded
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
-            videoRef.current.play().then(() => {
+            // Try to play the video
+            const playPromise = videoRef.current.play();
+            
+            if (playPromise !== undefined) {
+              playPromise.then(() => {
+                setHasPermission(true);
+                setIsLoading(false);
+                
+                // Small delay to ensure video is fully ready
+                setTimeout(() => {
+                  setIsScanning(true);
+                  startScanning();
+                }, 500);
+                
+                // Fallback: ensure scanning is running after 2 seconds
+                setTimeout(() => {
+                  if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
+                    setIsScanning(true);
+                    startScanning();
+                  }
+                }, 2000);
+              }).catch(err => {
+                console.error('Error playing video:', err);
+                // Try to start anyway on some browsers
+                setHasPermission(true);
+                setIsLoading(false);
+                setTimeout(() => {
+                  setIsScanning(true);
+                  startScanning();
+                }, 500);
+              });
+            } else {
+              // For older browsers that don't return a promise
               setHasPermission(true);
               setIsLoading(false);
-              
-              // Small delay to ensure video is fully ready
               setTimeout(() => {
                 setIsScanning(true);
                 startScanning();
               }, 500);
-              
-              // Fallback: ensure scanning is running after 2 seconds
-              setTimeout(() => {
-                if (!isSubmitting && !scanSuccess && !showSuccessOverlay) {
-                  setIsScanning(true);
-                  startScanning();
-                }
-              }, 2000);
-            }).catch(err => {
-              console.error('❌ Error playing video:', err);
-              setError('Gagal memulai video kamera');
-              setIsLoading(false);
-            });
+            }
           }
+        };
+        
+        // Handle any errors during loading
+        videoRef.current.onerror = (err) => {
+          console.error('Video element error:', err);
+          setError('Gagal memuat video kamera');
+          setIsLoading(false);
         };
       }
  
     } catch (err: any) {
-      console.error('❌ Camera error:', err);
+      console.error('Camera error:', err);
       handleCameraError(err);
     }
   };
  
-  // Handle camera errors
+  // Handle camera errors with detailed browser-specific messages
   const handleCameraError = (err: any) => {
     let errorMessage = 'Gagal mengakses kamera.';
     
@@ -245,25 +380,36 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
     } else {
       switch (err.name) {
         case 'NotAllowedError':
-          errorMessage = 'Akses kamera ditolak. Klik ikon kamera di address bar dan pilih "Izinkan".';
+        case 'PermissionDeniedError':
+          errorMessage = 'Akses kamera ditolak.';
           break;
         case 'NotFoundError':
-          errorMessage = 'Kamera tidak ditemukan. Pastikan perangkat memiliki kamera.';
+        case 'DevicesNotFoundError':
+          errorMessage = 'Kamera tidak ditemukan.';
           break;
         case 'NotReadableError':
-          errorMessage = 'Kamera sedang digunakan aplikasi lain. Tutup aplikasi lain yang menggunakan kamera.';
+        case 'TrackStartError':
+          errorMessage = 'Kamera sedang digunakan aplikasi lain. Tutup aplikasi lain yang menggunakan kamera dan coba lagi.';
           break;
         case 'OverconstrainedError':
-          errorMessage = 'Pengaturan kamera tidak didukung. Coba gunakan kamera lain.';
-          break;
+        case 'ConstraintNotSatisfiedError':
+          errorMessage = 'Pengaturan kamera tidak didukung oleh perangkat Anda.';
+          // Try again with basic settings
+          setTimeout(() => {
+            requestPermissionAndStart();
+          }, 1000);
+          return;
         case 'SecurityError':
-          errorMessage = 'Akses kamera diblokir karena keamanan. Pastikan menggunakan HTTPS.';
+          errorMessage = 'Akses kamera diblokir karena keamanan.';
           break;
         case 'AbortError':
-          errorMessage = 'Permintaan akses kamera dibatalkan.';
+          errorMessage = 'Permintaan akses kamera dibatalkan. Silakan coba lagi.';
+          break;
+        case 'TypeError':
+          errorMessage = 'Browser tidak mendukung akses kamera.';
           break;
         default:
-          errorMessage = err.message || 'Kesalahan tidak diketahui saat mengakses kamera.';
+          errorMessage = `Error: ${err.message || 'Kesalahan tidak diketahui'}`;
       }
     }
     
@@ -632,9 +778,11 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM13 3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
               </svg>
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-lg sm:text-xl font-bold">Scan Presensi</h2>
-              {/* <p className="text-small text-default-500">Pertemuan ID: {pertemuanId}</p> */}
+              {/* {browserType && browserType !== 'Unknown' && (
+                <p className="text-xs text-default-500">Browser: {browserType}</p>
+              )} */}
             </div>
           </div>
         </ModalHeader>
@@ -754,10 +902,10 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   </div>
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Izin Akses Kamera</h3>
-                <p className="text-default-600 text-sm max-w-sm mx-auto mb-6">
+                {/* <p className="text-default-600 text-sm max-w-sm mx-auto mb-4">
                   Aplikasi membutuhkan akses kamera untuk memindai kode QR presensi. 
                   Pastikan untuk mengizinkan akses kamera di browser Anda.
-                </p>
+                </p> */}
                 <Button
                   color="warning"
                   onPress={requestPermissionAndStart}
@@ -778,9 +926,29 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 hideIconWrapper
                 color="danger"
                 variant="bordered"
-                title="Error"
+                title="Error Akses Kamera"
                 description={error}
               />
+              <div className="flex gap-2 mt-3">
+                <Button 
+                  size="sm"
+                  color="danger" 
+                  variant="flat"
+                  onPress={handleRetry}
+                  className="flex-1"
+                >
+                  Coba Lagi
+                </Button>
+                <Button 
+                  size="sm"
+                  color="default" 
+                  variant="light"
+                  onPress={handleClose}
+                  className="flex-1"
+                >
+                  Tutup
+                </Button>
+              </div>
             </div>
           )}
  
