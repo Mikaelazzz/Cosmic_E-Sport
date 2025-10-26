@@ -297,7 +297,7 @@ export const Navbar = () => {
         className="hidden sm:flex basis-1/5 sm:basis-full"
         justify="end"
       >
-        <ThemeSwitch />
+        {/* <ThemeSwitch /> */}
         
         {/* Don't render anything while loading */}
         {!isLoading && (
@@ -386,7 +386,7 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
-        <ThemeSwitch />
+        {/* <ThemeSwitch /> */}
         
         {/* Don't render anything while loading */}
         {!isLoading && (
