@@ -47,8 +47,8 @@ export async function POST(request: Request) {
 
     if (!existingUser) {
       return NextResponse.json(
-        { success: false, message: 'Email tidak terdaftar' },
-        { status: 400 }
+        { success: false, message: 'Email tidak ditemukan' },
+        { status: 404 }
       );
     }
 
