@@ -852,6 +852,9 @@ export default function DetailPertemuanPage() {
                   <h2 className="text-lg sm:text-xl font-bold text-[#FFD700] flex items-center gap-2">
                     <IconUsers className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span className="text-base sm:text-xl">List Anggota</span>
+                    <Chip size="sm" variant="flat" color="primary" className="ml-2">
+                      {filteredAbsensi.length} dari {absensiList.length}
+                    </Chip>
                   </h2>
                   
                   <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -861,6 +864,7 @@ export default function DetailPertemuanPage() {
                       startContent={<IconSearch className="w-4 h-4" />}
                       value={searchQuery}
                       onValueChange={setSearchQuery}
+                      onClear={() => setSearchQuery('')}
                       className="w-full"
                       size="md"
                       classNames={{
@@ -872,13 +876,25 @@ export default function DetailPertemuanPage() {
                     <div className="flex gap-2">
                       <Dropdown>
                         <DropdownTrigger>
-                          <Button variant="flat" startContent={<IconFilter className="w-4 h-4" />} size="sm" className="text-xs">
-                            Filter
+                          <Button 
+                            variant="flat" 
+                            startContent={<IconFilter className="w-4 h-4" />} 
+                            size="sm" 
+                            className="text-xs"
+                          >
+                            {statusFilter === 'all' ? 'Semua Status' : 
+                             statusFilter === 'hadir' ? 'Hadir' :
+                             statusFilter === 'terlambat' ? 'Terlambat' : 'Tidak Hadir'}
                           </Button>
                         </DropdownTrigger>
                         <DropdownMenu 
-                          selectedKeys={[statusFilter]}
-                          onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as any)}
+                          aria-label="Filter Status"
+                          selectionMode="single"
+                          selectedKeys={new Set([statusFilter])}
+                          onSelectionChange={(keys) => {
+                            const selected = Array.from(keys)[0] as 'all' | 'hadir' | 'tidak_hadir' | 'terlambat';
+                            setStatusFilter(selected);
+                          }}
                         >
                           <DropdownItem key="all">Semua Status</DropdownItem>
                           <DropdownItem key="hadir">Hadir</DropdownItem>
@@ -899,6 +915,48 @@ export default function DetailPertemuanPage() {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Filter Info */}
+                  {(searchQuery || statusFilter !== 'all') && (
+                    <div className="flex flex-wrap gap-2 items-center text-xs text-default-500">
+                      <span>Filter aktif:</span>
+                      {searchQuery && (
+                        <Chip 
+                          size="sm" 
+                          variant="flat" 
+                          onClose={() => setSearchQuery('')}
+                          className="text-xs"
+                        >
+                          Pencarian: "{searchQuery}"
+                        </Chip>
+                      )}
+                      {statusFilter !== 'all' && (
+                        <Chip 
+                          size="sm" 
+                          variant="flat" 
+                          color={getAttendanceStatusColor(statusFilter)}
+                          onClose={() => setStatusFilter('all')}
+                          className="text-xs"
+                        >
+                          Status: {getStatusText(statusFilter)}
+                        </Chip>
+                      )}
+                      {(searchQuery || statusFilter !== 'all') && (
+                        <Button
+                          size="sm"
+                          variant="light"
+                          color="primary"
+                          className="text-xs h-6 min-w-0 px-2"
+                          onPress={() => {
+                            setSearchQuery('');
+                            setStatusFilter('all');
+                          }}
+                        >
+                          Reset Filter
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardBody>
