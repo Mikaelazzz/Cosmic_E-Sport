@@ -83,6 +83,7 @@ interface ReportData {
     meetings: number;
     attendance: number;
     averageAttendance: number;
+    attendanceRate: number;
   }>;
   attendanceByStatus: Array<{
     status: string;
@@ -94,12 +95,22 @@ interface ReportData {
     meetings: number;
     totalAttendance: number;
     averageAttendance: number;
+    attendanceRate: number;
+    expectedAttendance: number;
   }>;
   weeklyAttendance: Array<{
     week: string;
     hadir: number;
     terlambat: number;
     tidak_hadir: number;
+    total: number;
+    meetings: number;
+    meetingDetails?: Array<{
+      topik: string;
+      hari: string;
+      tanggal: string;
+      waktu?: string;
+    }>;
   }>;
 }
 
@@ -419,22 +430,62 @@ export default function ModeratorReportsPage() {
                           textAnchor="end"
                           height={60}
                         />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
+                        <YAxis 
+                          yAxisId="left"
+                          tick={{ fontSize: 10 }}
+                          label={{ value: 'Jumlah', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                        />
+                        <YAxis 
+                          yAxisId="right"
+                          orientation="right"
+                          tick={{ fontSize: 10 }}
+                          label={{ value: 'Rate (%)', angle: 90, position: 'insideRight', fontSize: 10 }}
+                        />
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                                  <p className="font-semibold mb-2">{data.month}</p>
+                                  <p className="text-sm text-blue-600">Pertemuan: {data.meetings}</p>
+                                  <p className="text-sm text-green-600">Kehadiran: {data.attendance}</p>
+                                  <p className="text-sm text-purple-600">Rata-rata: {data.averageAttendance.toFixed(1)}</p>
+                                  <p className="text-sm text-orange-600 font-bold">Rate: {data.attendanceRate.toFixed(1)}%</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
                         <Legend />
                         <Line 
+                          yAxisId="left"
                           type="monotone" 
                           dataKey="meetings" 
                           stroke={COLORS.primary} 
                           strokeWidth={2}
                           name="Jumlah Pertemuan"
+                          dot={{ r: 4 }}
                         />
                         <Line 
+                          yAxisId="left"
                           type="monotone" 
                           dataKey="attendance" 
                           stroke={COLORS.success} 
                           strokeWidth={2}
                           name="Total Kehadiran"
+                          dot={{ r: 4 }}
+                        />
+                        <Line 
+                          yAxisId="right"
+                          type="monotone" 
+                          dataKey="attendanceRate" 
+                          stroke={COLORS.warning} 
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          name="Tingkat Kehadiran (%)"
+                          dot={{ r: 4 }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -485,7 +536,7 @@ export default function ModeratorReportsPage() {
             {/* Weekly Attendance Pattern */}
             <Card className="mb-8">
               <CardHeader>
-                <h3 className="text-lg sm:text-xl font-semibold">Pola Kehadiran Mingguan</h3>
+                <h3 className="text-lg sm:text-xl font-semibold">Pola Kehadiran Mingguan (4 Minggu Terakhir)</h3>
               </CardHeader>
               <Divider />
               <CardBody>
@@ -500,8 +551,50 @@ export default function ModeratorReportsPage() {
                         textAnchor="end"
                         height={80}
                       />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <YAxis 
+                        tick={{ fontSize: 10 }}
+                        label={{ value: 'Jumlah', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const totalValid = data.hadir + data.terlambat;
+                            const percentage = data.total > 0 ? ((totalValid / data.total) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-w-sm">
+                                <p className="font-semibold mb-2">{data.week}</p>
+                                
+                                {/* Meeting Details */}
+                                {data.meetingDetails && data.meetingDetails.length > 0 && (
+                                  <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Pertemuan:</p>
+                                    {data.meetingDetails.map((meeting: any, idx: number) => (
+                                      <div key={idx} className="text-xs text-gray-600 dark:text-gray-400 mb-1 pl-2">
+                                        <p className="font-medium">{meeting.topik}</p>
+                                        <p>{meeting.hari}, {meeting.tanggal}</p>
+                                        {meeting.waktu && <p>Pukul {meeting.waktu}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                
+                                {data.meetings === 0 && (
+                                  <p className="text-xs text-gray-500 mb-2 italic">Tidak ada pertemuan minggu ini</p>
+                                )}
+                                
+                                <p className="text-sm text-green-600">✓ Hadir: {data.hadir}</p>
+                                <p className="text-sm text-yellow-600">⚠ Terlambat: {data.terlambat}</p>
+                                <p className="text-sm text-red-600">✗ Tidak Hadir: {data.tidak_hadir}</p>
+                                <p className="text-sm text-gray-800 dark:text-gray-200 font-bold mt-2 pt-2 border-t">
+                                  Total: {data.total} ({percentage}% hadir)
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
                       <Legend />
                       <Bar dataKey="hadir" stackId="a" fill={COLORS.success} name="Hadir" />
                       <Bar dataKey="terlambat" stackId="a" fill={COLORS.warning} name="Terlambat" />
@@ -536,16 +629,20 @@ export default function ModeratorReportsPage() {
                         <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                           <td className="py-3 px-4 font-medium">{topic.topic}</td>
                           <td className="py-3 px-4 text-center">{topic.meetings}</td>
-                          <td className="py-3 px-4 text-center">{topic.totalAttendance}</td>
-                          <td className="py-3 px-4 text-center">{topic.averageAttendance.toFixed(1)}</td>
+                          <td className="py-3 px-4 text-center">
+                            {topic.totalAttendance} / {topic.expectedAttendance}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {topic.averageAttendance.toFixed(1)} orang
+                          </td>
                           <td className="py-3 px-4 text-center">
                             <Chip
-                              color={topic.averageAttendance >= 15 ? 'success' : 
-                                     topic.averageAttendance >= 10 ? 'warning' : 'danger'}
+                              color={topic.attendanceRate >= 70 ? 'success' : 
+                                     topic.attendanceRate >= 50 ? 'warning' : 'danger'}
                               size="sm"
                               variant="flat"
                             >
-                              {((topic.averageAttendance / 20) * 100).toFixed(1)}%
+                              {topic.attendanceRate.toFixed(1)}%
                             </Chip>
                           </td>
                         </tr>
@@ -579,8 +676,11 @@ export default function ModeratorReportsPage() {
                             </div>
                             
                             <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                              <p className="text-xl font-bold text-green-600 dark:text-green-400">
                                 {topic.totalAttendance}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500">
+                                / {topic.expectedAttendance}
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 Total Kehadiran
@@ -599,12 +699,12 @@ export default function ModeratorReportsPage() {
                             <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                               <div className="mb-1">
                                 <Chip
-                                  color={topic.averageAttendance >= 15 ? 'success' : 
-                                         topic.averageAttendance >= 10 ? 'warning' : 'danger'}
+                                  color={topic.attendanceRate >= 70 ? 'success' : 
+                                         topic.attendanceRate >= 50 ? 'warning' : 'danger'}
                                   size="md"
                                   variant="flat"
                                 >
-                                  {((topic.averageAttendance / 20) * 100).toFixed(1)}%
+                                  {topic.attendanceRate.toFixed(1)}%
                                 </Chip>
                               </div>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
