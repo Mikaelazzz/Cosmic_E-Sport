@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Verify meeting is still active
     const { data: pertemuan, error: pertemuanError } = await supabase
       .from('jadwal_pertemuan')
-      .select('id, judul, status, tanggal, waktu_mulai')
+      .select('id, nama_topik, status, tanggal, jam_mulai')
       .eq('id', pertemuanId)
       .single();
 
@@ -119,13 +119,24 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Determine attendance status based on time
+    // Determine attendance status based on time (60 minute tolerance for late)
     const currentTime = new Date();
-    const meetingTime = new Date(`${pertemuan.tanggal}T${pertemuan.waktu_mulai}`);
-    const lateThreshold = new Date(meetingTime.getTime() + 15 * 60 * 1000); // 15 minutes after start
+    const indonesiaTime = new Date(currentTime.getTime() + (7 * 60 * 60 * 1000)); // UTC+7
     
+    // Parse meeting start time - jam_mulai is in UTC, need to convert to WIB
+    const jamMulaiParts = pertemuan.jam_mulai.split(':');
+    const jamMulaiUTC = parseInt(jamMulaiParts[0], 10);
+    const menitMulai = parseInt(jamMulaiParts[1], 10);
+    const detikMulai = parseInt(jamMulaiParts[2] || '0', 10);
+    
+    // Create meeting start time in UTC first, then convert entire timestamp to WIB
+    const meetingDateUTC = new Date(pertemuan.tanggal + 'T' + pertemuan.jam_mulai + 'Z');
+    const meetingDateWIB = new Date(meetingDateUTC.getTime() + (7 * 60 * 60 * 1000));
+
+    const lateThreshold = new Date(meetingDateWIB.getTime() + 60 * 60 * 1000); // 60 minutes after start
+
     let status = 'hadir';
-    if (currentTime > lateThreshold) {
+    if (indonesiaTime > lateThreshold) {
       status = 'terlambat';
     }
 

@@ -79,20 +79,27 @@ export async function POST(
     const jamFormatted = indonesiaTime.toISOString().replace('Z', '+07:00'); // Proper timezone format
     const hariFormatted = indonesiaTime.getDay();
 
-    // Auto-detect status based on 15-minute rule if status is 'hadir'
+    // Auto-detect status based on 60-minute rule if status is 'hadir'
     let finalStatus = status;
     if (status === 'hadir' && pertemuan.status === 'berlangsung') {
-      // Create meeting start time in Indonesia timezone
-      const meetingDate = new Date(`${pertemuan.tanggal}T${pertemuan.jam_mulai}:00+07:00`);
-      const lateThreshold = new Date(meetingDate.getTime() + 15 * 60 * 1000); // 15 minutes after start
+      // Parse jam_mulai (stored in UTC format like "15:00:00")
+      const jamMulaiParts = pertemuan.jam_mulai.split(':');
+      const jamMulaiUTC = parseInt(jamMulaiParts[0], 10);
+      const menitMulai = parseInt(jamMulaiParts[1], 10);
+      const detikMulai = parseInt(jamMulaiParts[2] || '0', 10);
       
-      // If current time is more than 15 minutes after start, mark as late
+      // Create meeting start time in UTC first, then convert entire timestamp to WIB
+      const meetingDateUTC = new Date(pertemuan.tanggal + 'T' + pertemuan.jam_mulai + 'Z');
+      const meetingDateWIB = new Date(meetingDateUTC.getTime() + (7 * 60 * 60 * 1000));
+
+      const lateThreshold = new Date(meetingDateWIB.getTime() + 60 * 60 * 1000); // 60 minutes after start
+
+      // If current time is more than 55 minutes after start, mark as late
       if (indonesiaTime > lateThreshold) {
         finalStatus = 'terlambat';
-        console.log('🕐 Auto-marking as late: current time is more than 15 minutes after meeting start');
-        console.log('   Meeting start:', meetingDate.toISOString());
-        console.log('   Late threshold:', lateThreshold.toISOString());
-        console.log('   Current time:', indonesiaTime.toISOString());
+        console.log('🕐 Auto-marking as TERLAMBAT (>55 minutes late)');
+      } else {
+        console.log('✅ Marked as HADIR (within 55-minute tolerance)');
       }
     }
 
@@ -121,6 +128,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: data,
+        actualStatus: finalStatus,
         message: finalStatus !== status ? 
           `Absensi berhasil diupdate sebagai '${finalStatus}' (auto-detected berdasarkan waktu)` :
           'Absensi berhasil diupdate'
@@ -153,6 +161,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: data,
+        actualStatus: finalStatus,
         message: finalStatus !== status ? 
           `Absensi berhasil dicatat sebagai '${finalStatus}' (auto-detected berdasarkan waktu)` :
           'Absensi berhasil dicatat'

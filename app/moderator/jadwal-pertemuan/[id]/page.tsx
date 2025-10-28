@@ -459,7 +459,7 @@ export default function DetailPertemuanPage() {
   };
 
   // Manual absen
-  const handleManualAbsen = async (userId: string, status: 'hadir' | 'tidak_hadir' | 'terlambat') => {
+  const handleManualAbsen = async (userId: string, status: 'hadir' | 'tidak_hadir') => {
     try {
       const response = await fetch(`/api/moderator/absensi/${pertemuanId}/manual`, {
         method: 'POST',
@@ -474,7 +474,10 @@ export default function DetailPertemuanPage() {
       const result = await response.json();
       
       if (result.success) {
-        showAlert('Berhasil!', `Absensi ${status} berhasil dicatat`, 'success');
+        // Show message based on actual status saved (could be terlambat if late)
+        const actualStatus = result.actualStatus || status;
+        const statusText = actualStatus === 'terlambat' ? 'terlambat (otomatis)' : actualStatus;
+        showAlert('Berhasil!', `Absensi ${statusText} berhasil dicatat`, 'success');
         await fetchAbsensiData();
         closeAbsenModal();
       } else {
@@ -1094,15 +1097,6 @@ export default function DetailPertemuanPage() {
                                         </Button>
                                         <Button
                                           size="sm"
-                                          color="warning"
-                                          variant="flat"
-                                          onPress={() => handleManualAbsen(absensi.user.id, 'terlambat')}
-                                          startContent={<IconClock className="w-3 h-3" />}
-                                        >
-                                          Terlambat
-                                        </Button>
-                                        <Button
-                                          size="sm"
                                           color="danger"
                                           variant="flat"
                                           onPress={() => handleManualAbsen(absensi.user.id, 'tidak_hadir')}
@@ -1173,16 +1167,6 @@ export default function DetailPertemuanPage() {
                                         className="flex-1 text-xs"
                                       >
                                         Hadir
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        color="warning"
-                                        variant="flat"
-                                        onPress={() => handleManualAbsen(absensi.user.id, 'terlambat')}
-                                        startContent={<IconClock className="w-3 h-3" />}
-                                        className="flex-1 text-xs"
-                                      >
-                                        Terlambat
                                       </Button>
                                       <Button
                                         size="sm"
