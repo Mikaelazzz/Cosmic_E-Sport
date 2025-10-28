@@ -17,6 +17,23 @@ export async function GET(request: NextRequest) {
     const finalStartDate = startDate || defaultStartDate;
     const finalEndDate = endDate || defaultEndDate;
 
+    // Get active period to count total users correctly
+    const { data: activePeriod } = await supabase
+      .from('periode')
+      .select('id')
+      .eq('status', 'berlangsung')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Count total active users (not admin)
+    const { count: totalUsersCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .neq('role', 'admin');
+
+    const totalActiveUsers = totalUsersCount || 20; // Fallback to 20 if count fails
+
     // Build base query for meetings
     let meetingsQuery = supabase
       .from('jadwal_pertemuan')
@@ -24,7 +41,9 @@ export async function GET(request: NextRequest) {
         id,
         nama_topik,
         tanggal,
+        jam_mulai,
         status,
+        periode_id,
         created_at
       `)
       .gte('tanggal', finalStartDate)
@@ -33,6 +52,11 @@ export async function GET(request: NextRequest) {
     // Apply status filter
     if (status && status !== 'all') {
       meetingsQuery = meetingsQuery.eq('status', status);
+    }
+
+    // Filter by active period if exists
+    if (activePeriod) {
+      meetingsQuery = meetingsQuery.eq('periode_id', activePeriod.id);
     }
 
     const { data: meetings, error: meetingsError } = await meetingsQuery.order('tanggal', { ascending: true });
@@ -57,7 +81,7 @@ export async function GET(request: NextRequest) {
           pertemuan_id,
           status,
           jam,
-          users:user_id(nama_lengkap, nim)
+          users:user_id(nama_lengkap, nim, role)
         `)
         .in('pertemuan_id', meetingIds);
 
@@ -70,11 +94,16 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const totalMeetings = meetings?.length || 0;
-    const totalAttendance = attendanceData.length;
+    
+    // Count only hadir and terlambat as valid attendance
+    const validAttendance = attendanceData.filter(a => 
+      a.status === 'hadir' || a.status === 'terlambat'
+    );
+    const totalAttendance = validAttendance.length;
     const averageAttendance = totalMeetings > 0 ? totalAttendance / totalMeetings : 0;
     
-    // Calculate attendance rate (assuming 20 members as base)
-    const expectedTotalAttendance = totalMeetings * 20; // Assuming 20 active members
+    // Calculate attendance rate based on actual users
+    const expectedTotalAttendance = totalMeetings * totalActiveUsers;
     const attendanceRate = expectedTotalAttendance > 0 ? (totalAttendance / expectedTotalAttendance) * 100 : 0;
 
     // Monthly data aggregation
@@ -82,74 +111,94 @@ export async function GET(request: NextRequest) {
     meetings?.forEach(meeting => {
       const month = new Date(meeting.tanggal).toLocaleDateString('id-ID', { year: 'numeric', month: 'short' });
       if (!monthlyMap.has(month)) {
-        monthlyMap.set(month, { meetings: 0, attendance: 0 });
+        monthlyMap.set(month, { meetings: 0, attendanceData: [] });
       }
       const monthData = monthlyMap.get(month);
       monthData.meetings += 1;
       
-      // Count attendance for this meeting
-      const meetingAttendance = attendanceData.filter(a => a.pertemuan_id === meeting.id).length;
-      monthData.attendance += meetingAttendance;
+      // Get attendance for this meeting (only hadir and terlambat)
+      const meetingAttendance = attendanceData.filter(a => 
+        a.pertemuan_id === meeting.id && 
+        (a.status === 'hadir' || a.status === 'terlambat')
+      );
+      monthData.attendanceData.push(...meetingAttendance);
     });
 
     const monthlyData = Array.from(monthlyMap.entries()).map(([month, data]) => ({
       month,
       meetings: data.meetings,
-      attendance: data.attendance,
-      averageAttendance: data.meetings > 0 ? data.attendance / data.meetings : 0
+      attendance: data.attendanceData.length,
+      averageAttendance: data.meetings > 0 ? data.attendanceData.length / data.meetings : 0,
+      attendanceRate: data.meetings > 0 ? (data.attendanceData.length / (data.meetings * totalActiveUsers)) * 100 : 0
     }));
 
     // Attendance by status
-    const statusCount = {
-      hadir: 0,
-      terlambat: 0,
-      tidak_hadir: 0
-    };
-
-    attendanceData.forEach(attendance => {
-      if (attendance.status in statusCount) {
-        statusCount[attendance.status as keyof typeof statusCount]++;
-      }
-    });
-
-    // Calculate absent count (expected attendance - actual attendance)
-    const absentCount = Math.max(0, expectedTotalAttendance - totalAttendance);
-    statusCount.tidak_hadir += absentCount;
-
-    const totalStatusCount = Object.values(statusCount).reduce((sum, count) => sum + count, 0);
+    const hadirCount = attendanceData.filter(a => a.status === 'hadir').length;
+    const terlambatCount = attendanceData.filter(a => a.status === 'terlambat').length;
+    const tidakHadirRecordCount = attendanceData.filter(a => a.status === 'tidak_hadir').length;
     
-    const attendanceByStatus = Object.entries(statusCount).map(([status, count]) => ({
-      status: status === 'hadir' ? 'Hadir' : 
-              status === 'terlambat' ? 'Terlambat' : 'Tidak Hadir',
-      count,
-      percentage: totalStatusCount > 0 ? (count / totalStatusCount) * 100 : 0
-    }));
+    // Calculate absent count (expected attendance - actual valid attendance)
+    const absentCount = Math.max(0, expectedTotalAttendance - totalAttendance - tidakHadirRecordCount);
+    const totalTidakHadir = tidakHadirRecordCount + absentCount;
+
+    const totalStatusCount = hadirCount + terlambatCount + totalTidakHadir;
+    
+    const attendanceByStatus = [
+      {
+        status: 'Hadir',
+        count: hadirCount,
+        percentage: totalStatusCount > 0 ? (hadirCount / totalStatusCount) * 100 : 0
+      },
+      {
+        status: 'Terlambat',
+        count: terlambatCount,
+        percentage: totalStatusCount > 0 ? (terlambatCount / totalStatusCount) * 100 : 0
+      },
+      {
+        status: 'Tidak Hadir',
+        count: totalTidakHadir,
+        percentage: totalStatusCount > 0 ? (totalTidakHadir / totalStatusCount) * 100 : 0
+      }
+    ];
 
     // Topic analysis
     const topicMap = new Map();
     meetings?.forEach(meeting => {
       if (!topicMap.has(meeting.nama_topik)) {
-        topicMap.set(meeting.nama_topik, { meetings: 0, totalAttendance: 0 });
+        topicMap.set(meeting.nama_topik, { meetings: 0, attendanceData: [] });
       }
       const topicData = topicMap.get(meeting.nama_topik);
       topicData.meetings += 1;
       
-      // Count attendance for this meeting
-      const meetingAttendance = attendanceData.filter(a => a.pertemuan_id === meeting.id).length;
-      topicData.totalAttendance += meetingAttendance;
+      // Count valid attendance for this meeting (only hadir and terlambat)
+      const meetingValidAttendance = attendanceData.filter(a => 
+        a.pertemuan_id === meeting.id && 
+        (a.status === 'hadir' || a.status === 'terlambat')
+      );
+      topicData.attendanceData.push(...meetingValidAttendance);
     });
 
-    const topicAnalysis = Array.from(topicMap.entries()).map(([topic, data]) => ({
-      topic,
-      meetings: data.meetings,
-      totalAttendance: data.totalAttendance,
-      averageAttendance: data.meetings > 0 ? data.totalAttendance / data.meetings : 0
-    })).sort((a, b) => b.averageAttendance - a.averageAttendance);
+    const topicAnalysis = Array.from(topicMap.entries()).map(([topic, data]) => {
+      const totalAttendance = data.attendanceData.length;
+      const averageAttendance = data.meetings > 0 ? totalAttendance / data.meetings : 0;
+      const expectedAttendance = data.meetings * totalActiveUsers;
+      const attendanceRate = expectedAttendance > 0 ? (totalAttendance / expectedAttendance) * 100 : 0;
+      
+      return {
+        topic,
+        meetings: data.meetings,
+        totalAttendance,
+        averageAttendance,
+        attendanceRate,
+        expectedAttendance
+      };
+    }).sort((a, b) => b.averageAttendance - a.averageAttendance);
 
-    // Weekly attendance pattern (last 4 weeks)
+    // Weekly attendance pattern (last 4 weeks from end date)
     const weeklyMap = new Map();
-    const fourWeeksAgo = new Date();
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    const endDateObj = new Date(finalEndDate);
+    const fourWeeksAgo = new Date(endDateObj);
+    fourWeeksAgo.setDate(endDateObj.getDate() - 27); // 4 weeks = 28 days
 
     for (let i = 0; i < 4; i++) {
       const weekStart = new Date(fourWeeksAgo);
@@ -171,20 +220,48 @@ export async function GET(request: NextRequest) {
       
       const hadirCount = weekAttendance.filter(a => a.status === 'hadir').length;
       const terlambatCount = weekAttendance.filter(a => a.status === 'terlambat').length;
-      const expectedWeekAttendance = weekMeetings.length * 20;
-      const actualWeekAttendance = weekAttendance.length;
-      const tidakHadirCount = Math.max(0, expectedWeekAttendance - actualWeekAttendance);
+      const tidakHadirRecordCount = weekAttendance.filter(a => a.status === 'tidak_hadir').length;
       
+      // Calculate expected attendance for the week
+      const expectedWeekAttendance = weekMeetings.length * totalActiveUsers;
+      const actualValidAttendance = hadirCount + terlambatCount;
+      const tidakHadirCount = tidakHadirRecordCount + Math.max(0, expectedWeekAttendance - actualValidAttendance - tidakHadirRecordCount);
+      
+      // Format meeting details with day and date
+      const meetingDetails = weekMeetings.map(m => {
+        const meetingDate = new Date(m.tanggal);
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const dayName = days[meetingDate.getDay()];
+        const formattedDate = meetingDate.toLocaleDateString('id-ID', { 
+          day: '2-digit', 
+          month: 'long', 
+          year: 'numeric' 
+        });
+        return {
+          topik: m.nama_topik,
+          hari: dayName,
+          tanggal: formattedDate,
+          waktu: m.jam_mulai
+        };
+      });
+
       weeklyMap.set(weekLabel, {
         hadir: hadirCount,
         terlambat: terlambatCount,
-        tidak_hadir: tidakHadirCount
+        tidak_hadir: tidakHadirCount,
+        total_meetings: weekMeetings.length,
+        meetings: meetingDetails
       });
     }
 
     const weeklyAttendance = Array.from(weeklyMap.entries()).map(([week, data]) => ({
       week,
-      ...data
+      hadir: data.hadir,
+      terlambat: data.terlambat,
+      tidak_hadir: data.tidak_hadir,
+      total: data.hadir + data.terlambat + data.tidak_hadir,
+      meetings: data.total_meetings,
+      meetingDetails: data.meetings
     }));
 
     const reportData = {
