@@ -580,24 +580,45 @@ export default function DetailPertemuanPage() {
     }
     
     try {
-      // Jika timeString sudah format HH:MM, langsung gunakan
-      if (timeString.length === 5 && timeString.includes(':')) {
-        return timeString;
+      // Debug log untuk production troubleshooting
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[formatTime] Input:', timeString);
       }
       
-      // Jika timeString adalah ISO string atau dengan timezone
-      if (timeString.includes('T') || timeString.includes('+')) {
+      // Jika timeString sudah format HH:MM atau HH:MM:SS, extract jam:menit saja
+      if (timeString.includes(':') && !timeString.includes('T') && !timeString.includes('+') && !timeString.includes('Z')) {
+        // Format: "HH:MM:SS" atau "HH:MM" - data dari database type TIME
+        const parts = timeString.split(':');
+        if (parts.length >= 2) {
+          const result = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+          if (process.env.NODE_ENV === 'production') {
+            console.log('[formatTime] Output (TIME format):', result);
+          }
+          return result;
+        }
+      }
+      
+      // Jika timeString adalah ISO string atau dengan timezone (e.g., "2025-10-28T22:17:00+07:00")
+      if (timeString.includes('T') || timeString.includes('+') || timeString.includes('Z')) {
         const date = new Date(timeString);
-        return date.toLocaleTimeString('id-ID', {
+        const result = date.toLocaleTimeString('id-ID', {
           timeZone: 'Asia/Jakarta',
           hour: '2-digit',
           minute: '2-digit',
           hour12: false
         });
+        if (process.env.NODE_ENV === 'production') {
+          console.log('[formatTime] Output (ISO format):', result);
+        }
+        return result;
       }
       
       // Fallback untuk format lain
-      return timeString.substring(0, 5);
+      const result = timeString.substring(0, 5);
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[formatTime] Output (fallback):', result);
+      }
+      return result;
     } catch (error) {
       console.warn('Error formatting time:', error);
       return timeString.substring(0, 5);
