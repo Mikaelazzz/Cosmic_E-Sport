@@ -93,7 +93,7 @@ const roleOptions = [
   {name: "Admin", uid: "admin"},
 ];
 
-const INITIAL_VISIBLE_COLUMNS = ["name", "email", "nim", "role", "jabatan", "attendance", "actions"];
+const INITIAL_VISIBLE_COLUMNS = ["name", "nim", "role", "jabatan", "attendance", "actions"];
 
 const roleColorMap = {
   user: "default" as const,
@@ -154,6 +154,8 @@ export default function UsersPage() {
     attendanceList: [],
     loading: false
   });
+  
+  const [showAllAttendance, setShowAllAttendance] = useState(false);
 
   // Fetch function
   const fetchUsers = useCallback(async (force = false) => {
@@ -482,6 +484,7 @@ export default function UsersPage() {
       attendanceList: [],
       loading: true
     });
+    setShowAllAttendance(false); // Reset show all state
     onAttendanceOpen();
 
     try {
@@ -491,7 +494,7 @@ export default function UsersPage() {
       if (result.success) {
         setSelectedUserAttendance({
           user,
-          attendanceList: result.data.attendance || [],
+          attendanceList: result.data.allMeetings || [], // Use allMeetings which includes not attended
           loading: false
         });
       } else {
@@ -1305,9 +1308,11 @@ export default function UsersPage() {
               attendanceList: [],
               loading: false
             });
+            setShowAllAttendance(false);
           }}
           placement="center"
           size="2xl"
+          scrollBehavior="inside"
         >
           <ModalContent>
             {(onClose) => (
@@ -1319,15 +1324,7 @@ export default function UsersPage() {
                   <p className="text-sm text-gray-500">
                     {selectedUserAttendance.user?.email} | {selectedUserAttendance.user?.nim || 'Tidak ada NIM'}
                   </p>
-                </ModalHeader>
-                <ModalBody>
-                  {selectedUserAttendance.loading ? (
-                    <div className="flex justify-center items-center py-8">
-                      <Spinner size="lg" />
-                    </div>
-                  ) : selectedUserAttendance.attendanceList.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 my-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="text-center">
                           <p className="text-lg font-bold text-green-600">
                             {selectedUserAttendance.attendanceList.filter(a => a.status === 'hadir').length}
@@ -1347,13 +1344,25 @@ export default function UsersPage() {
                           <p className="text-xs text-gray-500">Tidak Hadir</p>
                         </div>
                       </div>
+                </ModalHeader>
+                <ModalBody>
+                  {selectedUserAttendance.loading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <Spinner size="lg" />
+                    </div>
+                  ) : selectedUserAttendance.attendanceList.length > 0 ? (
+                    <div className="space-y-4">
                       
-                      <div className="max-h-96 overflow-y-auto">
+                      {/* Show limited or all records based on state */}
+                      <div className={`${showAllAttendance ? 'max-h-96' : 'max-h-auto'} overflow-y-auto`}>
                         <div className="space-y-3">
-                          {selectedUserAttendance.attendanceList.map((attendance, index) => (
+                          {(showAllAttendance 
+                            ? selectedUserAttendance.attendanceList 
+                            : selectedUserAttendance.attendanceList.slice(0, 2)
+                          ).map((attendance, index) => (
                             <div key={attendance.id} className="border rounded-lg p-4 space-y-2">
                               <div className="flex justify-between items-start">
-                                <div>
+                                <div className="flex-1">
                                   <h4 className="font-semibold text-sm">
                                     {attendance.jadwal_pertemuan?.nama_topik || 'Topik tidak tersedia'}
                                   </h4>
@@ -1372,7 +1381,7 @@ export default function UsersPage() {
                                     Kelas: {attendance.jadwal_pertemuan?.kelas || 'Tidak tersedia'}
                                   </p>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right ml-4">
                                   <Chip
                                     size="sm"
                                     color={
@@ -1384,25 +1393,57 @@ export default function UsersPage() {
                                     {attendance.status === 'hadir' ? 'Hadir' :
                                      attendance.status === 'terlambat' ? 'Terlambat' : 'Tidak Hadir'}
                                   </Chip>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {attendance.jam 
-                                      ? new Date(attendance.jam).toLocaleTimeString('id-ID', {
-                                          hour: '2-digit',
-                                          minute: '2-digit'
-                                        })
-                                      : 'Waktu tidak tersedia'
-                                    }
-                                  </p>
+                                  {attendance.jam && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {new Date(attendance.jam).toLocaleTimeString('id-ID', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </p>
+                                  )}
+                                  {!attendance.jam && attendance.status === 'tidak_hadir' && (
+                                    <p className="text-xs text-gray-400 mt-1 italic">
+                                      Tidak tercatat
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
+
+                      {/* Show More Button */}
+                      {!showAllAttendance && selectedUserAttendance.attendanceList.length > 2 && (
+                        <div className="flex justify-center pt-2">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => setShowAllAttendance(true)}
+                          >
+                            Tampilkan Lainnya ({selectedUserAttendance.attendanceList.length - 2} pertemuan)
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Show Less Button */}
+                      {showAllAttendance && selectedUserAttendance.attendanceList.length > 2 && (
+                        <div className="flex justify-center pt-2">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="default"
+                            onPress={() => setShowAllAttendance(false)}
+                          >
+                            Tampilkan Lebih Sedikit
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-gray-500">Belum ada riwayat kehadiran</p>
+                      <p className="text-gray-500">Belum ada pertemuan di periode aktif</p>
                     </div>
                   )}
                 </ModalBody>
