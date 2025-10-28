@@ -6,16 +6,21 @@ import path from 'path';
 
 // Types
 interface AttendanceRecord {
-  id: string;
-  pertemuan_id: string;
+  id: number;
+  user_id: number;
+  pertemuan_id: number;
+  nim: string;
   status: string;
   jam: string;
-  hari: string;
-  nim: string;
+  hari: number;
+  qr_code: string | null;
   created_at: string;
+  updated_at: string;
   users: {
+    id: number;
     nama_lengkap: string;
     nim: string;
+    email: string;
   } | null;
 }
 
@@ -175,18 +180,40 @@ export async function GET(
       );
     }
 
+    // Get all users (exclude admin) for complete statistics
+    const { data: allUsers, error: usersError } = await supabase
+      .from('users')
+      .select('id, nama_lengkap, nim, email, role')
+      .neq('role', 'admin');
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      return NextResponse.json(
+        { success: false, message: 'Gagal mengambil data pengguna' },
+        { status: 500 }
+      );
+    }
+
     // Get attendance data for this meeting
     const { data: attendanceData, error: attendanceError } = await supabase
       .from('absen')
       .select(`
         id,
+        user_id,
         pertemuan_id,
+        nim,
         status,
         jam,
         hari,
-        nim,
+        qr_code,
         created_at,
-        users:user_id(nama_lengkap, nim)
+        updated_at,
+        users:user_id(
+          id,
+          nama_lengkap,
+          nim,
+          email
+        )
       `)
       .eq('pertemuan_id', pertemuanId)
       .order('created_at', { ascending: true });
@@ -198,8 +225,37 @@ export async function GET(
         { status: 500 }
       );
     }
+    
+    // Create a map of existing attendance by user_id
+    const absensiMap = new Map();
+    attendanceData?.forEach(absen => {
+      absensiMap.set(absen.user_id, absen);
+    });
 
-    const attendance: any[] = attendanceData || [];
+    // Create complete attendance list with all users
+    const completeAttendanceList = (allUsers || []).map(user => {
+      if (absensiMap.has(user.id)) {
+        const existingAbsen = absensiMap.get(user.id);
+        return {
+          ...existingAbsen,
+          users: existingAbsen.users || user // Ensure user data is present
+        };
+      } else {
+        // Create default entry for users without attendance record
+        return {
+          id: `temp-${user.id}`,
+          user_id: user.id,
+          pertemuan_id: parseInt(pertemuanId),
+          nim: user.nim,
+          status: 'tidak_hadir',
+          jam: null,
+          created_at: new Date().toISOString(),
+          users: user
+        };
+      }
+    });
+
+    const attendance = completeAttendanceList;
 
     // Generate PDF using the extracted function
     return await generatePDF(meeting, attendance);
@@ -301,8 +357,13 @@ async function generatePDF(meeting: any, attendance: any[]) {
     doc.text(`Persentase Kehadiran : ${persentaseKehadiran}%`, 20, yPosition);
     yPosition += 15;
 
-    // Attendance List
-    if (attendance.length > 0) {
+    // Attendance List - only show users with actual attendance records (not default tidak_hadir)
+    // Filter out temporary entries (users who never attended and weren't auto-marked)
+    const attendanceToShow = attendance.filter(record => 
+      !record.id?.toString().startsWith('temp-')
+    );
+    
+    if (attendanceToShow.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('DAFTAR KEHADIRAN', 20, yPosition);
@@ -324,7 +385,7 @@ async function generatePDF(meeting: any, attendance: any[]) {
 
       // Table data
       doc.setFont('helvetica', 'normal');
-      attendance.forEach((record, index) => {
+      attendanceToShow.forEach((record, index) => {
         // Check if we need a new page
         if (yPosition > 270) {
           doc.addPage();
@@ -332,7 +393,8 @@ async function generatePDF(meeting: any, attendance: any[]) {
         }
 
         const nama = record.users?.nama_lengkap || 'N/A';
-        const nim = record.nim || record.users?.nim || 'N/A';
+        const nim = record.users?.nim || record.nim || 'N/A';
+        // Use jam field from absen table
         const waktuAbsen = record.jam ? formatTimeIndonesian(record.jam) : '-';
 
         doc.text((index + 1).toString(), 20, yPosition);

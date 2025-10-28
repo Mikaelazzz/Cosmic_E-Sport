@@ -49,6 +49,61 @@ export async function POST(
       );
     }
 
+    // Get all users who should attend but haven't submitted attendance yet
+    // First, get all absensi records for this meeting
+    const { data: existingAbsensi, error: absensiError } = await supabase
+      .from('absensi')
+      .select('user_id')
+      .eq('pertemuan_id', pertemuanId);
+
+    if (absensiError) {
+      console.error('Error fetching existing absensi:', absensiError);
+      // Continue anyway, we still want to end the meeting
+    }
+
+    // Get all active users (pengurus)
+    const { data: allUsers, error: usersError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'pengurus')
+      .eq('status_akun', 'aktif');
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      // Continue anyway
+    }
+
+    // Find users who haven't attended yet
+    let autoMarkedCount = 0;
+    if (allUsers && existingAbsensi) {
+      const attendedUserIds = new Set(existingAbsensi.map(a => a.user_id));
+      const missingUsers = allUsers.filter(user => !attendedUserIds.has(user.id));
+
+      // Mark missing users as 'tidak_hadir'
+      if (missingUsers.length > 0) {
+        const absensiRecords = missingUsers.map(user => ({
+          user_id: user.id,
+          pertemuan_id: pertemuanId,
+          status: 'tidak_hadir',
+          waktu_absen: currentTimestamp,
+          created_at: currentTimestamp,
+          updated_at: currentTimestamp
+        }));
+
+        const { error: insertError } = await supabase
+          .from('absensi')
+          .insert(absensiRecords);
+
+        if (insertError) {
+          console.error('Error inserting missing attendance:', insertError);
+          // Continue anyway, we still want to end the meeting
+        } else {
+          autoMarkedCount = missingUsers.length;
+          console.log(`✅ Marked ${autoMarkedCount} users as 'tidak_hadir' automatically`);
+        }
+      }
+    }
+
     // Update meeting status to ended
     const { data, error } = await supabase
       .from('jadwal_pertemuan')
@@ -72,7 +127,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: data,
-      message: 'Pertemuan berhasil diakhiri'
+      message: autoMarkedCount > 0 
+        ? `Pertemuan berhasil diakhiri. ${autoMarkedCount} anggota yang tidak hadir telah ditandai otomatis.`
+        : 'Pertemuan berhasil diakhiri',
+      autoMarkedCount: autoMarkedCount
     });
 
   } catch (error) {

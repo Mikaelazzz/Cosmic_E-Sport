@@ -161,6 +161,7 @@ export default function DetailPertemuanPage() {
   // Modal states
   const { isOpen: isAbsenModalOpen, onOpen: openAbsenModal, onClose: closeAbsenModal } = useDisclosure();
   const { isOpen: isQRModalOpen, onOpen: openQRModal, onClose: closeQRModal } = useDisclosure();
+  const { isOpen: isEndMeetingModalOpen, onOpen: openEndMeetingModal, onClose: closeEndMeetingModal } = useDisclosure();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Show alert function
@@ -416,10 +417,16 @@ export default function DetailPertemuanPage() {
     }
   };
 
+  // End meeting with confirmation
+  const confirmEndMeeting = () => {
+    openEndMeetingModal();
+  };
+
   // End meeting
   const endMeeting = async () => {
     if (!pertemuan) return;
     
+    closeEndMeetingModal();
     setIsUpdatingStatus(true);
     try {
       const response = await fetch(`/api/moderator/jadwal-pertemuan/${pertemuanId}/end`, {
@@ -428,8 +435,18 @@ export default function DetailPertemuanPage() {
       const result = await response.json();
       
       if (result.success) {
-        showAlert('Berhasil!', 'Pertemuan telah diakhiri', 'success');
-        await fetchPertemuanDetail();
+        // Show detailed message based on auto-marked count
+        const message = result.autoMarkedCount > 0 
+          ? `Pertemuan telah diakhiri. ${result.autoMarkedCount} anggota yang tidak hadir telah ditandai otomatis.`
+          : 'Pertemuan telah diakhiri';
+        
+        showAlert('Berhasil!', message, 'success');
+        
+        // Refresh data to show updated attendance
+        await Promise.all([
+          fetchPertemuanDetail(),
+          fetchAbsensiData()
+        ]);
       } else {
         showAlert('Error!', result.message || 'Gagal mengakhiri pertemuan', 'danger');
       }
@@ -753,7 +770,7 @@ export default function DetailPertemuanPage() {
                       <Button
                         color="danger"
                         startContent={<IconStop />}
-                        onPress={endMeeting}
+                        onPress={confirmEndMeeting}
                         isLoading={isUpdatingStatus}
                         className="font-semibold"
                       >
@@ -1172,6 +1189,98 @@ export default function DetailPertemuanPage() {
                 showAlert('Success!', 'QR Code generated successfully', 'success');
               }}
             />
+
+            {/* End Meeting Confirmation Modal */}
+            <Modal 
+              isOpen={isEndMeetingModalOpen} 
+              onClose={closeEndMeetingModal}
+              size="md"
+              backdrop="blur"
+            >
+              <ModalContent>
+                <ModalHeader className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-danger/20 rounded-lg">
+                      <IconStop className="w-5 h-5 text-danger" />
+                    </div>
+                    <h3 className="text-lg font-bold">Konfirmasi Akhiri Pertemuan</h3>
+                  </div>
+                </ModalHeader>
+                <ModalBody>
+                  <div className="space-y-4">
+                    <p className="text-default-600">
+                      Apakah Anda yakin ingin mengakhiri pertemuan ini?
+                    </p>
+                    
+                    {/* <Alert 
+                      color="warning" 
+                      variant="flat"
+                      title="Informasi Penting"
+                      description={
+                        <div className="space-y-2 text-sm">
+                          <p>Ketika pertemuan diakhiri:</p>
+                          <ul className="list-disc list-inside space-y-1 ml-2">
+                            <li>Semua anggota yang belum melakukan absensi akan <strong>otomatis ditandai sebagai "Tidak Hadir"</strong></li>
+                            <li>Status pertemuan akan berubah menjadi "Selesai"</li>
+                            <li>QR Code untuk absensi tidak akan bisa digunakan lagi</li>
+                          </ul>
+                        </div>
+                      }
+                    /> */}
+
+                    <div className="bg-default-100 p-3 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <IconUsers className="w-5 h-5 text-primary mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-sm">Statistik Saat Ini:</p>
+                          <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                            <div>
+                              <span className="text-default-500">Total Anggota:</span>
+                              <span className="font-bold ml-2">{statistik.total_anggota}</span>
+                            </div>
+                            <div>
+                              <span className="text-default-500">Hadir:</span>
+                              <span className="font-bold ml-2 text-success">{statistik.hadir}</span>
+                            </div>
+                            <div>
+                              <span className="text-default-500">Terlambat:</span>
+                              <span className="font-bold ml-2 text-warning">{statistik.terlambat}</span>
+                            </div>
+                            <div>
+                              <span className="text-default-500">Tidak Hadir:</span>
+                              <span className="font-bold ml-2 text-danger">{statistik.tidak_hadir}</span>
+                            </div>
+                          </div>
+                          {(statistik.total_anggota - statistik.hadir - statistik.terlambat - statistik.tidak_hadir) > 0 && (
+                            <div className="mt-3 p-2 bg-warning/10 border border-warning/30 rounded">
+                              <p className="text-xs text-warning-600">
+                                ⚠️ <strong>{statistik.total_anggota - statistik.hadir - statistik.terlambat - statistik.tidak_hadir} anggota</strong> belum absen dan akan ditandai sebagai "Tidak Hadir"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button 
+                    color="default" 
+                    variant="light" 
+                    onPress={closeEndMeetingModal}
+                  >
+                    Batal
+                  </Button>
+                  <Button 
+                    color="danger" 
+                    onPress={endMeeting}
+                    startContent={<IconStop />}
+                  >
+                    Ya, Akhiri Pertemuan
+                  </Button>
+                </ModalFooter>
+              </ModalContent>
+            </Modal>
           </div>
         </div>
       </ModeratorLayout>
