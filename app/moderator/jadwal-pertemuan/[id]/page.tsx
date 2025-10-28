@@ -585,15 +585,30 @@ export default function DetailPertemuanPage() {
         console.log('[formatTime] Input:', timeString);
       }
       
-      // Jika timeString sudah format HH:MM atau HH:MM:SS, extract jam:menit saja
+      // Jika timeString sudah format HH:MM atau HH:MM:SS (dari database TIME type)
       if (timeString.includes(':') && !timeString.includes('T') && !timeString.includes('+') && !timeString.includes('Z')) {
-        // Format: "HH:MM:SS" atau "HH:MM" - data dari database type TIME
+        // PostgreSQL menyimpan TIME dalam UTC, kita perlu convert ke WIB (UTC+7)
+        // Parse time string
         const parts = timeString.split(':');
         if (parts.length >= 2) {
-          const result = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+          const hours = parseInt(parts[0], 10);
+          const minutes = parseInt(parts[1], 10);
+          
+          // Convert UTC to WIB (add 7 hours)
+          const utcDate = new Date();
+          utcDate.setUTCHours(hours, minutes, 0, 0);
+          
+          // Get WIB time (UTC+7)
+          const wibHours = (utcDate.getUTCHours() + 7) % 24;
+          const wibMinutes = utcDate.getUTCMinutes();
+          
+          const result = `${wibHours.toString().padStart(2, '0')}:${wibMinutes.toString().padStart(2, '0')}`;
+          
           if (process.env.NODE_ENV === 'production') {
-            console.log('[formatTime] Output (TIME format):', result);
+            console.log('[formatTime] UTC Input:', `${hours}:${minutes}`);
+            console.log('[formatTime] WIB Output:', result);
           }
+          
           return result;
         }
       }

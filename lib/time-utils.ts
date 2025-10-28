@@ -1,14 +1,29 @@
-// Time utilities for PostgreSQL compatibility
+// Time utilities for PostgreSQL compatibility with WIB timezone
 
 /**
- * Format Date object to PostgreSQL TIME format (HH:MM:SS)
- * @param date - Date object to format
- * @returns String in HH:MM:SS format
+ * Get current date in WIB (UTC+7) timezone
+ * @returns Date object adjusted to WIB
  */
-export const formatTimeForPostgreSQL = (date: Date = new Date()): string => {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
+const getWIBDate = (): Date => {
+  const now = new Date();
+  // Convert to WIB (UTC+7) - Get UTC time and add 7 hours
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const wibTime = new Date(utcTime + (7 * 60 * 60 * 1000));
+  return wibTime;
+};
+
+/**
+ * Format Date object to PostgreSQL TIME format (HH:MM:SS) in WIB timezone
+ * PostgreSQL stores TIME as UTC, so we need to subtract 7 hours to store correctly
+ * @param date - Date object to format (in WIB)
+ * @returns String in HH:MM:SS format (UTC for storage)
+ */
+export const formatTimeForPostgreSQL = (date: Date = getWIBDate()): string => {
+  // Subtract 7 hours to convert WIB to UTC for storage
+  const utcDate = new Date(date.getTime() - (7 * 60 * 60 * 1000));
+  const hours = utcDate.getHours().toString().padStart(2, '0');
+  const minutes = utcDate.getMinutes().toString().padStart(2, '0');
+  const seconds = utcDate.getSeconds().toString().padStart(2, '0');
   return `${hours}:${minutes}:${seconds}`;
 };
 
@@ -22,19 +37,20 @@ export const formatTimestampForPostgreSQL = (date: Date = new Date()): string =>
 };
 
 /**
- * Get current time in PostgreSQL TIME format
- * @returns Current time as HH:MM:SS string
+ * Get current time in PostgreSQL TIME format (converted from WIB to UTC for storage)
+ * @returns Current WIB time as HH:MM:SS string (stored as UTC in database)
  */
 export const getCurrentTimeForDB = (): string => {
-  return formatTimeForPostgreSQL(new Date());
+  return formatTimeForPostgreSQL(getWIBDate());
 };
 
 /**
- * Get current timestamp in PostgreSQL TIMESTAMP format
- * @returns Current timestamp as ISO string
+ * Get current timestamp in PostgreSQL TIMESTAMP format (WIB timezone)
+ * @returns Current timestamp as ISO string with WIB timezone
  */
 export const getCurrentTimestampForDB = (): string => {
-  return formatTimestampForPostgreSQL(new Date());
+  const wibDate = getWIBDate();
+  return wibDate.toISOString();
 };
 
 /**
