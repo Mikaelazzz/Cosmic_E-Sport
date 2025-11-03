@@ -707,11 +707,11 @@ export default function UserProfilePage() {
                   onValueChange={(value) => handleInputChange('nim', value)}
                   size="lg"
                   isReadOnly
-                  variant={isEditing ? "bordered" : "flat"}
+                  variant="flat"
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`,
+                    inputWrapper: `bg-transparent border-2 border-gray-600 rounded-lg`,
                   }}
                 />
               </div>
@@ -723,11 +723,11 @@ export default function UserProfilePage() {
                   onValueChange={(value) => handleInputChange('jabatan', value)}
                   size="lg"
                   isReadOnly
-                  variant={isEditing ? "bordered" : "flat"}
+                  variant="flat"
                   className="bg-transparent"
                   classNames={{
                     input: "bg-transparent text-white placeholder-gray-400",
-                    inputWrapper: `bg-transparent border-2 ${isEditing ? 'border-yellow-400' : 'border-gray-600'} rounded-lg`,
+                    inputWrapper: `bg-transparent border-2 border-gray-600 rounded-lg`,
                   }}
                 />
               </div>
