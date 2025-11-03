@@ -281,6 +281,27 @@ export default function UserProfilePage() {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validasi format file
+      const allowedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedFormats.includes(file.type)) {
+        setMessage("Format file tidak valid! Hanya menerima format JPG, JPEG, PNG, atau WEBP.");
+        setMessageType("error");
+        // Reset input file
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Validasi ukuran file (maksimal 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB dalam bytes
+      if (file.size > maxSize) {
+        setMessage("Ukuran file melebihi batas maksimal 5MB!");
+        setMessageType("error");
+        // Reset input file
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Jika validasi lolos, lanjutkan proses
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedImage(e.target?.result as string);
@@ -646,7 +667,7 @@ export default function UserProfilePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
                 className="hidden"
                 onChange={handleImageUpload}
               />
