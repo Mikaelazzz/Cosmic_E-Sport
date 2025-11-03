@@ -685,7 +685,7 @@ export default function UserProfilePage() {
                   value={formData.nim}
                   onValueChange={(value) => handleInputChange('nim', value)}
                   size="lg"
-                  isReadOnly={!isEditing}
+                  isReadOnly
                   variant={isEditing ? "bordered" : "flat"}
                   className="bg-transparent"
                   classNames={{
@@ -701,7 +701,7 @@ export default function UserProfilePage() {
                   value={formData.jabatan}
                   onValueChange={(value) => handleInputChange('jabatan', value)}
                   size="lg"
-                  isReadOnly={!isEditing}
+                  isReadOnly
                   variant={isEditing ? "bordered" : "flat"}
                   className="bg-transparent"
                   classNames={{
