@@ -62,7 +62,7 @@ export async function GET(
     // If not found by ID, try by name
     if (!event) {
       console.log('📋 Trying to fetch by name:', decodeURIComponent(slug));
-      const { data: eventByName, error: errorByName } = await supabase
+      const { data: eventsByName, error: errorByName } = await supabase
         .from('events')
         .select(`
           id,
@@ -82,11 +82,16 @@ export async function GET(
         `)
         .eq('nama_event', decodeURIComponent(slug))
         .neq('status', 'cancelled')
-        .single();
+        .order('created_at', { ascending: false }); // Get latest event if multiple exist
       
-      if (!errorByName && eventByName) {
-        event = eventByName;
-        console.log('✅ Found event by name:', event.id);
+      if (!errorByName && eventsByName && eventsByName.length > 0) {
+        // If multiple events with same name, take the most recent one
+        event = eventsByName[0];
+        if (eventsByName.length > 1) {
+          console.log(`⚠️ Found ${eventsByName.length} events with name "${decodeURIComponent(slug)}", using most recent (ID: ${event.id})`);
+        } else {
+          console.log('✅ Found event by name:', event.id);
+        }
       } else {
         eventError = errorByName;
         console.log('❌ Event not found by name');

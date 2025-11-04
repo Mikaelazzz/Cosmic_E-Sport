@@ -96,20 +96,11 @@ export async function PUT(
 
     // Update participant status
     const updateData: any = {
+      status: status,
       rejection_reason: status === 'rejected' ? rejection_reason : null,
       tanggal_approve: status === 'approved' ? new Date().toISOString() : null,
       approved_by: user!.id
     };
-
-    // Auto re-registration: When rejected, automatically set to pending for re-registration
-    if (status === 'rejected') {
-      updateData.status = 'pending'; // Auto allow re-registration
-      updateData.rejection_reason = rejection_reason;
-      updateData.tanggal_approve = null;
-      console.log('🔄 Auto-allowing re-registration after rejection');
-    } else {
-      updateData.status = status;
-    }
 
     const { data: updatedParticipant, error: updateError } = await supabase
       .from('event_participants')
@@ -130,7 +121,7 @@ export async function PUT(
       success: true,
       data: updatedParticipant,
       message: status === 'rejected' 
-        ? `Participant rejected with reason: ${rejection_reason}. Auto re-registration enabled.`
+        ? `Participant rejected with reason: ${rejection_reason}. User can re-register if needed.`
         : `Participant ${status} successfully`
     });
 
