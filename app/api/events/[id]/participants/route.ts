@@ -246,7 +246,7 @@ export async function POST(
         .select('id, status, user_id, rejection_reason')
         .eq('event_id', eventId)
         .eq('team_id', team_id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid error when no record found
 
       console.log('🔍 Existing team registration check:', {
         existingTeamParticipant,
@@ -275,7 +275,7 @@ export async function POST(
         .select('id, status, rejection_reason')
         .eq('event_id', eventId)
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid error when no record found
 
       if (existingParticipant) {
         if (existingParticipant.status === 'approved') {
@@ -341,46 +341,62 @@ export async function POST(
         console.log(`  ${index + 1}. User ${member.user_id} (${(member.users as any).nama_lengkap}) - Role: ${member.role_in_team}`);
       });
 
-      // Check if there's an existing rejected registration to update
-      const { data: existingTeamReg, error: existingTeamError } = await supabase
+      // Check if there's an existing registration (any status) to update
+      // This handles cases where user previously registered individually or with another team
+      const { data: existingTeamReg } = await supabase
         .from('event_participants')
-        .select('id, status')
+        .select('id, status, team_id, participant_type')
         .eq('event_id', eventId)
         .eq('team_id', team_id)
-        .single();
+        .maybeSingle();
 
-      if (existingTeamReg && existingTeamReg.status === 'rejected') {
-        // Update existing rejected team registration
+      // Also check if user has any individual registration for this event
+      const { data: existingUserReg } = await supabase
+        .from('event_participants')
+        .select('id, status, team_id, participant_type')
+        .eq('event_id', eventId)
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      console.log('🔍 Existing registrations:', {
+        teamRegistration: existingTeamReg,
+        userRegistration: existingUserReg
+      });
+
+      // If user has existing registration (individual or different team), update it
+      if (existingUserReg) {
+        // Update existing registration with new team data
         const teamUpdateData = {
-          user_id: user?.id, // Update to current leader
+          team_id: team_id, // Update to new team
+          participant_type: 'team',
           status: event.biaya > 0 ? 'pending' : 'approved',
           bukti_pembayaran: bukti_pembayaran || null,
-          catatan: catatan || `Team re-registration by leader (${teamMembers.length} members)`,
+          catatan: catatan || `Team registration by leader (${teamMembers.length} members)`,
           rejection_reason: null, // Clear previous rejection reason
           tanggal_daftar: new Date().toISOString(), // Update registration date
           tanggal_approve: event.biaya > 0 ? null : new Date().toISOString()
         };
 
-        console.log('📋 Team registration update data:', teamUpdateData);
+        console.log('📋 Updating existing registration to team:', teamUpdateData);
 
         const { data: updatedParticipant, error: updateError } = await supabase
           .from('event_participants')
           .update(teamUpdateData)
-          .eq('id', existingTeamReg.id)
+          .eq('id', existingUserReg.id)
           .select();
 
         if (updateError) {
           console.error('❌ Error updating team registration:', updateError);
           return NextResponse.json(
-            { success: false, message: "Failed to re-register team for event", error: updateError },
+            { success: false, message: "Failed to update registration to team event", error: updateError },
             { status: 500 }
           );
         }
 
-        console.log('✅ Successfully re-registered team');
+        console.log('✅ Successfully updated registration to team');
         return NextResponse.json({
           success: true,
-          message: `Team successfully re-registered! ${teamMembers.length} members will participate.`,
+          message: `Team successfully registered! ${teamMembers.length} members will participate.`,
           data: {
             teamRegistration: updatedParticipant[0],
             teamMemberCount: teamMembers.length,
@@ -446,12 +462,12 @@ export async function POST(
     } else {
       // For individual events, register only the user
       // Check if there's an existing rejected registration to update
-      const { data: existingParticipant, error: existingError } = await supabase
+      const { data: existingParticipant } = await supabase
         .from('event_participants')
         .select('id, status')
         .eq('event_id', eventId)
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (existingParticipant && existingParticipant.status === 'rejected') {
         // Update existing rejected registration
