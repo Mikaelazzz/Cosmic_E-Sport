@@ -919,14 +919,14 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
             </Card>
           )}
  
-          {/* Error Display - Using Heroui Alert */}
+          {/* Error Display - Using Heroui Alert
           {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
             <div className="mb-4">
               <Alert 
                 hideIconWrapper
                 color="danger"
                 variant="bordered"
-                title="Error Akses Kamera"
+                title="Error"
                 description={error}
               />
               <div className="flex gap-2 mt-3">
@@ -950,7 +950,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 </Button>
               </div>
             </div>
-          )}
+          )} */}
  
           {/* Scanner Interface */}
           {!needsPermission && !error && !scanSuccess && !showSuccessOverlay && (
@@ -1042,24 +1042,24 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         
         <ModalFooter>
           
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
+          <div className="flex flex-col sm:flex-col gap-2 sm:gap-3 w-full ">
             {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
-              <Button
-                color="warning"
-                variant="flat"
-                onPress={handleRetry}
-                className="flex-1 font-semibold text-sm sm:text-base"
-                size="sm"
-              >
-                Coba Lagi
-              </Button>
+              <Button 
+                  size="sm"
+                  color="danger" 
+                  variant="flat"
+                  onPress={handleRetry}
+                  className="flex-1"
+                >
+                  Coba Lagi
+                </Button>
             )}
             <Button 
-              color="danger" 
-              variant="light" 
-              onPress={handleClose}
-              className="flex-1 text-sm sm:text-base"
               size="sm"
+              color="default" 
+              variant="light"
+              onPress={handleClose}
+              className="flex-1"
               isDisabled={isSubmitting}
             >
               {scanSuccess || showSuccessOverlay ? 'Selesai' : isSubmitting ? 'Tunggu...' : 'Tutup'}
