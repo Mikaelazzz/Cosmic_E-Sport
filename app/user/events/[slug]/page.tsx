@@ -171,6 +171,8 @@ export default function EventDetailPage() {
   const [catatan, setCatatan] = useState("");
   const [buktiPembayaran, setBuktiPembayaran] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
 
   // Modal
   const { isOpen: isJoinOpen, onOpen: onJoinOpen, onClose: onJoinClose } = useDisclosure();
@@ -251,15 +253,24 @@ export default function EventDetailPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    // Reset error
+    setFileError("");
+
+    // Validate file type - only accept image files
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setFileError('Format file tidak valid! Hanya menerima format gambar (JPG, PNG, WEBP, GIF).');
+      // Reset file input
+      e.target.value = '';
       return;
     }
 
     // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      setFileError('Ukuran file melebihi batas maksimal 5MB! Silakan pilih file yang lebih kecil.');
+      // Reset file input
+      e.target.value = '';
       return;
     }
 
@@ -268,28 +279,30 @@ export default function EventDetailPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('payment_proof', file);
 
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/upload/payment-proof', {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setBuktiPembayaran(result.url);
+          setBuktiPembayaran(result.data.filePath);
+          setFileError(""); // Clear any previous errors
         } else {
-          alert('Failed to upload file');
+          setFileError('Gagal mengunggah file: ' + (result.message || 'Unknown error'));
           setSelectedFile(null);
         }
       } else {
-        alert('Failed to upload file');
+        setFileError('Gagal mengunggah file. Silakan coba lagi.');
         setSelectedFile(null);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload file');
+      setFileError('Terjadi kesalahan saat mengunggah file. Silakan coba lagi.');
       setSelectedFile(null);
     } finally {
       setIsUploading(false);
@@ -302,7 +315,7 @@ export default function EventDetailPage() {
 
     // Validate payment proof for paid events
     if (event.biaya > 0 && !buktiPembayaran) {
-      alert('Please upload payment proof for paid events');
+      setFileError('Bukti pembayaran wajib diupload terlebih dahulu');
       return;
     }
 
@@ -324,10 +337,20 @@ export default function EventDetailPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
+          // Show success message
+          setSuccessMessage(
+            event.biaya > 0 
+              ? "Pendaftaran berhasil! Menunggu persetujuan moderator."
+              : "Pendaftaran berhasil! Anda telah terdaftar di event ini."
+          );
+          
           // Refresh event details to get updated participation
           await fetchEventDetails();
           onJoinClose();
           resetJoinForm();
+          
+          // Auto hide success message after 5 seconds
+          setTimeout(() => setSuccessMessage(""), 5000);
         } else {
           alert(result.message || 'Failed to join event');
         }
@@ -347,6 +370,7 @@ export default function EventDetailPage() {
     setCatatan("");
     setBuktiPembayaran("");
     setSelectedFile(null);
+    setFileError("");
   };
 
   // Handle image preview
@@ -392,7 +416,7 @@ export default function EventDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0D21] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Spinner size="lg" className="mb-4" />
           <p className="text-gray-300">Loading event details...</p>
@@ -423,10 +447,24 @@ export default function EventDetailPage() {
   return (
     <UserLayout 
       title="Event Details"
-      description="Lihat detail dan ikut event">
-      <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
+      description=""
+      >
+        
+      <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Success Message */}
+        {successMessage && (
+          <Alert color="success" className="mb-6 animate-pulse">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <strong>{successMessage}</strong>
+            </div>
+          </Alert>
+        )}
+
+        {/* Header
         <div className="mb-6">
           <Button
             variant="light"
@@ -437,7 +475,7 @@ export default function EventDetailPage() {
             Kembali
           </Button>
           <h1 className="text-3xl font-bold text-[#FFD700]">Detail Event</h1>
-        </div>
+        </div> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Event Image and Basic Info */}
@@ -614,8 +652,8 @@ export default function EventDetailPage() {
                     </>
                   )}
 
-                  {/* Join Button */}
-                  {canJoinEvent() && (
+                  {/* Join Button or Already Registered Notice */}
+                  {canJoinEvent() ? (
                     <>
                       <Divider className="bg-gray-600" />
                       <Button
@@ -627,19 +665,110 @@ export default function EventDetailPage() {
                         Ikuti Event
                       </Button>
                     </>
-                  )}
-
-                  {/* Full indicator */}
-                  {event.current_participants && event.current_participants >= event.max_participant && !myParticipation && (
+                  ) : myParticipation ? (
                     <>
                       <Divider className="bg-gray-600" />
-                      <div className="text-center">
-                        <Chip color="danger" variant="flat" size="sm">
-                          Event Penuh
-                        </Chip>
+                      <div className="text-center p-4 bg-blue-900/20 rounded-lg border-2 border-blue-500">
+                        <div className="mb-2">
+                          <svg className="w-12 h-12 mx-auto text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <p className="text-white font-bold text-lg mb-1">Anda Sudah Terdaftar!</p>
+                        <p className="text-sm text-blue-300">
+                          Status: <span className="font-semibold capitalize">{myParticipation.status}</span>
+                        </p>
+                        {myParticipation.status === 'pending' && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Menunggu persetujuan moderator
+                          </p>
+                        )}
+                        {myParticipation.status === 'approved' && (
+                          <p className="text-xs text-green-400 mt-2">
+                            ✅ Pendaftaran Anda telah disetujui
+                          </p>
+                        )}
                       </div>
                     </>
-                  )}
+                  ) : event.status !== 'open' ? (
+                    <>
+                      <Divider className="bg-gray-600" />
+                      <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+                        <Chip color="warning" variant="flat" size="sm">
+                          Pendaftaran Ditutup
+                        </Chip>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Event ini tidak menerima pendaftaran baru
+                        </p>
+                      </div>
+                    </>
+                  ) : event.current_participants && event.current_participants >= event.max_participant ? (
+                    <>
+                      <Divider className="bg-gray-600" />
+                      <div className="text-center p-3 bg-red-900/20 rounded-lg border border-red-600/50">
+                        <Chip color="danger" variant="flat" size="sm">
+                          Slot Penuh
+                        </Chip>
+                        <p className="text-xs text-red-400 mt-2">
+                          Semua slot sudah terisi
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {/* Full indicator */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-400 mb-2">Status Slot Turnamen</h4>
+                    {(() => {
+                      const currentParticipants = event.current_participants || 0;
+                      const maxParticipants = event.max_participant;
+                      const percentage = (currentParticipants / maxParticipants) * 100;
+
+                      if (percentage >= 100) {
+                        return (
+                          <div className="text-center p-2 bg-red-900/20 rounded-lg border border-red-600/50">
+                            <Chip color="danger" variant="flat" size="sm" className="font-semibold">
+                              🔥 Event Penuh
+                            </Chip>
+                            <p className="text-xs text-red-400 mt-1">Slot sudah terisi penuh</p>
+                          </div>
+                        );
+                      } else if (percentage >= 70) {
+                        return (
+                          <div className="text-center p-2 bg-orange-900/20 rounded-lg border border-orange-600/50">
+                            <Chip color="warning" variant="flat" size="sm" className="font-semibold">
+                              ⚡ Hot - Hampir Penuh!
+                            </Chip>
+                            <p className="text-xs text-orange-400 mt-1">
+                              {maxParticipants - currentParticipants} slot tersisa
+                            </p>
+                          </div>
+                        );
+                      } else if (percentage >= 50) {
+                        return (
+                          <div className="text-center p-2 bg-yellow-900/20 rounded-lg border border-yellow-600/50">
+                            <Chip color="warning" variant="flat" size="sm" className="font-semibold">
+                              🔥 On Fire - Ayo Buruan!
+                            </Chip>
+                            <p className="text-xs text-yellow-400 mt-1">
+                              {maxParticipants - currentParticipants} slot tersisa
+                            </p>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="text-center p-2 bg-green-900/20 rounded-lg border border-green-600/50">
+                            <Chip color="success" variant="flat" size="sm" className="font-semibold">
+                              ✨ Slot Masih Tersedia
+                            </Chip>
+                            <p className="text-xs text-green-400 mt-1">
+                              {maxParticipants - currentParticipants} dari {maxParticipants} slot
+                            </p>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               </CardBody>
             </Card>
@@ -667,6 +796,16 @@ export default function EventDetailPage() {
                 <strong>Biaya Pendaftaran:</strong> {formatCurrency(event.biaya)}
                 <br />
                 Silakan unggah bukti pembayaran untuk menyelesaikan pendaftaran Anda.
+                <br />
+                <span className="text-sm">Format: JPG, PNG, WEBP, GIF | Maksimal: 5MB</span>
+              </Alert>
+            )}
+
+            {fileError && (
+              <Alert color="danger" className="mb-4">
+                <strong>Error Upload File:</strong>
+                <br />
+                {fileError}
               </Alert>
             )}
 

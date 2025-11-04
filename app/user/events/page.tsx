@@ -128,27 +128,27 @@ const BracketButton: React.FC<{ event: Event }> = ({ event }) => {
   }
 
   // If bracket is not accessible yet
-  if (!isBracketAccessible()) {
-    const eventDateTime = new Date(event.tanggal_pelaksanaan);
-    const formattedDate = eventDateTime.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short'
-    });
+  // if (!isBracketAccessible()) {
+  //   const eventDateTime = new Date(event.tanggal_pelaksanaan);
+  //   const formattedDate = eventDateTime.toLocaleDateString('id-ID', {
+  //     day: 'numeric',
+  //     month: 'short'
+  //   });
     
-    return (
-      <div className="text-center p-2 bg-gray-800/50 rounded-lg">
-        <span className="text-xs text-gray-400">Bracket tersedia {formattedDate}</span>
-      </div>
-    );
-  }
+  //   return (
+  //     <div className="text-center p-2 bg-gray-800/50 rounded-lg">
+  //       <span className="text-xs text-gray-400">Bracket tersedia {formattedDate}</span>
+  //     </div>
+  //   );
+  // }
 
-  if (!hasBracket) {
-    return (
-      <div className="text-center p-2 bg-gray-800/50 rounded-lg">
-        <span className="text-sm text-gray-400">Bracket belum tersedia</span>
-      </div>
-    );
-  }
+  // if (!hasBracket) {
+  //   return (
+  //     <div className="text-center p-2 bg-gray-800/50 rounded-lg">
+  //       <span className="text-sm text-gray-400">Bracket belum tersedia</span>
+  //     </div>
+  //   );
+  // }
 
   // Create slug from event name and ID
   const createEventSlug = (eventName: string, eventId: number) => {
@@ -163,21 +163,21 @@ const BracketButton: React.FC<{ event: Event }> = ({ event }) => {
 
   const eventSlug = createEventSlug(event.nama_event, event.id);
 
-  return (
-    <Button
-      color="secondary"
-      variant="flat"
-      className="w-full"
-      startContent={
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M2 3H6V7H2V3ZM18 3H22V7H18V3ZM2 17H6V21H2V17ZM18 17H22V21H18V17ZM7 4H17V6H7V4ZM7 18H17V20H7V18ZM8 8V16H10V13H14V16H16V8H14V11H10V8H8Z"/>
-        </svg>
-      }
-      onPress={() => router.push(`/user/events/${eventSlug}/bracket`)}
-    >
-      Lihat Bracket
-    </Button>
-  );
+  // return (
+  //   <Button
+  //     color="secondary"
+  //     variant="flat"
+  //     className="w-full"
+  //     startContent={
+  //       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+  //         <path d="M2 3H6V7H2V3ZM18 3H22V7H18V3ZM2 17H6V21H2V17ZM18 17H22V21H18V17ZM7 4H17V6H7V4ZM7 18H17V20H7V18ZM8 8V16H10V13H14V16H16V8H14V11H10V8H8Z"/>
+  //       </svg>
+  //     }
+  //     onPress={() => router.push(`/user/events/${eventSlug}/bracket`)}
+  //   >
+  //     Lihat Bracket
+  //   </Button>
+  // );
 };
 
 export default function UserEventsPage() {
@@ -188,6 +188,7 @@ export default function UserEventsPage() {
   const [myEvents, setMyEvents] = useState<MyEventParticipant[]>([]);
   const [userTeams, setUserTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMyEventsLoaded, setIsMyEventsLoaded] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("available");
 
@@ -297,6 +298,7 @@ export default function UserEventsPage() {
   // Fetch user's events
   const fetchMyEvents = async () => {
     try {
+      setIsMyEventsLoaded(false);
       const response = await fetch('/api/user/events', {
         method: 'GET',
         credentials: 'include'
@@ -310,6 +312,8 @@ export default function UserEventsPage() {
       }
     } catch (error) {
       console.error('Error fetching my events:', error);
+    } finally {
+      setIsMyEventsLoaded(true);
     }
   };
 
@@ -318,7 +322,8 @@ export default function UserEventsPage() {
       setIsLoading(true);
       
       if (activeTab === "available") {
-        fetchEvents().finally(() => setIsLoading(false));
+        // Fetch both events and myEvents in parallel for available tab
+        Promise.all([fetchEvents(), fetchMyEvents(), fetchUserTeams()]).finally(() => setIsLoading(false));
       } else if (activeTab === "history") {
         fetchHistoryEvents().finally(() => setIsLoading(false));
       } else if (activeTab === "my-events") {
@@ -331,9 +336,17 @@ export default function UserEventsPage() {
   const handleJoinEvent = async () => {
     if (!selectedEvent) return;
 
+    console.log('🔍 Validation check:', {
+      biaya: selectedEvent.biaya,
+      buktiPembayaran: buktiPembayaran,
+      isEmpty: !buktiPembayaran,
+      needsProof: selectedEvent.biaya > 0
+    });
+
     // Validate required fields
     if (selectedEvent.biaya > 0 && !buktiPembayaran) {
-      showAlert("warning", "Payment Proof Required", "Please upload payment proof for this event");
+      console.log('❌ Validation failed: Payment proof required');
+      showAlert("danger", "Bukti Pembayaran Wajib", "Bukti pembayaran wajib diupload terlebih dahulu");
       return;
     }
 
@@ -391,14 +404,14 @@ export default function UserEventsPage() {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      showAlert("warning", "Invalid File Type", "Only image files are allowed (JPEG, PNG, GIF, WebP)");
+      showAlert("warning", "Format File Tidak Valid", "Hanya menerima format gambar (JPG, PNG, GIF, WEBP)");
       return;
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      showAlert("warning", "File Too Large", "File size must be less than 5MB");
+      showAlert("warning", "Ukuran File Terlalu Besar", "Ukuran file melebihi batas maksimal 5MB! Silakan pilih file yang lebih kecil.");
       return;
     }
 
@@ -416,15 +429,17 @@ export default function UserEventsPage() {
       const result = await response.json();
 
       if (result.success) {
-        setBuktiPembayaran(result.data.filePath);
+        // Add timestamp to force browser reload the new image
+        const filePathWithTimestamp = `${result.data.filePath}?t=${Date.now()}`;
+        setBuktiPembayaran(filePathWithTimestamp);
         setSelectedFile(file);
-        showAlert("success", "Upload Successful", "Payment proof uploaded successfully");
+        showAlert("success", "Upload Berhasil", "Bukti pembayaran berhasil diunggah");
       } else {
-        showAlert("danger", "Upload Failed", result.message || "Failed to upload payment proof");
+        showAlert("danger", "Upload Gagal", result.message || "Gagal mengunggah bukti pembayaran");
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      showAlert("danger", "Upload Error", "An error occurred while uploading file");
+      showAlert("danger", "Terjadi Kesalahan", "Terjadi kesalahan saat mengunggah file");
     } finally {
       setIsUploading(false);
     }
@@ -435,6 +450,19 @@ export default function UserEventsPage() {
     const file = event.target.files?.[0];
     if (file) {
       handleFileUpload(file);
+    }
+  };
+
+  // Handle delete payment proof
+  const handleDeletePaymentProof = () => {
+    setBuktiPembayaran("");
+    setSelectedFile(null);
+    showAlert("success", "Bukti Pembayaran Dihapus", "Bukti pembayaran berhasil dihapus. Anda bisa upload file baru.");
+    
+    // Reset the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -507,8 +535,9 @@ export default function UserEventsPage() {
   };
 
   // Navigate to event detail
-  const navigateToEventDetail = (eventName: string) => {
-    const slug = encodeURIComponent(eventName);
+  const navigateToEventDetail = (eventId: number, eventName: string) => {
+    // Create slug with ID to avoid conflicts when multiple events have same name
+    const slug = `${encodeURIComponent(eventName)}-${eventId}`;
     router.push(`/user/events/${slug}`);
   };
 
@@ -631,7 +660,7 @@ export default function UserEventsPage() {
           isHistory ? 'opacity-60 grayscale hover:opacity-80' : ''
         }`}
         isPressable
-        onPress={() => navigateToEventDetail(event.nama_event)}
+        onPress={() => navigateToEventDetail(event.id, event.nama_event)}
       >
         <CardBody className="p-6">
           {/* Event Image */}
@@ -725,6 +754,15 @@ export default function UserEventsPage() {
             {!isHistory ? (
               // Available events - existing logic
               event.participant_type === 'team' ? (
+                // Show loading state while data is being fetched
+                !isMyEventsLoaded ? (
+                  <div className="space-y-2">
+                    <div className="bg-gray-800/50 rounded-lg p-3 animate-pulse">
+                      <div className="h-4 bg-gray-700 rounded w-3/4 mx-auto mb-2"></div>
+                      <div className="h-3 bg-gray-700 rounded w-1/2 mx-auto"></div>
+                    </div>
+                  </div>
+                ) : (
                 // Team event logic
                 canJoinTeamEvent(event) ? (
                   <Button
@@ -742,14 +780,26 @@ export default function UserEventsPage() {
                   </Button>
                 ) : isTeamRegistered(event.id) ? (
                   // Member of team that's already registered
-                  <Button
-                    color="success"
-                    variant="flat"
-                    className="w-full"
-                    isDisabled
-                  >
-                    Registered Leader Team
-                  </Button>
+                  <div className="space-y-2">
+                    <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-green-400 font-bold">Tim Terdaftar</span>
+                      </div>
+                      <p className="text-xs text-green-300">Team Anda sudah mendaftar event ini</p>
+                    </div>
+                    {/* <Button
+                      color="default"
+                      variant="flat"
+                      size="sm"
+                      className="w-full"
+                      onPress={() => navigateToEventDetail(event.id, event.nama_event)}
+                    >
+                      Lihat Detail
+                    </Button> */}
+                  </div>
                 ) : (
                   <div className="text-center">
                     <Button
@@ -765,39 +815,71 @@ export default function UserEventsPage() {
                     </p>
                   </div>
                 )
+                )
               ) : (
                 // Individual event logic
                 (() => {
+                  // Show loading state while myEvents is being fetched
+                  if (!isMyEventsLoaded) {
+                    return (
+                      <div className="space-y-2">
+                        <div className="bg-gray-800/50 rounded-lg p-3 animate-pulse">
+                          <div className="h-4 bg-gray-700 rounded w-3/4 mx-auto mb-2"></div>
+                          <div className="h-3 bg-gray-700 rounded w-1/2 mx-auto"></div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const regStatus = getRegistrationStatus(event.id);
                   const canRegister = canRegisterForEvent(event);
                   const hasPending = hasPendingRegistration(event.id);
                   
                   if (regStatus?.status === 'approved') {
                     return (
-                      <Button
-                        color="success"
-                        variant="flat"
-                        className="w-full"
-                        isDisabled
-                      >
-                        Registered
-                      </Button>
+                      <div className="space-y-2">
+                        <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-3 text-center">
+                          <div className="flex items-center justify-center gap-2 mb-1">
+                            <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-green-400 font-bold">Terdaftar</span>
+                          </div>
+                          <p className="text-xs text-green-300">Pendaftaran Anda telah disetujui</p>
+                        </div>
+                        {/* <Button
+                          color="default"
+                          variant="flat"
+                          size="sm"
+                          className="w-full"
+                          onPress={() => navigateToEventDetail(event.id, event.nama_event)}
+                        >
+                          Lihat Detail
+                        </Button> */}
+                      </div>
                     );
                   } else if (hasPending) {
                     return (
-                      <Button
-                        color="warning"
-                        variant="flat"
-                        className="w-full"
-                        isDisabled
-                      >
-                        ⏳ Pending Review
-                        {regStatus?.rejection_reason && (
-                          <div className="text-xs mt-1">
-                            Re-review: {regStatus.rejection_reason}
+                      <div className="space-y-2">
+                        <div className="bg-yellow-900/30 border-2 border-yellow-500 rounded-lg p-3 text-center">
+                          <div className="flex items-center justify-center gap-2 mb-1">
+                            <svg className="w-5 h-5 text-yellow-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-yellow-400 font-bold">Menunggu Persetujuan</span>
                           </div>
-                        )}
-                      </Button>
+                          <p className="text-xs text-yellow-300">Pendaftaran sedang direview</p>
+                        </div>
+                        {/* <Button
+                          color="default"
+                          variant="flat"
+                          size="sm"
+                          className="w-full"
+                          onPress={() => navigateToEventDetail(event.id, event.nama_event)}
+                        >
+                          Lihat Detail
+                        </Button> */}
+                      </div>
                     );
                   } else if (!isRegistrationOpen(event)) {
                     return (
@@ -861,7 +943,7 @@ export default function UserEventsPage() {
   return (
     <UserLayout
       title="Events"
-      description="Join competitions and events"
+      description=""
     >
       {/* Alert */}
       {alertVisible && alertConfig && (
@@ -992,7 +1074,7 @@ export default function UserEventsPage() {
                 key={myEvent.id} 
                 className="bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFD700]/80 transition-all duration-300 cursor-pointer"
                 isPressable
-                onPress={() => navigateToEventDetail(myEvent.events.nama_event)}
+                onPress={() => navigateToEventDetail(myEvent.events.id, myEvent.events.nama_event)}
               >
                 <CardBody className="p-4">
                   {/* Event Image */}
@@ -1146,6 +1228,17 @@ export default function UserEventsPage() {
                   </div>
                 </div>
 
+                {/* Alert inside modal for validation errors */}
+                {alertVisible && alertConfig && (
+                  <Alert
+                    color={alertConfig.color}
+                    title={alertConfig.title}
+                    description={alertConfig.description}
+                    variant="faded"
+                    onClose={() => setAlertVisible(false)}
+                  />
+                )}
+
                 {/* Team Selection for Team Events */}
                 {selectedEvent.participant_type === 'team' && (
                   <div className="space-y-2">
@@ -1188,41 +1281,95 @@ export default function UserEventsPage() {
                         Payment Proof <span className="text-red-500">*</span>
                       </label>
                       <div className="flex flex-col gap-3">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="block w-full text-sm text-gray-300
-                            file:mr-4 file:py-2 file:px-4
-                            file:rounded-lg file:border-0
-                            file:text-sm file:font-medium
-                            file:bg-blue-600 file:text-white
-                            hover:file:bg-blue-700
-                            file:cursor-pointer cursor-pointer"
-                          disabled={isUploading}
-                        />
-                        {isUploading && (
-                          <div className="flex items-center gap-2 text-blue-400">
-                            <Spinner size="sm" />
-                            <span className="text-sm">Uploading...</span>
-                          </div>
+                        {/* Show file input only if no file uploaded yet */}
+                        {!buktiPembayaran && (
+                          <>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileChange}
+                              className="block w-full text-sm text-gray-300
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-lg file:border-0
+                                file:text-sm file:font-medium
+                                file:bg-blue-600 file:text-white
+                                hover:file:bg-blue-700
+                                file:cursor-pointer cursor-pointer"
+                              disabled={isUploading}
+                            />
+                            {isUploading && (
+                              <div className="flex items-center gap-2 text-blue-400">
+                                <Spinner size="sm" />
+                                <span className="text-sm">Uploading...</span>
+                              </div>
+                            )}
+                          </>
                         )}
+                        
+                        {/* Show preview and action buttons when file is uploaded */}
                         {selectedFile && buktiPembayaran && (
                           <div className="bg-green-900/20 border border-green-600/50 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-green-400 mb-2">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-sm font-medium">File uploaded successfully</span>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 text-green-400">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">File uploaded successfully</span>
+                              </div>
+                              
+                              {/* Action buttons */}
+                              <div className="flex gap-2">
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    disabled={isUploading}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    color="primary"
+                                    variant="flat"
+                                    isIconOnly
+                                    isDisabled={isUploading}
+                                    as="span"
+                                    title="Update bukti pembayaran"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                  </Button>
+                                </label>
+                                <Button
+                                  size="sm"
+                                  color="danger"
+                                  variant="flat"
+                                  isIconOnly
+                                  onPress={handleDeletePaymentProof}
+                                  isDisabled={isUploading}
+                                  title="Hapus bukti pembayaran"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </Button>
+                              </div>
                             </div>
+                            
                             <p className="text-sm text-gray-300 mb-2">
                               {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
                             </p>
                             <div className="mt-2">
                               <img 
+                                key={buktiPembayaran}
                                 src={buktiPembayaran} 
                                 alt="Payment proof preview"
-                                className="max-w-full max-h-32 object-contain rounded-lg border border-gray-600"
+                                className="max-w-full max-h-32 object-contain rounded-lg border border-gray-600 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                  setSelectedImageUrl(buktiPembayaran);
+                                  onImageOpen();
+                                }}
                                 onError={(e) => {
                                   console.error('Image failed to load:', buktiPembayaran);
                                   const img = e.target as HTMLImageElement;
