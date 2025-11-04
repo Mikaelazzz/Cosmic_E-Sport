@@ -919,7 +919,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
             </Card>
           )}
  
-          {/* Error Display - Using Heroui Alert
+          {/* Error Display - Using Heroui Alert */}
           {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
             <div className="mb-4">
               <Alert 
@@ -929,7 +929,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 title="Error"
                 description={error}
               />
-              <div className="flex gap-2 mt-3">
+              {/* <div className="flex gap-2 mt-3">
                 <Button 
                   size="sm"
                   color="danger" 
@@ -948,9 +948,9 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 >
                   Tutup
                 </Button>
-              </div>
+              </div> */}
             </div>
-          )} */}
+          )}
  
           {/* Scanner Interface */}
           {!needsPermission && !error && !scanSuccess && !showSuccessOverlay && (
@@ -1042,7 +1042,7 @@ const QRScannerModal: React.FC<QRScannerModalProps> = ({
         
         <ModalFooter>
           
-          <div className="flex flex-col sm:flex-col gap-2 sm:gap-3 w-full ">
+          <div className="flex flex-row sm:flex-row gap-2 sm:gap-3 w-full ">
             {error && !isSubmitting && !scanSuccess && !showSuccessOverlay && (
               <Button 
                   size="sm"
