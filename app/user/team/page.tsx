@@ -8,6 +8,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@herou
 import { Alert } from "@heroui/alert";
 import { Spinner } from "@heroui/spinner";
 import { Badge } from "@heroui/badge";
+import { Chip } from "@heroui/chip";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getUserAvatarUrl, generateInitials } from "@/lib/avatar";
@@ -39,13 +40,14 @@ interface Team {
 interface MyTeamData {
   count: number;
   teams: Team[];
+  pendingRequests?: number[];  // Array of team IDs with pending requests
 }
 
 export default function TeamPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [myTeamData, setMyTeamData] = useState<MyTeamData>({ count: 0, teams: [] });
+  const [myTeamData, setMyTeamData] = useState<MyTeamData>({ count: 0, teams: [], pendingRequests: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,10 +80,22 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchTeams();
-      fetchMyTeams();
+      const fetchData = async () => {
+        await Promise.all([
+          fetchTeams(),
+          fetchMyTeams(),
+          fetchPendingRequests()
+        ]);
+        console.log('✅ All data fetched, current myTeamData:', myTeamData);
+      };
+      fetchData();
     }
   }, [isAuthenticated, user]);
+
+  // Log whenever myTeamData changes
+  // useEffect(() => {
+  //   console.log('📊 myTeamData changed:', myTeamData);
+  // }, [myTeamData]);
 
   const fetchTeams = async () => {
     try {
@@ -122,11 +136,53 @@ export default function TeamPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setMyTeamData(result.data);
+          setMyTeamData(prev => ({
+            ...prev,
+            ...result.data
+          }));
+          console.log('✅ My team data set:', result.data);
         }
       }
     } catch (error) {
       console.error('Error fetching my teams:', error);
+    }
+  };
+
+  // Fetch pending team join requests
+  const fetchPendingRequests = async () => {
+    try {
+      const response = await fetch('/api/teams/pending-requests', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          // Extract team IDs from pending requests
+          // API returns: { data: { count, requests: [...] } }
+          const pendingTeamIds = result.data.requests?.map((req: any) => req.team_id) || [];
+          
+          // Update myTeamData with pending requests
+          setMyTeamData(prev => {
+            const updated = {
+              ...prev,
+              pendingRequests: pendingTeamIds
+            };
+            console.log('🔄 Updated myTeamData with pending requests:', {
+              previous: prev,
+              updated: updated
+            });
+            return updated;
+          });
+        } else {
+          console.log('⚠️ No data in result:', result);
+        }
+      } else {
+        console.error('❌ Response not OK:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching pending requests:', error);
     }
   };
 
@@ -180,6 +236,12 @@ export default function TeamPage() {
       return;
     }
 
+    // Check if user already has a pending request for this team
+    if (myTeamData.pendingRequests?.includes(teamId)) {
+      showAlert("warning", "Request Already Sent", "You already have a pending request for this team. Please wait for approval.");
+      return;
+    }
+
     try {
       const response = await fetch('/api/teams/join', {
         method: 'POST',
@@ -194,8 +256,10 @@ export default function TeamPage() {
 
       if (result.success) {
         setError("");
+        // Refresh all data
         fetchTeams(); // Refresh teams list
         fetchMyTeams(); // Refresh my teams count
+        fetchPendingRequests(); // Refresh pending requests to get latest data
         showAlert("success", "Join Request Sent", "Your request to join the team has been sent successfully. Please wait for the team leader's approval.");
       } else {
         showAlert("danger", "Join Request Failed", result.message || "Failed to send join request");
@@ -232,7 +296,7 @@ export default function TeamPage() {
   return (
     <UserLayout
       title="Teams"
-      description="Create and join teams for competitions"
+      description=""
     >
       {/* Alert Notification */}
       {alertVisible && (
@@ -300,15 +364,35 @@ export default function TeamPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-6">Available Team</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTeams.map((team) => (
-            <Card
-              key={team.id}
-              className="bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFE55C] transition-colors"
-            >
-              <CardBody className="p-6">
-                {/* Team Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-[#FFD700]">{team.nama_team}</h2>
+          {filteredTeams.map((team) => {
+            const isPending = myTeamData.pendingRequests?.includes(team.id);  
+            
+            return (
+              <Card
+                key={team.id}
+                className="bg-[#111020] border-2 border-[#FFD700] hover:border-[#FFE55C] transition-colors"
+              >
+                <CardBody className="p-6">
+                  {/* Team Header */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold text-[#FFD700] mb-2">{team.nama_team}</h2>
+                      {/* Show pending status badge if user has requested to join */}
+                      {isPending && (
+                        <Chip 
+                          color="warning" 
+                          variant="flat" 
+                          size="sm"
+                          startContent={
+                            <svg className="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                          }
+                        >
+                          Menunggu Diterima
+                        </Chip>
+                      )}
+                    </div>
                   <Badge color="warning" variant="flat">
                     {team.current_participants}/{team.max_participants}
                   </Badge>
@@ -360,8 +444,18 @@ export default function TeamPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  {/* Show different buttons based on team status and user status */}
-                  {team.status === 'open' && team.current_participants < team.max_participants && (
+                  {/* Show pending status if user has requested to join */}
+                  {isPending ? (
+                    <Button
+                      color="warning"
+                      variant="flat"
+                      size="sm"
+                      className="flex-1"
+                      isDisabled
+                    >
+                      Menunggu Diterima
+                    </Button>
+                  ) : team.status === 'open' && team.current_participants < team.max_participants ? (
                     <Button
                       color={myTeamData.count > 0 ? "default" : "primary"}
                       variant={myTeamData.count > 0 ? "flat" : "solid"}
@@ -372,10 +466,7 @@ export default function TeamPage() {
                     >
                       {myTeamData.count > 0 ? "Already in Team" : "Request To Join"}
                     </Button>
-                  )}
-                  
-                  {/* Show status info for closed teams */}
-                  {team.status === 'closed' && (
+                  ) : team.status === 'closed' ? (
                     <Button
                       color="warning"
                       variant="flat"
@@ -385,10 +476,7 @@ export default function TeamPage() {
                     >
                       Team Closed
                     </Button>
-                  )}
-                  
-                  {/* Show status info for full teams */}
-                  {team.current_participants >= team.max_participants && (
+                  ) : team.current_participants >= team.max_participants ? (
                     <Button
                       color="danger"
                       variant="flat"
@@ -398,7 +486,7 @@ export default function TeamPage() {
                     >
                       Team Full
                     </Button>
-                  )}
+                  ) : null}
                   
                   <Button
                     color="default"
@@ -412,7 +500,8 @@ export default function TeamPage() {
                 </div>
               </CardBody>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         {filteredTeams.length === 0 && (

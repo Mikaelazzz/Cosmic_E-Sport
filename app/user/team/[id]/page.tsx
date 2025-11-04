@@ -497,17 +497,17 @@ export default function TeamDetailPage() {
   return (
     <UserLayout 
       title="Team Details"
-      description="Kelola dan lihat detail tim Anda">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      description="">
+      <div className="mx-auto max-w-7xl">
       {/* Back Button */}
-      <Button
+      {/* <Button
         variant="light"
         className="mb-6"
         startContent={<ArrowLeftIcon className="w-4 h-4" />}
         onPress={() => router.push('/user/team')}
       >
         Back to Teams
-      </Button>
+      </Button> */}
 
       {/* Alert Notification */}
       {alertVisible && (

@@ -57,13 +57,15 @@ export async function GET(request: NextRequest) {
       }
     })) || [];
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         count: requests.length,
         requests
       }
-    });
+    };
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error in pending requests API:', error);
