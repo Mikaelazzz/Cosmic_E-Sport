@@ -101,7 +101,7 @@ export async function POST(request: Request) {
             <p>Halo ${existingUser.nama_lengkap},</p>
             <p>Anda telah meminta kode reset password baru. Gunakan kode berikut:</p>
             <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
-              <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${resetCode}</h1>
+              <h1 style="color: #FFD700; margin: 0; font-size: 32px; letter-spacing: 5px;">${resetCode}</h1>
             </div>
             <p><strong>Kode ini akan kedaluwarsa dalam 15 menit.</strong></p>
             <p>Jika Anda tidak melakukan permintaan ini, abaikan email ini.</p>

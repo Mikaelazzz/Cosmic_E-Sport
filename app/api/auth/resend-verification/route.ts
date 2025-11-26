@@ -118,7 +118,7 @@ export async function POST(request: Request) {
             <p>Halo,</p>
             <p>Anda telah meminta kode verifikasi baru. Gunakan kode berikut:</p>
             <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
-              <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
+              <h1 style="color: #FFD700; margin: 0; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
             </div>
             <p><strong>Kode ini akan kedaluwarsa dalam 15 menit.</strong></p>
             <p>Jika Anda tidak melakukan permintaan ini, abaikan email ini.</p>
