@@ -1046,11 +1046,11 @@ export default function DetailPertemuanPage() {
                                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
                                         )}
                                         <img 
-                                          src={getUserAvatarUrl(absensi.user, 40, true) || '/logc.png'}
+                                          src={getUserAvatarUrl(absensi.user, 40, true) || '/logc.webp'}
                                           alt="Profile"
                                           className="w-full h-full object-cover"
                                           onError={(e) => {
-                                            e.currentTarget.src = '/logc.png';
+                                            e.currentTarget.src = '/logc.webp';
                                           }}
                                         />
                                       </div>
@@ -1123,11 +1123,11 @@ export default function DetailPertemuanPage() {
                                   <div className="flex items-center gap-2.5">
                                     <div className="w-10 h-10 border-2 border-yellow-400 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
                                       <img 
-                                        src={getUserAvatarUrl(absensi.user, 200, true) || '/logc.png'}
+                                        src={getUserAvatarUrl(absensi.user, 200, true) || '/logc.webp'}
                                         alt="Profile"
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
-                                          e.currentTarget.src = '/logc.png';
+                                          e.currentTarget.src = '/logc.webp';
                                         }}
                                       />
                                     </div>

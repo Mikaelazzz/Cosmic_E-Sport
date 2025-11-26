@@ -470,7 +470,7 @@ export default function AdminPengurusPage() {
                 alt="Profile"
                 className="w-12 h-12 object-cover"
                 onError={(e) => {
-                  e.currentTarget.src = '/logc.png';
+                  e.currentTarget.src = '/logc.webp';
                 }}
               />
             </div>
@@ -908,7 +908,7 @@ export default function AdminPengurusPage() {
                               alt={item.name}
                               className="w-full h-full rounded-full object-cover"
                               onError={(e) => {
-                                e.currentTarget.src = `/logc.png`;
+                                e.currentTarget.src = `/logc.webp`;
                               }}
                             />
                           </div>

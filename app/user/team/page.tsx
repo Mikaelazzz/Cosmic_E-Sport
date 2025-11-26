@@ -423,7 +423,7 @@ export default function TeamPage() {
                             alt="Profile"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              e.currentTarget.src = '/logo.png';
+                              e.currentTarget.src = '/logo.webp';
                             }}
                           />
                         </div>

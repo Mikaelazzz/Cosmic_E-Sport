@@ -586,7 +586,7 @@ export default function UsersPage() {
                     alt="Profile"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = '/logc.png';
+                      e.currentTarget.src = '/logc.webp';
                     }}
                   />
             </div>
@@ -955,7 +955,7 @@ export default function UsersPage() {
                         alt="Profile"
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.currentTarget.src = '/logc.png';
+                          e.currentTarget.src = '/logc.webp';
                         }}
                       />
                     </div>

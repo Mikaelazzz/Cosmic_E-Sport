@@ -623,7 +623,7 @@ export default function UserProfilePage() {
                     alt="Profile"
                     className="w-48 h-48 object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = '/logc.png';
+                      e.currentTarget.src = '/logc.webp';
                     }}
                   />
                 </div>
