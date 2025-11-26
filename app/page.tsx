@@ -37,10 +37,18 @@ export default function Home() {
   const [showCount, setShowCount] = useState(2);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingPrestasi, setLoadingPrestasi] = useState(true);
+  const [renderHeavyComponents, setRenderHeavyComponents] = useState(false);
   
   useEffect(() => {
     setShowPreloader(true);
     fetchPrestasiData();
+    
+    // Defer heavy component rendering to improve initial load
+    const timer = setTimeout(() => {
+      setRenderHeavyComponents(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchPrestasiData = async () => {
@@ -106,14 +114,16 @@ export default function Home() {
     <section id="home"
       className="relative flex flex-col items-center justify-center w-full aspect-video"
     >
-      {/* Aurora sebagai background */}
+      {/* Aurora sebagai background - only render after initial load */}
       <div className="absolute inset-0 z-0">
-        <Aurora
-          colorStops={["#FFD700", "#FF8C00", "#8B4513"]}
-          blend={0.5}
-          amplitude={1.0}
-          speed={0.5}
-        />
+        {renderHeavyComponents && (
+          <Aurora
+            colorStops={["#FFD700", "#FF8C00", "#8B4513"]}
+            blend={0.5}
+            amplitude={1.0}
+            speed={0.5}
+          />
+        )}
       </div>
 
       <div className="relative z-10 text-center text-white py-12">

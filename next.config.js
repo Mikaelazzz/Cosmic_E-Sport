@@ -7,6 +7,8 @@ const nextConfig = {
   compress: true,
   generateEtags: false,
   productionBrowserSourceMaps: false,
+  reactStrictMode: true,
+  swcMinify: true,
   images: {
     domains: ['localhost', 'hvksrxrjbjdynrsesmrk.supabase.co'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
