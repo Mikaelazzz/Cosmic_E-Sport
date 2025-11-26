@@ -9,7 +9,7 @@ export const Logo: React.FC<React.ImgHTMLAttributes<HTMLImageElement> & { size?:
   ...props
 }) => (
   <img
-    src="/logc.png"
+    src="/logc.webp"
     alt="Logo"
     width={width ?? size}
     height={height ?? size}
