@@ -2,12 +2,11 @@ import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import { Link } from "@heroui/link";
 import clsx from "clsx";
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { Providers } from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
-import SessionManager from "@/components/SessionManager";
 
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
@@ -19,17 +18,23 @@ export const metadata: Metadata = {
     default: siteConfig.name,
     template: `%s - ${siteConfig.name}`,
   },
-  // description: siteConfig.description,
+  description: "Cosmic E-Sport",
   icons: {
-    icon: "/logc.png",
+    icon: "/logc.webp",
+  },
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    url: "https://cosmic-e-sport.vercel.app",
+    siteName: siteConfig.name,
   },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
@@ -42,16 +47,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en">
+    <html suppressHydrationWarning lang="id">
       <head>
-        {/* Essential Meta Tags for Mobile */}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        
-        {/* Google Fonts untuk Orbitron */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link 
           href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" 
           rel="stylesheet" 
@@ -65,7 +64,6 @@ export default function RootLayout({
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <AuthProvider>
-            {/* <SessionManager /> */}
             <div className="relative flex flex-col min-h-screen">
               <NavbarWrapper />
               <main className="flex-grow">

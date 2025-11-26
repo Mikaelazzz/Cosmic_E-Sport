@@ -1,22 +1,22 @@
 "use client"
 import { Link } from "@heroui/link";
-import { Snippet } from "@heroui/snippet";
-import { Code } from "@heroui/code";
 import { button as buttonStyles } from "@heroui/theme";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
-import { GithubIcon } from "@/components/icons";
-import Aurora from "@/components/Aurora";
 import { Button } from "@heroui/button";
 import NextLink from "next/link";
-import { ShineBorder } from "@/components/shine-border";
-import ScrollFloat from "@/components/ScrollFloat";
-import CardScrollAnimation from "@/components/CardScrollAnimation";
-import Preloader from "@/components/Preloader";
-import { useEffect, useState } from "react";
 import Spinner from "@/components/Spinner";
 import { getPrestasiImageUrl } from "@/lib/prestasi-image";
+
+// Lazy load heavy components
+const Aurora = dynamic(() => import("@/components/Aurora"), { ssr: false });
+const ShineBorder = dynamic(() => import("@/components/shine-border").then(mod => ({ default: mod.ShineBorder })), { ssr: false });
+const ScrollFloat = dynamic(() => import("@/components/ScrollFloat"), { ssr: false });
+const CardScrollAnimation = dynamic(() => import("@/components/CardScrollAnimation"), { ssr: false });
+const Preloader = dynamic(() => import("@/components/Preloader"), { ssr: false });
 
 interface PrestasiItem {
   id: number;
@@ -61,7 +61,7 @@ export default function Home() {
             level: "Regional",
             date: "1 Januari 2025",
             players: "5 Players",
-            img: "/logo.png",
+            img: "/logo.webp",
             badge: "1st"
           }
         ]);
@@ -76,7 +76,7 @@ export default function Home() {
           level: "Regional", 
           date: "1 Januari 2025",
           players: "5 Players",
-          img: "/logo.png",
+          img: "/logo.webp",
           badge: "1st"
         }
       ]);
@@ -192,8 +192,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/No.png" 
-          alt="Lwie Jaya" 
+          src="/pengurus/No.webp" 
+          alt="Bu Novi" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -224,8 +224,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Ce.png" 
-          alt="Lwie Jaya" 
+          src="/pengurus/Ce.webp" 
+          alt="Vincent" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -249,8 +249,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Qu.png" 
-          alt="Member 2" 
+          src="/pengurus/Qu.webp" 
+          alt="Queena" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -274,8 +274,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Re.png" 
-          alt="Member 3" 
+          src="/pengurus/Re.webp" 
+          alt="Regina" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -299,8 +299,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Pa.png" 
-          alt="Lwie Jaya" 
+          src="/pengurus/Pa.webp" 
+          alt="Patrick" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -324,8 +324,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/St.png" 
-          alt="Member 2" 
+          src="/pengurus/St.webp" 
+          alt="Steven" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -349,8 +349,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Ar.png" 
-          alt="Member 3" 
+          src="/pengurus/Ar.webp" 
+          alt="Arfi" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -374,8 +374,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Ni.png" 
-          alt="Member 2" 
+          src="/pengurus/Ni.webp" 
+          alt="Nicho" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -399,8 +399,8 @@ export default function Home() {
       {/* Profile image */}
       <div className="mb-4 select-none pointer-events-none">
         <img 
-          src="/pengurus/Ho.png" 
-          alt="Member 3" 
+          src="/pengurus/Ho.webp" 
+          alt="Hosea" 
           className="aspect-square w-auto h-auto md:w-64 md:h-64 rounded-lg object-cover border-2 border-[#FFD700]/30"
           />
       </div>
@@ -445,11 +445,11 @@ export default function Home() {
                 {/* Profile image */}
                 <div className="mb-4 select-none pointer-events-none">
                   <img
-                    src={getPrestasiImageUrl(item.img) || '/logo.png'}
+                    src={getPrestasiImageUrl(item.img) || '/logo.webp'}
                     alt={item.title}
                     className="aspect-video w-auto h-auto md:w-auto md:h-80 rounded-lg object-cover border-2 border-[#FFD700]/30"
                     onError={(e) => {
-                      e.currentTarget.src = '/logo.png'; // fallback image
+                      e.currentTarget.src = '/logo.webp'; // fallback image
                     }}
                   />
                 </div>

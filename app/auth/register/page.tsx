@@ -320,7 +320,7 @@ const page = () => {
 
       {/* Left Side - Hidden on mobile */}
       <div className="hidden md:flex w-1/2 flex-col justify-center items-center bg-[#FFD700]">
-        <img src="/logo.png" alt="Logo" className="w-96 mb-4" />
+        <img src="/logo.webp" alt="Logo" className="w-96 mb-4" />
         <div className="max-w-md text-center">
           {/* <Button
             className="border-2 border-black !text-black bg-transparent hover:bg-[#FFC300] font-bold px-8 py-2 rounded-md transition-colors duration-200 disabled:opacity-50"

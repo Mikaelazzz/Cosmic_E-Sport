@@ -174,7 +174,7 @@ function ResetPasswordForm() {
 
       {/* Left Side - Hidden on mobile */}
       <div className="hidden md:flex w-1/2 flex-col justify-center items-center bg-[#FFD700]">
-        <img src="/logo.png" alt="Logo" className="w-96 mb-4" />
+        <img src="/logo.webp" alt="Logo" className="w-96 mb-4" />
         {/* <div className="max-w-md text-center">
           <h1 className="text-4xl font-bold mb-5 text-black font-sans">
             Reset Password

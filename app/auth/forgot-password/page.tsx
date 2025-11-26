@@ -167,7 +167,7 @@ const ForgotPasswordPage = () => {
 
       {/* Left Side - Hidden on mobile */}
       <div className="hidden md:flex w-1/2 flex-col justify-center items-center bg-[#FFD700]">
-        <img src="/logo.png" alt="Logo" className="w-96 mb-4" />
+        <img src="/logo.webp" alt="Logo" className="w-96 mb-4" />
       </div>
 
       {/* Right Side - Full width on mobile */}
