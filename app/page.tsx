@@ -11,12 +11,10 @@ import NextLink from "next/link";
 import Spinner from "@/components/Spinner";
 import { getPrestasiImageUrl } from "@/lib/prestasi-image";
 
-// Lazy load heavy components
-const Aurora = dynamic(() => import("@/components/Aurora"), { ssr: false });
-const ShineBorder = dynamic(() => import("@/components/shine-border").then(mod => ({ default: mod.ShineBorder })), { ssr: false });
-const ScrollFloat = dynamic(() => import("@/components/ScrollFloat"), { ssr: false });
-const CardScrollAnimation = dynamic(() => import("@/components/CardScrollAnimation"), { ssr: false });
-const Preloader = dynamic(() => import("@/components/Preloader"), { ssr: false });
+// Lazy load heavy components - Aurora and Preloader removed for performance
+const ShineBorder = dynamic(() => import("@/components/shine-border").then(mod => ({ default: mod.ShineBorder })), { ssr: false, loading: () => null });
+const ScrollFloat = dynamic(() => import("@/components/ScrollFloat"), { ssr: false, loading: () => null });
+const CardScrollAnimation = dynamic(() => import("@/components/CardScrollAnimation"), { ssr: false, loading: () => null });
 
 interface PrestasiItem {
   id: number;
@@ -32,23 +30,13 @@ interface PrestasiItem {
 
 
 export default function Home() {
-  const [showPreloader, setShowPreloader] = useState(true);
   const [prestasiList, setPrestasiList] = useState<PrestasiItem[]>([]);
   const [showCount, setShowCount] = useState(2);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingPrestasi, setLoadingPrestasi] = useState(true);
-  const [renderHeavyComponents, setRenderHeavyComponents] = useState(false);
   
   useEffect(() => {
-    setShowPreloader(true);
     fetchPrestasiData();
-    
-    // Defer heavy component rendering to improve initial load
-    const timer = setTimeout(() => {
-      setRenderHeavyComponents(true);
-    }, 100);
-    
-    return () => clearTimeout(timer);
   }, []);
 
   const fetchPrestasiData = async () => {
@@ -107,23 +95,15 @@ export default function Home() {
 
   return (
     <>
-      {showPreloader && <Preloader onFinish={() => setShowPreloader(false)} />}
-      {!showPreloader && (
-        <>
+      {/* Preloader removed for better Lighthouse performance */}
+      <div className="contents">
     {/* Halaman utama */}
     <section id="home"
       className="relative flex flex-col items-center justify-center w-full aspect-video"
     >
-      {/* Aurora sebagai background - only render after initial load */}
-      <div className="absolute inset-0 z-0">
-        {renderHeavyComponents && (
-          <Aurora
-            colorStops={["#FFD700", "#FF8C00", "#8B4513"]}
-            blend={0.5}
-            amplitude={1.0}
-            speed={0.5}
-          />
-        )}
+      {/* Aurora disabled for performance - replaced with CSS gradient */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#FFD700]/20 via-[#FF8C00]/10 to-[#8B4513]/20">
+        {/* Aurora component removed to improve Lighthouse CPU idle period */}
       </div>
 
       <div className="relative z-10 text-center text-white py-12">
@@ -156,8 +136,8 @@ export default function Home() {
     </section>
 
   {/* Halaman kedua */}
-  <section id="tentang" className="flex flex-col items-center justify-center w-full p-8 bg-black text-white">
-      <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">
+  <section id="tentang" className="flex flex-col items-center justify-center w-full p-8 bg-white text-black">
+      <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron]">
         Tentang <span className="text-[#FFD700]">Cosmic</span>
       </h1>
 
@@ -425,18 +405,18 @@ export default function Home() {
 
 
     {/* Halaman Keempat */}
-  <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8">
-      <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] drop-shadow-[0_0_4px_rgba(255,215,0,0.7)]">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
+  <section id="prestasi" className="flex flex-col items-center justify-center w-full min-h-screen p-8 bg-white text-black">
+      <h1 className="text-3xl md:text-5xl font-bold mb-8 font-[orbitron] ">Prestasi <span className="text-[#FFD700]">Cosmic</span></h1>
       
       {loadingPrestasi ? (
         <div className="flex flex-col items-center justify-center">
           <Spinner size={48} />
-          <p className="mt-4 text-white/70">Memuat prestasi...</p>
+          <p className="mt-4 text-black">Memuat prestasi...</p>
         </div>
       ) : prestasiList.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center">
           {/* <h3 className="text-xl font-bold text-white mb-2">Belum Ada Prestasi</h3> */}
-          <p className="text-white/70">Prestasi akan ditampilkan di sini ketika sudah tersedia</p>
+          <p className="text-black">Prestasi akan ditampilkan di sini ketika sudah tersedia</p>
         </div>
       ) : (
         <>
@@ -494,8 +474,7 @@ export default function Home() {
         </>
       )}
     </section>
-      </>
-      )}
+      </div>
     </>
   );
 }
