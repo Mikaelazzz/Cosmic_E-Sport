@@ -517,6 +517,8 @@ export default function JadwalPertemuanPage() {
       title="Jadwal Pertemuan"
       description=""
     >
+      <section>
+
       <div className="space-y-6">
         {/* Alert Notifications */}
         {alertConfig.show && (
@@ -1171,6 +1173,7 @@ export default function JadwalPertemuanPage() {
           </ModalContent>
         </Modal>
       </div>
+      </section>
     </ModeratorLayout>
   );
 }

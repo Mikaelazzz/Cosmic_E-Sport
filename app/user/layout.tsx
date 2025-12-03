@@ -4,7 +4,7 @@ export default function UserLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="user-layout px-12 py-12">
+    <div className="user-layout px-4 py-[72px] md:py-12 md:px-12">
       {children}
     </div>
   );

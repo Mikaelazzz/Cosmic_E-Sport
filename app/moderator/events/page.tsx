@@ -805,6 +805,8 @@ export default function EventsPage() {
       title="Events Management"
       description="Manage events and competitions"
     >
+      <section>
+
       {/* Alert */}
       {alertVisible && alertConfig && (
         <div className="fixed top-4 right-4 z-50 max-w-md">
@@ -1990,6 +1992,7 @@ export default function EventsPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+      </section>
     </ModeratorLayout>
   );
 }

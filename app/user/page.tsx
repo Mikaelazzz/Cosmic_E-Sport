@@ -284,6 +284,8 @@ export default function UserDashboard() {
       title="Jadwal Pertemuan"
       description={`Jadwal minggu ini (${new Date().toLocaleDateString('id-ID')} - ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('id-ID')})`}
     >
+      <section>
+
       <div className="flex justify-end mb-4">
         <Chip 
           color="primary" 
@@ -422,6 +424,7 @@ export default function UserDashboard() {
           pertemuanId={currentPertemuanId.toString()}
         />
       )}
+      </section>
     </UserLayout>
   );
 }
