@@ -597,7 +597,7 @@ export default function UserProfilePage() {
   return (
     <UserLayout
       title="Profile User"
-      description="Kelola informasi profil dan avatar Anda"
+      description=""
     >
       {message && (
         <Alert

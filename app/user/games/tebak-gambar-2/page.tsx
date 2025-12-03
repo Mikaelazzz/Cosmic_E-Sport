@@ -162,7 +162,7 @@ export default function KuisGambarPage() {
   return (
     <UserLayout 
       title="Kuis Gambar Hero"
-      description="Permainan tebak nama hero dari gambar yang diperbesar">
+      description="">
       <section className="p-4 sm:p-6 md:p-8 border-2 border-[#ffd700] rounded-lg max-w-2xl mx-auto bg-gradient-to-br from-gray-900 to-gray-800 text-white my-8 sm:mb-10">
         <div className="mb-6 sm:mb-8 md:mb-10">
           <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center text-yellow-400">Kuis Gambar Hero</h1>

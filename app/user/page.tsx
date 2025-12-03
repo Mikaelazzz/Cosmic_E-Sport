@@ -246,8 +246,8 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <UserLayout
-        title="Dashboard"
-        description="Selamat datang di dashboard user"
+        title="Jadwal Pertemuan"
+        description=""
       >
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader2 className="animate-spin text-blue-600" size={40} />
@@ -259,8 +259,8 @@ export default function UserDashboard() {
   if (error) {
     return (
       <UserLayout
-        title="Dashboard"
-        description="Selamat datang di dashboard user"
+        title="Jadwal Pertemuan"
+        description=""
       >
         <Card className="border-red-200 shadow-md">
           <CardBody className="text-center py-10">
