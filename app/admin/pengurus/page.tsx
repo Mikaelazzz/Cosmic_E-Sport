@@ -702,7 +702,7 @@ export default function AdminPengurusPage() {
   return (
     <AdminLayout
       title="Manajemen Pengurus"
-      description="Kelola data pengurus dan anggota organisasi untuk periode yang sedang berlangsung."
+      description=""
     >
 
       {/* Period Status Check */}

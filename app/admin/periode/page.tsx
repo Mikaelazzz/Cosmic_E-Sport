@@ -562,7 +562,7 @@ export default function PeriodePage() {
   return (
     <AdminLayout
       title="Manajemen Periode"
-      description="Kelola periode dan semester UKM untuk mengatur jadwal kegiatan organisasi."
+      description=""
     >
         {/* Alert Notifications */}
         {alertConfig.show && (
@@ -579,10 +579,6 @@ export default function PeriodePage() {
 
         {/* Action Header */}
         <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold">Periode Aktif & Kontrol</h2>
-            <p className="text-default-500 text-sm">Kelola status periode dan buat periode baru</p>
-          </div>
           {!currentPeriod && (
             <Button
               color="primary"

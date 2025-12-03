@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout
       title="Admin Dashboard"
-      description="Kelola dan pantau seluruh aktivitas organisasi dari satu tempat."
+      description=""
     >
       {/* <div className="flex justify-end mb-4">
         <Button 

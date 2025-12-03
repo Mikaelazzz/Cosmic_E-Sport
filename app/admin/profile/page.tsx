@@ -379,7 +379,7 @@ export default function AdminProfilePage() {
   return (
     <AdminLayout 
       title="Profile Management" 
-      description="Manage your admin profile settings"
+      description=""
     >
       {message && (
         <Alert 

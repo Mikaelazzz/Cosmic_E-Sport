@@ -266,9 +266,7 @@ export default function PrestasiPage() {
   return (
     <AdminLayout
       title="Manajemen Prestasi"
-      description="Kelola data prestasi dan pencapaian UKM untuk merekam setiap keberhasilan organisasi."
-      subtitle="Daftar Prestasi"
-      subtitleDescription="Kelola data prestasi dan pencapaian UKM"
+      description=""
     >
 
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
