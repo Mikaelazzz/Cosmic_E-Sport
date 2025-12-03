@@ -245,7 +245,7 @@ export default function ModeratorDashboard() {
   return (
     <ModeratorLayout
       title="Dashboard Moderator"
-      description="Panel kontrol dan monitoring untuk moderator"
+      description=""
     >
       {/* Alert */}
       {alertConfig.show && (
@@ -267,29 +267,6 @@ export default function ModeratorDashboard() {
       {/* Dashboard Content */}
       {!loading && (
           <>
-            {/* Welcome Card */}
-            <Card className="mb-8">
-              <CardHeader>
-                <h3 className="text-xl font-semibold">Welcome, {user?.nama_lengkap}</h3>
-              </CardHeader>
-              <Divider />
-              <CardBody>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <p><strong>Role:</strong> {user?.role}</p>
-                    <p><strong>Email:</strong> {user?.email}</p>
-                    <p><strong>NIM:</strong> {user?.nim}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Selamat datang di dashboard moderator. Anda dapat mengelola jadwal pertemuan, 
-                      user, dan memulai sesi pertemuan dari dashboard ini.
-                    </p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
             {/* Statistics Cards */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8">
               <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">

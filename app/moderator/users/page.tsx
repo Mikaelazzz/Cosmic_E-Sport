@@ -897,7 +897,7 @@ export default function UsersPage() {
   return (
     <ModeratorLayout
       title="User Management"
-      description="Kelola pengguna dan anggota komunitas"
+      description=""
     >
       {/* Mobile Card View - Hidden on desktop */}
       <div className="lg:hidden">

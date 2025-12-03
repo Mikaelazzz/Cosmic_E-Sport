@@ -561,7 +561,7 @@ export default function ModeratorProfilePage() {
   return (
     <ModeratorLayout
       title="Profile Moderator"
-      description="Kelola informasi profil dan avatar moderator Anda"
+      description=""
     >
       {message && (
         <Alert 

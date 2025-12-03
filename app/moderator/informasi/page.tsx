@@ -155,7 +155,7 @@ const InformasiPage = () => {
   return (
     <ModeratorLayout
       title="Kelola Informasi"
-      description="Kelola informasi dan pengumuman untuk anggota"
+      description=""
     >
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-2">

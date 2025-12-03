@@ -515,7 +515,7 @@ export default function JadwalPertemuanPage() {
   return (
     <ModeratorLayout
       title="Jadwal Pertemuan"
-      description="Kelola jadwal pertemuan dan meeting moderator"
+      description=""
     >
       <div className="space-y-6">
         {/* Alert Notifications */}

@@ -277,7 +277,7 @@ export default function ModeratorReportsPage() {
   return (
     <ModeratorLayout
       title="Laporan & Analytics"
-      description="Analisis data kehadiran dan pertemuan organisasi"
+      description=""
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
