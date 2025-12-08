@@ -86,6 +86,7 @@ export const Navbar = () => {
       case 'user':
         return [
           { label: "Dashboard", href: "/user" },
+          { label: "History Pertemuan", href: "/user/history" },
           // { label: "Event", href: "/user/events" },
           // { label: "Team", href: "/user/team" },
           { 
@@ -134,6 +135,7 @@ export const Navbar = () => {
       case 'user':
         return [
           { label: "Dashboard", href: "/user" },
+          { label: "History Pertemuan", href: "/user/history" },
           // { label: "Event", href: "/user/events" },
           // { label: "Team", href: "/user/team" },
          { 
