@@ -30,6 +30,14 @@ const IconDotsVertical = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const IconDownloadPDF = ({ className }: { className?: string }) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" y1="15" x2="12" y2="3"/>
+  </svg>
+);
+
 // Types
 interface UserData {
   id: string;
@@ -538,6 +546,109 @@ export default function UsersPage() {
     setPage(1);
   }, []);
 
+  // PDF download logbook
+  const downloadUsersPDF = useCallback(() => {
+    const now = new Date().toLocaleString('id-ID', {
+      day: '2-digit', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const pdfItems = [...filteredItems]
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+      .filter((u) => {
+        const hadir = u.attendance_count || 0;
+        const total = u.total_meetings || 0;
+        const persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
+        return persen >= 80;
+      });
+
+    const rows = pdfItems.map((u, idx) => {
+      const hadir = u.attendance_count || 0;
+      const total = u.total_meetings || 0;
+      const persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
+      return `
+        <tr>
+          <td class="center">${idx + 1}</td>
+          <td>${u.nama_lengkap}</td>
+          <td class="center">${u.nim || '-'}</td>
+          <td class="center">${hadir} / ${total}</td>
+          <td class="center">${persen}%</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Logbook Kehadiran Anggota - COSMIC E-SPORT</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Arial', sans-serif; margin: 25mm 20mm; color: #000; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 3px double #000; }
+    .header h1 { font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 4px; }
+    .header h2 { font-size: 14px; font-weight: normal; margin: 0 0 6px; }
+    .header .subtitle { font-size: 11px; color: #555; margin: 0; }
+    .meta { margin-bottom: 16px; }
+    .meta table { border: none; border-collapse: collapse; }
+    .meta td { border: none; padding: 2px 8px 2px 0; }
+    .logbook-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .logbook-table th { background: #c8c8c8; border: 1px solid #000; padding: 8px 10px; text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+    .logbook-table td { border: 1px solid #000; padding: 7px 10px; font-size: 11px; }
+    .logbook-table td.center { text-align: center; }
+    .logbook-table tbody tr:nth-child(even) { background: #f5f5f5; }
+    .footer { margin-top: 24px; font-size: 10px; color: #555; border-top: 1px solid #ccc; padding-top: 8px; display: flex; justify-content: space-between; }
+    @media print { body { margin: 10mm 12mm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>UKM COSMIC E-SPORT</h1>
+    <h2>Logbook Kehadiran Anggota</h2>
+    <p class="subtitle">Dicetak pada: ${now}</p>
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td><strong>Total Anggota</strong></td><td>: ${pdfItems.length} orang (kehadiran &ge; 80%)</td></tr>
+    </table>
+  </div>
+
+  <table class="logbook-table">
+    <thead>
+      <tr>
+        <th style="width:5%">No</th>
+        <th style="width:30%">Nama</th>
+        <th style="width:18%">NIM</th>
+        <th style="width:25%">Frekuensi Kehadiran</th>
+        <th style="width:15%">Persentase</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="footer">
+    <span>Total: ${pdfItems.length} anggota (kehadiran &ge; 80%)</span>
+    <span>UKM COSMIC E-SPORT &copy; ${new Date().getFullYear()}</span>
+  </div>
+
+  <script>
+    window.onload = function () {
+      setTimeout(function () {
+        window.print();
+        setTimeout(function () { window.close(); }, 1000);
+      }, 600);
+    };
+  <\/script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }, [filteredItems]);
+
   const onSearchChange = useCallback((value?: string) => {
     if (value) {
       setFilterValue(value);
@@ -751,6 +862,16 @@ export default function UsersPage() {
               </DropdownMenu>
             </Dropdown>
             
+            <Button
+              color="default"
+              variant="flat"
+              endContent={<IconDownloadPDF />}
+              size="sm"
+              onPress={downloadUsersPDF}
+            >
+              Download PDF
+            </Button>
+
             {(() => {
               if (!currentUser) return false;
               
@@ -803,7 +924,8 @@ export default function UsersPage() {
     onSearchChange,
     onRowsPerPageChange,
     users.length,
-    currentUser, // Add currentUser as dependency
+    currentUser,
+    downloadUsersPDF,
   ]);
 
   // Bottom content
@@ -934,6 +1056,10 @@ export default function UsersPage() {
                 </DropdownMenu>
               </Dropdown>
               
+              <Button color="default" variant="flat" size="sm" startContent={<IconDownloadPDF />} onPress={downloadUsersPDF}>
+                PDF
+              </Button>
+
               <Button color="primary" size="sm" startContent={<IconPlus />} onPress={onOpen}>
                 Tambah
               </Button>

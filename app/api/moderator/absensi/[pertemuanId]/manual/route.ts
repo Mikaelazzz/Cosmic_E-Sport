@@ -92,7 +92,7 @@ export async function POST(
       const meetingDateUTC = new Date(pertemuan.tanggal + 'T' + pertemuan.jam_mulai + 'Z');
       const meetingDateWIB = new Date(meetingDateUTC.getTime() + (7 * 60 * 60 * 1000));
 
-      const lateThreshold = new Date(meetingDateWIB.getTime() + 60 * 60 * 1000); // 60 minutes after start
+      const lateThreshold = new Date(meetingDateWIB.getTime() + 999999999 * 60 * 1000); // 60 minutes after start
 
       // If current time is more than 55 minutes after start, mark as late
       if (indonesiaTime > lateThreshold) {
