@@ -37,87 +37,55 @@ const CekRegion = () => {
     setLoading(true)
     setError('')
     setResult(null)
-    
-    const requestData = {
-      user_id: idAkun.trim(),
-      zone_id: serverAkun.trim()
-    };
 
-    // Try direct API first, then fallback to proxy
-    const apiEndpoints = [
-      '/api/games/check-region', // Use proxy first to avoid CORS issues
-      'https://hexagameidn.com/id/check-region-api' // Direct API as fallback
-    ];
+    try {
+      const response = await fetch('/api/games/check-region', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          id: idAkun.trim(),
+          serverId: serverAkun.trim(),
+        })
+      });
 
-    for (let i = 0; i < apiEndpoints.length; i++) {
-      try {
-        const response = await fetch(apiEndpoints[i], {
-          method: 'POST',
-          mode: i === 1 ? 'cors' : 'same-origin',
-          credentials: i === 1 ? 'omit' : 'same-origin',
-          referrerPolicy: 'no-referrer-when-downgrade',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            ...(i === 1 && { 
-              'Referer': window.location.origin,
-              'Sec-Fetch-Mode': 'cors',
-              'Sec-Fetch-Site': 'cross-site'
-            }),
-          },
-          body: JSON.stringify(requestData)
+      const data = await response.json();
+
+      if (!response.ok) {
+        setResult({
+          success: false,
+          message: data.message || `HTTP Error: ${response.status}`,
+          data: null
         });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          if (i === 1 && (response.status === 0 || response.type === 'opaque')) {
-            // CORS error on direct API, skip to next endpoint
-            continue;
+      } else if (data.nickName) {
+        // Parse nickname dan region dari format "NickName|RegionXX"
+        const parts = data.nickName.split('|Region');
+        const nickname = parts[0] || data.nickName;
+        const region = parts[1] || '-';
+
+        setResult({
+          success: true,
+          data: {
+            id: idAkun.trim(),
+            server: serverAkun.trim(),
+            nickname,
+            country: region,
           }
-          setResult({
-            success: false,
-            message: data.message || `HTTP Error: ${response.status}`,
-            data: null
-          });
-          return;
-        }
-        
-        if ((data.status === 'success' || data.status === true) && data.data) {
-          // Sukses
-          setResult({
-            success: true,
-            data: {
-              id: data.data.user_id || idAkun.trim(),
-              server: data.data.zone_id || serverAkun.trim(),
-              nickname: data.data.username || data.data.nickname || data.data.nick,
-              country: data.data.country || data.data.region
-            }
-          });
-        } else {
-          // Error dari API
-          setResult({
-            success: false,
-            message: data.message || 'Data tidak ditemukan',
-            data: null
-          });
-        }
-        
-        // If we reach here, request was successful, break the loop
-        break;
-        
-      } catch (err) {
-        console.error(`Error with endpoint ${apiEndpoints[i]}:`, err);
-        
-        // If this is the last endpoint, show error
-        if (i === apiEndpoints.length - 1) {
-          setError('Terjadi kesalahan saat mengecek region. Silakan coba lagi.');
-        }
-        // Otherwise, continue to next endpoint
+        });
+      } else {
+        setResult({
+          success: false,
+          message: data.message || 'Data tidak ditemukan',
+          data: null
+        });
       }
+    } catch (err) {
+      console.error('Error checking region:', err);
+      setError('Terjadi kesalahan saat mengecek region. Silakan coba lagi.');
     }
-    
+
     setLoading(false);
   }
   

@@ -73,44 +73,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get active period - check for current semester based on date
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
-    const currentYear = currentDate.getFullYear();
-    
-    // Determine semester based on Indonesian academic calendar
-    // Semester Ganjil: August - December (months 8-12)
-    // Semester Genap: February - June (months 2-6)
-    let semester: string;
-    let tahunAkademik: string;
-    
-    if (currentMonth >= 8 && currentMonth <= 12) {
-      // Semester Ganjil
-      semester = 'ganjil';
-      tahunAkademik = `${currentYear}/${currentYear + 1}`;
-    } else if (currentMonth >= 2 && currentMonth <= 6) {
-      // Semester Genap
-      semester = 'genap';
-      tahunAkademik = `${currentYear - 1}/${currentYear}`;
-    } else {
-      // Transition period (January, July)
-      return NextResponse.json(
-        { success: false, message: 'Saat ini sedang dalam masa transisi semester. Hubungi admin untuk mengaktifkan periode.' },
-        { status: 400 }
-      );
-    }
-
+    // Get active period - simply find the period with status 'berlangsung'
     const { data: activePeriod, error: periodError } = await supabase
       .from('periode')
       .select('id, nama, tahun_akademik, semester, status')
       .eq('status', 'berlangsung')
-      .eq('semester', semester)
-      .eq('tahun_akademik', tahunAkademik)
       .single();
 
     if (periodError || !activePeriod) {
       return NextResponse.json(
-        { success: false, message: `Tidak ada periode aktif untuk semester ${semester} tahun akademik ${tahunAkademik}. Hubungi admin untuk mengaktifkan periode.` },
+        { success: false, message: 'Tidak ada periode aktif (berlangsung). Hubungi admin untuk mengaktifkan periode.' },
         { status: 400 }
       );
     }
