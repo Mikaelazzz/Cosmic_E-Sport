@@ -209,7 +209,7 @@ export default function AdminDashboard() {
                         }
                         return label;
                       }}
-                      formatter={(value: number, name: string) => {
+                      formatter={(value: any, name: string) => {
                         const labels = {
                           newMembers: 'Anggota Baru',
                           totalMembers: 'Total Anggota'
